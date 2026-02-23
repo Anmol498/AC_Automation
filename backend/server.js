@@ -1,0 +1,729 @@
+
+import express from 'express';
+import mysql from 'mysql2/promise';
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
+import nodemailer from 'nodemailer';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+
+dotenv.config();
+
+// Ensure uploads dir
+if (!fs.existsSync('uploads')) {
+  fs.mkdirSync('uploads');
+}
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/')
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname))
+  }
+})
+
+const upload = multer({ storage: storage })
+
+const app = express();
+
+const INSTALLATION_PHASES = [
+  "Drain pipe", "Remote pipe", "Wall opening", "Supporting", "Copper piping (payment)",
+  "Leak testing", "Dressing", "Communication wiring", "Ducting", "Indoor Unit Installation",
+  "Grill fitting", "Outdoor fittings (payment)", "Pressure stand", "Vacuum",
+  "Gas charging", "Remote fitting", "Commissioning (payment)"
+];
+
+const SERVICE_PHASES = [
+  "Initial System Inspection",
+  "Filter & Coil Cleaning",
+  "Gas Level & Pressure Check",
+  "Component Repair/Replacement",
+  "Final Testing & Payment"
+];
+
+// --- EMAIL CONFIGURATION ---
+const transporter = nodemailer.createTransport({
+  host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+  port: process.env.EMAIL_PORT || 587,
+  secure: false,
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
+
+const sendPhaseNotification = async (customerEmail, customerName, jobType, phaseName, jobId, technician, paymentStatus, isFinal, costs = {}) => {
+  let paymentBlock = '';
+
+  // Check if this is a specific payment phase
+  const isCopperPhase = phaseName.toLowerCase().includes('copper piping (payment)');
+  const isOutdoorPhase = phaseName.toLowerCase().includes('outdoor fittings (payment)');
+  const isCommissioningPhase = phaseName.toLowerCase().includes('commissioning (payment)');
+  const isServiceFinalPhase = jobType === 'Service' && phaseName.toLowerCase().includes('final testing & payment');
+
+  if (isCopperPhase || isOutdoorPhase || isCommissioningPhase || isServiceFinalPhase) {
+    const amount = isCopperPhase ? costs.copperPipingCost :
+      isOutdoorPhase ? costs.outdoorFittingCost :
+        costs.commissioningCost; // commissioningCost is used for both commissioning phase and service final phase
+
+    paymentBlock = `
+      <div style="margin-top: 30px; padding: 20px; background-color: #fff7ed; border: 2px dashed #f97316; border-radius: 12px; text-align: center;">
+        <h2 style="color: #9a3412; font-size: 18px; margin-bottom: 10px;">Payment Request: ${phaseName}</h2>
+        <p style="font-size: 14px; color: #334155; margin-bottom: 20px;">This phase is now complete. Please arrange the payment for this milestone.</p>
+        <div style="background-color: #ffffff; border: 1px solid #fed7aa; padding: 15px; border-radius: 8px;">
+          <p style="margin: 0; font-size: 24px; font-weight: bold; color: #c2410c;">
+            Amount Due: $${Number(amount).toLocaleString()}
+          </p>
+          <p style="margin: 10px 0 0 0; font-size: 13px; color: #475569;">
+            Current Payment Status: <strong>${paymentStatus}</strong>
+          </p>
+          <p style="margin: 10px 0 0 0; font-size: 12px; color: #64748b;">
+            You can pay via bank transfer or directly to the onsite technician.
+          </p>
+        </div>
+      </div>
+    `;
+  } else if (isFinal) {
+    paymentBlock = `
+      <div style="margin-top: 30px; padding: 20px; background-color: #f0f9ff; border: 2px dashed #2563eb; border-radius: 12px; text-align: center;">
+        <h2 style="color: #1e3a8a; font-size: 18px; margin-bottom: 10px;">Project Successfully Completed!</h2>
+        <p style="font-size: 14px; color: #334155; margin-bottom: 20px;">The final commissioning and testing phase is complete. Your system is now fully operational.</p>
+        <div style="background-color: ${paymentStatus === 'Fully Received' ? '#ecfdf5' : '#fff7ed'}; border: 1px solid ${paymentStatus === 'Fully Received' ? '#10b981' : '#f97316'}; padding: 15px; border-radius: 8px;">
+          <p style="margin: 0; font-weight: bold; color: ${paymentStatus === 'Fully Received' ? '#065f46' : '#9a3412'};">
+            Payment Status: ${paymentStatus.toUpperCase()}
+          </p>
+          ${paymentStatus !== 'Fully Received' ? `
+            <p style="margin: 10px 0 0 0; font-size: 13px; color: #475569;">
+              Please arrange for the final payment at your earliest convenience.
+            </p>
+          ` : `
+            <p style="margin: 10px 0 0 0; font-size: 13px; color: #065f46;">
+              Thank you for your prompt payment! We hope you enjoy your newly serviced AC system.
+            </p>
+          `}
+        </div>
+      </div>
+    `;
+  }
+
+  const mailOptions = {
+    from: `"CoolBreeze AC Services" <${process.env.EMAIL_USER || 'noreply@coolbreeze.com'}>`,
+    to: customerEmail,
+    subject: isFinal ? `Final Project Completion: Job #${jobId}` : `Update: Job #${jobId} - ${phaseName} Completed`,
+    html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
+        <div style="background-color: #2563eb; color: white; padding: 24px; text-align: center;">
+          <h1 style="margin: 0; font-size: 20px;">CoolBreeze Service Update</h1>
+        </div>
+        <div style="padding: 24px; color: #1e293b; line-height: 1.6;">
+          <p>Hello <strong>${customerName}</strong>,</p>
+          <p>We're writing to let you know that a key milestone in your <strong>${jobType}</strong> has been successfully completed:</p>
+          <div style="background-color: #f8fafc; border-left: 4px solid #2563eb; padding: 16px; margin: 20px 0;">
+            <p style="margin: 0; font-weight: bold; color: #2563eb;">Completed: ${phaseName}</p>
+            <p style="margin: 4px 0 0 0; font-size: 12px; color: #64748b;">Job ID: #${jobId} | Technician: ${technician}</p>
+          </div>
+          
+          ${paymentBlock}
+
+          <p style="margin-top: 32px;">Our team is dedicated to providing high-quality service. If you have any questions, feel free to reply to this email.</p>
+          <p style="margin-top: 32px; font-size: 14px; color: #64748b;">Thank you for choosing CoolBreeze AC Services.</p>
+        </div>
+        <div style="background-color: #f1f5f9; padding: 16px; text-align: center; font-size: 11px; color: #94a3b8;">
+          &copy; ${new Date().getFullYear()} CoolBreeze AC Services.
+        </div>
+      </div>
+    `
+  };
+
+  try {
+    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+      await transporter.sendMail(mailOptions);
+      console.log(`Email sent successfully to ${customerEmail}`);
+    } else {
+      console.log("--- MOCK EMAIL LOG (Set EMAIL_USER/EMAIL_PASS in .env for real emails) ---");
+      console.log(`To: ${customerEmail}`);
+      console.log(`Subject: ${mailOptions.subject}`);
+      console.log("-----------------------------------------------------------------------");
+    }
+  } catch (error) {
+    console.error("Email delivery failed:", error);
+  }
+};
+
+app.use(express.json());
+app.use(cors());
+app.use('/api/uploads', express.static('uploads'));
+
+const dbConfig = {
+  host: process.env.DB_HOST || 'localhost',
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASS || '',
+  database: process.env.DB_NAME || 'coolbreeze_ac',
+  waitForConnections: true,
+  connectionLimit: 10
+};
+
+let pool;
+try {
+  pool = mysql.createPool(dbConfig);
+} catch (err) {
+  console.error("CRITICAL: Failed to create database pool:", err.message);
+}
+
+async function ensureDatabaseReady() {
+  try {
+    const [tables] = await pool.query("SHOW TABLES LIKE 'users'");
+    if (tables.length === 0) return;
+
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS payments (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        job_id INT,
+        amount DECIMAL(10, 2) NOT NULL,
+        payment_method ENUM('Cash', 'Card', 'Transfer', 'Other') DEFAULT 'Transfer',
+        notes TEXT,
+        recorded_by VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE,
+        INDEX idx_payment_job (job_id)
+      )
+    `);
+
+    const [rows] = await pool.execute('SELECT COUNT(*) as count FROM users');
+    if (rows[0].count === 0) {
+      console.log("Seeding default users...");
+      await pool.execute(
+        'INSERT INTO users (email, password_hash, role) VALUES (?, ?, ?), (?, ?, ?)',
+        ['hsd@icloud.com', '123', 'superadmin', 'admin@coolbreeze.com', 'admin123', 'admin']
+      );
+      console.log("Default users created successfully.");
+    }
+  } catch (err) {
+    console.error("Database initialization error:", err.message);
+  }
+}
+
+ensureDatabaseReady();
+
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (!token) return res.sendStatus(401);
+
+  jwt.verify(token, process.env.JWT_SECRET || 'coolbreeze_secret_key_123', (err, user) => {
+    if (err) return res.sendStatus(403);
+    req.user = user;
+    next();
+  });
+};
+
+const isSuperAdmin = (req, res, next) => {
+  if (req.user.role === 'superadmin') return next();
+  res.status(403).json({ error: 'Superadmin access required' });
+};
+
+// --- AUTH & USER ROUTES ---
+
+app.post('/api/login', async (req, res) => {
+  let { email, password } = req.body;
+  email = email?.toLowerCase();
+  try {
+    const [users] = await pool.execute('SELECT * FROM users WHERE email = ?', [email]);
+    if (users.length === 0) return res.status(401).json({ error: 'No account found.' });
+
+    const user = users[0];
+    let validPass = false;
+    try {
+      validPass = await bcrypt.compare(password, user.password_hash);
+    } catch (e) {
+      validPass = false;
+    }
+    if (!validPass && password === user.password_hash) {
+      validPass = true;
+    }
+
+    if (!validPass) return res.status(401).json({ error: 'Incorrect password.' });
+
+    const token = jwt.sign(
+      { id: user.id, email: user.email, role: user.role },
+      process.env.JWT_SECRET || 'coolbreeze_secret_key_123',
+      { expiresIn: '24h' }
+    );
+
+    res.json({
+      token,
+      user: { id: user.id, email: user.email, role: user.role }
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Server connection error." });
+  }
+});
+
+app.get('/api/users', authenticateToken, isSuperAdmin, async (req, res) => {
+  try {
+    const [rows] = await pool.execute('SELECT id, email, role FROM users ORDER BY created_at DESC');
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/users', authenticateToken, isSuperAdmin, async (req, res) => {
+  let { email, password, role } = req.body;
+
+  // Normalize email and role to lowercase
+  email = email?.toLowerCase();
+  role = role?.toLowerCase();
+
+  // Validate role
+  const allowedRoles = ['admin', 'superadmin', 'technician'];
+  if (!allowedRoles.includes(role)) {
+    return res.status(400).json({ error: `Invalid role: ${role}. Allowed roles: ${allowedRoles.join(', ')}` });
+  }
+
+  try {
+    const hashedPassword = await bcrypt.hash(password, 10);
+    await pool.execute('INSERT INTO users (email, password_hash, role) VALUES (?, ?, ?)', [email, hashedPassword, role]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/users/:id', authenticateToken, isSuperAdmin, async (req, res) => {
+  if (req.params.id == req.user.id) return res.status(400).json({ error: "Cannot delete yourself" });
+  try {
+    await pool.execute('DELETE FROM users WHERE id = ?', [req.params.id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- CUSTOMER ROUTES ---
+
+app.get('/api/customers', authenticateToken, async (req, res) => {
+  try {
+    const search = req.query.search;
+    let query = 'SELECT id, name, email, phone, address, drawing_url AS drawingUrl, quotation_url AS quotationUrl, created_at AS createdAt FROM customers';
+    let params = [];
+
+    if (search) {
+      query += ' WHERE name LIKE ? OR email LIKE ? OR phone LIKE ?';
+      const searchTerm = `%${search}%`;
+      params.push(searchTerm, searchTerm, searchTerm);
+    }
+
+    query += ' ORDER BY created_at DESC';
+
+    const [rows] = await pool.execute(query, params);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/customers', authenticateToken, upload.fields([{ name: 'drawing' }, { name: 'quotation' }]), async (req, res) => {
+  const { name, email, phone, address } = req.body;
+  const drawingUrl = req.files && req.files['drawing'] ? `/uploads/${req.files['drawing'][0].filename}` : null;
+  const quotationUrl = req.files && req.files['quotation'] ? `/uploads/${req.files['quotation'][0].filename}` : null;
+
+  try {
+    const [result] = await pool.execute(
+      'INSERT INTO customers (name, email, phone, address, drawing_url, quotation_url) VALUES (?, ?, ?, ?, ?, ?)',
+      [name, email, phone, address, drawingUrl, quotationUrl]
+    );
+    res.json({ id: result.insertId, name, email, phone, address, drawingUrl, quotationUrl, createdAt: new Date() });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/customers/:id', authenticateToken, upload.fields([{ name: 'drawing' }, { name: 'quotation' }]), async (req, res) => {
+  const { name, email, phone, address } = req.body;
+  const newDrawingUrl = req.files && req.files['drawing'] ? `/uploads/${req.files['drawing'][0].filename}` : undefined;
+  const newQuotationUrl = req.files && req.files['quotation'] ? `/uploads/${req.files['quotation'][0].filename}` : undefined;
+
+  try {
+    let query = 'UPDATE customers SET name = ?, email = ?, phone = ?, address = ?';
+    let params = [name, email, phone, address];
+
+    if (newDrawingUrl !== undefined) {
+      query += ', drawing_url = ?';
+      params.push(newDrawingUrl);
+    }
+    if (newQuotationUrl !== undefined) {
+      query += ', quotation_url = ?';
+      params.push(newQuotationUrl);
+    }
+
+    query += ' WHERE id = ?';
+    params.push(req.params.id);
+
+    await pool.execute(query, params);
+
+    // Fetch updated row to return
+    const [rows] = await pool.execute('SELECT id, name, email, phone, address, drawing_url AS drawingUrl, quotation_url AS quotationUrl, created_at AS createdAt FROM customers WHERE id = ?', [req.params.id]);
+    res.json(rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/customers/:id', authenticateToken, async (req, res) => {
+  try {
+    await pool.execute('DELETE FROM customers WHERE id = ?', [req.params.id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- JOB ROUTES ---
+
+app.get('/api/technicians', authenticateToken, async (req, res) => {
+  try {
+    const [rows] = await pool.execute('SELECT email FROM users WHERE role = "technician"');
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/stats', authenticateToken, async (req, res) => {
+  try {
+    let activeQuery = 'SELECT COUNT(*) as count FROM jobs WHERE status = "Ongoing"';
+    let completedQuery = 'SELECT COUNT(*) as count FROM jobs WHERE status = "Completed"';
+    let params = [];
+
+    if (req.user.role === 'technician') {
+      activeQuery += ' AND LOWER(technician) = LOWER(?)';
+      completedQuery += ' AND LOWER(technician) = LOWER(?)';
+      params.push(req.user.email);
+
+      const [[{ count: activeJobs }]] = await pool.execute(activeQuery, params);
+      const [[{ count: completedJobs }]] = await pool.execute(completedQuery, params);
+      return res.json({ activeJobs, completedJobs, health: '100%' });
+    }
+
+    const [[{ count: customers }]] = await pool.execute('SELECT COUNT(*) as count FROM customers');
+    const [[{ count: activeJobs }]] = await pool.execute(activeQuery);
+    const [[{ count: completedJobs }]] = await pool.execute(completedQuery);
+    res.json({ customers, activeJobs, completedJobs, health: '100%' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/jobs', authenticateToken, async (req, res) => {
+  const { search } = req.query;
+  try {
+    let query = `
+      SELECT 
+        j.id, 
+        j.customer_id AS customerId, 
+        j.job_type AS jobType, 
+        j.start_date AS startDate, 
+        j.technician, 
+        j.status, 
+        j.payment_status AS paymentStatus,
+        j.copper_piping_cost AS copperPipingCost,
+        j.outdoor_fitting_cost AS outdoorFittingCost,
+        j.commissioning_cost AS commissioningCost,
+        j.total_cost AS totalCost,
+        j.created_at AS createdAt,
+        c.name as customerName,
+        (SELECT COALESCE(SUM(amount), 0) FROM payments WHERE job_id = j.id) as totalPaid,
+        (SELECT phase_name FROM job_phases WHERE job_id = j.id AND is_completed = 0 ORDER BY phase_order ASC LIMIT 1) as currentPhase
+      FROM jobs j 
+      JOIN customers c ON j.customer_id = c.id
+    `;
+
+    const params = [];
+    let whereClauses = [];
+
+    if (req.user.role === 'technician') {
+      whereClauses.push('LOWER(j.technician) = LOWER(?)');
+      params.push(req.user.email);
+    }
+
+    if (search) {
+      whereClauses.push('(c.name LIKE ? OR j.technician LIKE ? OR j.job_type LIKE ?)');
+      const searchVal = `%${search}%`;
+      params.push(searchVal, searchVal, searchVal);
+    }
+
+    if (whereClauses.length > 0) {
+      query += ` WHERE ` + whereClauses.join(' AND ');
+    }
+
+    query += ` ORDER BY j.created_at DESC`;
+
+    const [rows] = await pool.execute(query, params);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/jobs', authenticateToken, async (req, res) => {
+  const {
+    customerId,
+    jobType,
+    technician,
+    startDate,
+    paymentStatus,
+    copperPipingCost = 0,
+    outdoorFittingCost = 0,
+    commissioningCost = 0
+  } = req.body;
+
+  const totalCost = Number(copperPipingCost) + Number(outdoorFittingCost) + Number(commissioningCost);
+
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    const [result] = await connection.execute(
+      'INSERT INTO jobs (customer_id, job_type, technician, start_date, payment_status, copper_piping_cost, outdoor_fitting_cost, commissioning_cost, total_cost) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [customerId, jobType, technician, startDate, paymentStatus || 'Pending', copperPipingCost, outdoorFittingCost, commissioningCost, totalCost]
+    );
+    const jobId = result.insertId;
+
+    const phasesToCreate = jobType === 'Service' ? SERVICE_PHASES : INSTALLATION_PHASES;
+
+    for (let i = 0; i < phasesToCreate.length; i++) {
+      await connection.execute(
+        'INSERT INTO job_phases (job_id, phase_name, phase_order) VALUES (?, ?, ?)',
+        [jobId, phasesToCreate[i], i + 1]
+      );
+    }
+    await connection.commit();
+    res.json({ id: jobId, success: true });
+  } catch (err) {
+    await connection.rollback();
+    res.status(500).json({ error: err.message });
+  } finally {
+    connection.release();
+  }
+});
+
+app.get('/api/jobs/:id', authenticateToken, async (req, res) => {
+  try {
+    let query = `
+      SELECT 
+        j.id, 
+        j.customer_id AS customerId, 
+        j.job_type AS jobType, 
+        j.start_date AS startDate, 
+        j.technician, 
+        j.status, 
+        j.payment_status AS paymentStatus,
+        j.copper_piping_cost AS copperPipingCost,
+        j.outdoor_fitting_cost AS outdoorFittingCost,
+        j.commissioning_cost AS commissioningCost,
+        j.total_cost AS totalCost,
+        j.created_at AS createdAt,
+        c.name as customerName, 
+        c.email as customerEmail, 
+        c.phone as customerPhone, 
+        c.address as customerAddress,
+        (SELECT phase_name FROM job_phases WHERE job_id = j.id AND is_completed = 0 ORDER BY phase_order ASC LIMIT 1) as currentPhase
+      FROM jobs j 
+      JOIN customers c ON j.customer_id = c.id 
+      WHERE j.id = ?
+    `;
+
+    const params = [req.params.id];
+
+    if (req.user.role === 'technician') {
+      query += ' AND LOWER(j.technician) = LOWER(?)';
+      params.push(req.user.email);
+    }
+
+    console.log('Fetching job details:', { id: req.params.id, user: req.user.email, role: req.user.role });
+
+    // First check if job exists at all
+    const [[exists]] = await pool.execute('SELECT id, technician FROM jobs WHERE id = ?', [req.params.id]);
+
+    if (!exists) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+
+    // Then check permissions
+    if (req.user.role === 'technician') {
+      const jobTech = exists.technician || '';
+      if (jobTech.toLowerCase() !== req.user.email.toLowerCase()) {
+        console.log('Access denied for technician:', { id: req.params.id, jobTech, user: req.user.email });
+        return res.status(403).json({ error: 'Access denied. This job is assigned to another technician.' });
+      }
+    }
+
+    const [[job]] = await pool.execute(query, params);
+
+    if (!job) {
+      return res.status(404).json({ error: 'Job details could not be retrieved' });
+    }
+
+    const [phases] = await pool.execute(`
+      SELECT 
+        id, 
+        job_id AS jobId, 
+        phase_name AS phaseName, 
+        is_completed AS isCompleted, 
+        completed_at AS completedAt, 
+        phase_order AS \`order\`
+      FROM job_phases 
+      WHERE job_id = ? 
+      ORDER BY phase_order ASC
+    `, [req.params.id]);
+
+    const mappedPhases = phases.map(p => ({
+      ...p,
+      isCompleted: !!p.isCompleted
+    }));
+
+    res.json({ job, phases: mappedPhases });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.patch('/api/jobs/:id/payment', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  const { paymentStatus } = req.body;
+  try {
+    await pool.execute('UPDATE jobs SET payment_status = ? WHERE id = ?', [paymentStatus, id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/jobs/:id/payments', authenticateToken, async (req, res) => {
+  try {
+    const [rows] = await pool.execute('SELECT * FROM payments WHERE job_id = ? ORDER BY created_at DESC', [req.params.id]);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/jobs/:id/payments', authenticateToken, async (req, res) => {
+  if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {
+    return res.status(403).json({ error: 'Access denied. Only admins can record payments.' });
+  }
+
+  const { id } = req.params;
+  const { amount, paymentMethod, notes } = req.body;
+
+  try {
+    const [result] = await pool.execute(
+      'INSERT INTO payments (job_id, amount, payment_method, notes, recorded_by) VALUES (?, ?, ?, ?, ?)',
+      [id, amount, paymentMethod || 'Transfer', notes || '', req.user.email]
+    );
+    res.json({ id: result.insertId, success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/jobs/:id', authenticateToken, async (req, res) => {
+  try {
+    await pool.execute('DELETE FROM jobs WHERE id = ?', [req.params.id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.patch('/api/phases/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  const { isCompleted } = req.body;
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    // Ownership check for technicians
+    if (req.user.role === 'technician') {
+      const [[jobCheck]] = await connection.execute(`
+        SELECT j.technician 
+        FROM jobs j 
+        JOIN job_phases jp ON j.id = jp.job_id 
+        WHERE jp.id = ?
+      `, [id]);
+
+      if (!jobCheck || jobCheck.technician !== req.user.email) {
+        await connection.rollback();
+        return res.status(403).json({ error: 'Access denied. You can only update phases for your assigned jobs.' });
+      }
+    }
+
+    const completedAt = isCompleted ? new Date().toISOString().slice(0, 19).replace('T', ' ') : null;
+    await connection.execute('UPDATE job_phases SET is_completed = ?, completed_at = ? WHERE id = ?', [isCompleted ? 1 : 0, completedAt, id]);
+
+    const [[{ job_id }]] = await connection.execute('SELECT job_id FROM job_phases WHERE id = ?', [id]);
+    const [[{ total }]] = await connection.execute('SELECT COUNT(*) as total FROM job_phases WHERE job_id = ?', [job_id]);
+    const [[{ completed }]] = await connection.execute('SELECT COUNT(*) as completed FROM job_phases WHERE job_id = ? AND is_completed = 1', [job_id]);
+
+    const isFinalPhase = (total === completed);
+    const newStatus = isFinalPhase ? 'Completed' : 'Ongoing';
+    await connection.execute('UPDATE jobs SET status = ? WHERE id = ?', [newStatus, job_id]);
+
+    // Fetch the new current phase name
+    const [[phaseInfo]] = await connection.execute('SELECT phase_name FROM job_phases WHERE job_id = ? AND is_completed = 0 ORDER BY phase_order ASC LIMIT 1', [job_id]);
+    const nextPhaseName = phaseInfo ? phaseInfo.phase_name : null;
+
+    if (isCompleted) {
+      const [[details]] = await connection.execute(`
+        SELECT 
+          c.email, 
+          c.name as customerName, 
+          j.id as jobId, 
+          j.job_type as jobType, 
+          j.technician, 
+          j.payment_status as paymentStatus,
+          j.copper_piping_cost as copperPipingCost,
+          j.outdoor_fitting_cost as outdoorFittingCost,
+          j.commissioning_cost as commissioningCost,
+          jp.phase_name as phaseName
+        FROM job_phases jp
+        JOIN jobs j ON jp.job_id = j.id
+        JOIN customers c ON j.customer_id = c.id
+        WHERE jp.id = ?
+      `, [id]);
+
+      if (details) {
+        sendPhaseNotification(
+          details.email,
+          details.customerName,
+          details.jobType,
+          details.phaseName,
+          details.jobId,
+          details.technician,
+          details.paymentStatus,
+          isFinalPhase,
+          {
+            copperPipingCost: details.copperPipingCost,
+            outdoorFittingCost: details.outdoorFittingCost,
+            commissioningCost: details.commissioningCost
+          }
+        );
+      }
+    }
+
+    await connection.commit();
+    res.json({ success: true, jobStatus: newStatus, currentPhase: nextPhaseName });
+  } catch (err) {
+    await connection.rollback();
+    res.status(500).json({ error: err.message });
+  } finally {
+    connection.release();
+  }
+});
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Backend server running on http://localhost:${PORT}`));
