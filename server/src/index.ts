@@ -56,7 +56,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-const sendPhaseNotification = async (customerEmail, customerName, jobType, phaseName, jobId, technician, paymentStatus, isFinal, costs = {}) => {
+const sendPhaseNotification = async (customerEmail: any, customerName: any, jobType: any, phaseName: any, jobId: any, technician: any, paymentStatus: any, isFinal: any, costs: any = {}) => {
   let paymentBlock = '';
 
   // Check if this is a specific payment phase
@@ -158,21 +158,7 @@ app.use(express.json());
 app.use(cors());
 app.use('/api/uploads', express.static('uploads'));
 
-const dbConfig = {
-  host: process.env.DB_HOST || process.env.MYSQLHOST || 'localhost',
-  user: process.env.DB_USER || process.env.MYSQLUSER || 'root',
-  password: process.env.DB_PASSWORD || process.env.DB_PASS || process.env.MYSQLPASSWORD || '',
-  database: process.env.DB_NAME || process.env.MYSQLDATABASE || 'coolbreeze_ac',
-  waitForConnections: true,
-  connectionLimit: 10
-};
-
-let pool;
-try {
-  pool = mysql.createPool(dbConfig);
-} catch (err) {
-  console.error("CRITICAL: Failed to create database pool:", err.message);
-}
+import pool from './config/db.js';
 
 async function ensureDatabaseReady() {
   try {
@@ -284,7 +270,7 @@ app.post('/api/login', async (req, res) => {
   let { email, password } = req.body;
   email = email?.toLowerCase();
   try {
-    const [users] = await pool.execute('SELECT * FROM users WHERE email = ?', [email]);
+    const [users]: any = await pool.execute('SELECT * FROM users WHERE email = ?', [email]);
     if (users.length === 0) return res.status(401).json({ error: 'No account found.' });
 
     const user = users[0];
@@ -385,7 +371,7 @@ app.post('/api/customers', authenticateToken, upload.fields([{ name: 'drawing' }
   const quotationUrl = req.files && req.files['quotation'] ? `/uploads/${req.files['quotation'][0].filename}` : null;
 
   try {
-    const [result] = await pool.execute(
+    const [result]: any = await pool.execute(
       'INSERT INTO customers (name, email, phone, address, drawing_url, quotation_url) VALUES (?, ?, ?, ?, ?, ?)',
       [name, email, phone, address, drawingUrl, quotationUrl]
     );
@@ -457,14 +443,14 @@ app.get('/api/stats', authenticateToken, async (req, res) => {
       completedQuery += ' AND LOWER(technician) = LOWER(?)';
       params.push(req.user.email);
 
-      const [[{ count: activeJobs }]] = await pool.execute(activeQuery, params);
-      const [[{ count: completedJobs }]] = await pool.execute(completedQuery, params);
+      const [[{ count: activeJobs }]]: any = await pool.execute(activeQuery, params);
+      const [[{ count: completedJobs }]]: any = await pool.execute(completedQuery, params);
       return res.json({ activeJobs, completedJobs, health: '100%' });
     }
 
-    const [[{ count: customers }]] = await pool.execute('SELECT COUNT(*) as count FROM customers');
-    const [[{ count: activeJobs }]] = await pool.execute(activeQuery);
-    const [[{ count: completedJobs }]] = await pool.execute(completedQuery);
+    const [[{ count: customers }]]: any = await pool.execute('SELECT COUNT(*) as count FROM customers');
+    const [[{ count: activeJobs }]]: any = await pool.execute(activeQuery);
+    const [[{ count: completedJobs }]]: any = await pool.execute(completedQuery);
     res.json({ customers, activeJobs, completedJobs, health: '100%' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -539,7 +525,7 @@ app.post('/api/jobs', authenticateToken, async (req, res) => {
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
-    const [result] = await connection.execute(
+    const [result]: any = await connection.execute(
       'INSERT INTO jobs (customer_id, job_type, technician, start_date, payment_status, copper_piping_cost, outdoor_fitting_cost, commissioning_cost, total_cost) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [customerId, jobType, technician, startDate, paymentStatus || 'Pending', copperPipingCost, outdoorFittingCost, commissioningCost, totalCost]
     );
@@ -599,7 +585,7 @@ app.get('/api/jobs/:id', authenticateToken, async (req, res) => {
     console.log('Fetching job details:', { id: req.params.id, user: req.user.email, role: req.user.role });
 
     // First check if job exists at all
-    const [[exists]] = await pool.execute('SELECT id, technician FROM jobs WHERE id = ?', [req.params.id]);
+    const [[exists]]: any = await pool.execute('SELECT id, technician FROM jobs WHERE id = ?', [req.params.id]);
 
     if (!exists) {
       return res.status(404).json({ error: 'Job not found' });
@@ -614,13 +600,13 @@ app.get('/api/jobs/:id', authenticateToken, async (req, res) => {
       }
     }
 
-    const [[job]] = await pool.execute(query, params);
+    const [[job]]: any = await pool.execute(query, params);
 
     if (!job) {
       return res.status(404).json({ error: 'Job details could not be retrieved' });
     }
 
-    const [phases] = await pool.execute(`
+    const [phases]: any = await pool.execute(`
       SELECT 
         id, 
         job_id AS jobId, 
@@ -633,7 +619,7 @@ app.get('/api/jobs/:id', authenticateToken, async (req, res) => {
       ORDER BY phase_order ASC
     `, [req.params.id]);
 
-    const mappedPhases = phases.map(p => ({
+    const mappedPhases = phases.map((p: any) => ({
       ...p,
       isCompleted: !!p.isCompleted
     }));
@@ -673,7 +659,7 @@ app.post('/api/jobs/:id/payments', authenticateToken, async (req, res) => {
   const { amount, paymentMethod, notes } = req.body;
 
   try {
-    const [result] = await pool.execute(
+    const [result]: any = await pool.execute(
       'INSERT INTO payments (job_id, amount, payment_method, notes, recorded_by) VALUES (?, ?, ?, ?, ?)',
       [id, amount, paymentMethod || 'Transfer', notes || '', req.user.email]
     );
@@ -701,7 +687,7 @@ app.patch('/api/phases/:id', authenticateToken, async (req, res) => {
 
     // Ownership check for technicians
     if (req.user.role === 'technician') {
-      const [[jobCheck]] = await connection.execute(`
+      const [[jobCheck]]: any = await connection.execute(`
         SELECT j.technician 
         FROM jobs j 
         JOIN job_phases jp ON j.id = jp.job_id 
@@ -717,20 +703,20 @@ app.patch('/api/phases/:id', authenticateToken, async (req, res) => {
     const completedAt = isCompleted ? new Date().toISOString().slice(0, 19).replace('T', ' ') : null;
     await connection.execute('UPDATE job_phases SET is_completed = ?, completed_at = ? WHERE id = ?', [isCompleted ? 1 : 0, completedAt, id]);
 
-    const [[{ job_id }]] = await connection.execute('SELECT job_id FROM job_phases WHERE id = ?', [id]);
-    const [[{ total }]] = await connection.execute('SELECT COUNT(*) as total FROM job_phases WHERE job_id = ?', [job_id]);
-    const [[{ completed }]] = await connection.execute('SELECT COUNT(*) as completed FROM job_phases WHERE job_id = ? AND is_completed = 1', [job_id]);
+    const [[{ job_id }]]: any = await connection.execute('SELECT job_id FROM job_phases WHERE id = ?', [id]);
+    const [[{ total }]]: any = await connection.execute('SELECT COUNT(*) as total FROM job_phases WHERE job_id = ?', [job_id]);
+    const [[{ completed }]]: any = await connection.execute('SELECT COUNT(*) as completed FROM job_phases WHERE job_id = ? AND is_completed = 1', [job_id]);
 
     const isFinalPhase = (total === completed);
     const newStatus = isFinalPhase ? 'Completed' : 'Ongoing';
     await connection.execute('UPDATE jobs SET status = ? WHERE id = ?', [newStatus, job_id]);
 
     // Fetch the new current phase name
-    const [[phaseInfo]] = await connection.execute('SELECT phase_name FROM job_phases WHERE job_id = ? AND is_completed = 0 ORDER BY phase_order ASC LIMIT 1', [job_id]);
+    const [[phaseInfo]]: any = await connection.execute('SELECT phase_name FROM job_phases WHERE job_id = ? AND is_completed = 0 ORDER BY phase_order ASC LIMIT 1', [job_id]);
     const nextPhaseName = phaseInfo ? phaseInfo.phase_name : null;
 
     if (isCompleted) {
-      const [[details]] = await connection.execute(`
+      const [[details]]: any = await connection.execute(`
         SELECT 
           c.email, 
           c.name as customerName, 
@@ -778,4 +764,4 @@ app.patch('/api/phases/:id', authenticateToken, async (req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Backend server running on http://localhost:${PORT}`));
+app.listen(PORT, "0.0.0.0", () => console.log(`Server running on ${PORT}`));

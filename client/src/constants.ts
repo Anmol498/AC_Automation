@@ -38,4 +38,4 @@ export const SUPPORT_PHONE = "+1 (555) 123-4567";
 
 // Intelligent API URL detection
 // Locally, this will use localhost:5000. In production on Vercel, it will use the Railway URL
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+export const API_BASE_URL = import.meta.env.VITE_API_URL;

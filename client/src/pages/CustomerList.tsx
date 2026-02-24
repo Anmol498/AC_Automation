@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Customer } from '../types';
+import { Customer } from '../../../shared/types';
 import { useAuth } from '../App';
 import { API_BASE_URL } from '../constants';
 

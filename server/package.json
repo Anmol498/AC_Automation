@@ -2,10 +2,12 @@
     "name": "coolbreeze-backend",
     "version": "1.0.0",
     "description": "Backend API for CoolBreeze Dashboard",
-    "main": "server.js",
+    "main": "dist/index.js",
     "type": "module",
     "scripts": {
-        "start": "node server.js"
+        "dev": "nodemon src/index.ts",
+        "build": "tsc",
+        "start": "node dist/index.js"
     },
     "dependencies": {
         "bcryptjs": "^2.4.3",

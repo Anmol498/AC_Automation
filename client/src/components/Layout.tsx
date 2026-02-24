@@ -2,7 +2,7 @@
 import React from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../App';
-import { UserRole } from '../types';
+import { UserRole } from '../../../shared/types';
 import { APP_NAME } from '../constants';
 
 const Layout: React.FC = () => {

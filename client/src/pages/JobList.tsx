@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import * as XLSX from 'xlsx';
-import { Job, Customer } from '../types';
+import { Job, Customer } from '../../../shared/types';
 import { useAuth } from '../App';
 import { API_BASE_URL } from '../constants';
 
