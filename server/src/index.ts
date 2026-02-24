@@ -9,6 +9,7 @@ import dotenv from 'dotenv';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import { sendEmail } from './utils/gmailMailer.js';
 
 declare global {
   namespace Express {
@@ -53,16 +54,7 @@ const SERVICE_PHASES = [
   "Final Testing & Payment"
 ];
 
-// --- EMAIL CONFIGURATION ---
-const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-  port: Number(process.env.EMAIL_PORT) || 587,
-  secure: false,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-} as any);
+// --- EMAIL CONFIGURATION MOVED TO utils/gmailMailer.js ---
 
 const sendPhaseNotification = async (customerEmail: any, customerName: any, jobType: any, phaseName: any, jobId: any, technician: any, paymentStatus: any, isFinal: any, costs: any = {}) => {
   let paymentBlock = '';
@@ -147,19 +139,7 @@ const sendPhaseNotification = async (customerEmail: any, customerName: any, jobT
     `
   };
 
-  try {
-    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-      await transporter.sendMail(mailOptions);
-      console.log(`Email sent successfully to ${customerEmail}`);
-    } else {
-      console.log("--- MOCK EMAIL LOG (Set EMAIL_USER/EMAIL_PASS in .env for real emails) ---");
-      console.log(`To: ${customerEmail}`);
-      console.log(`Subject: ${mailOptions.subject}`);
-      console.log("-----------------------------------------------------------------------");
-    }
-  } catch (error) {
-    console.error("Email delivery failed:", error);
-  }
+  await sendEmail(customerEmail, mailOptions.subject, mailOptions.html);
 };
 
 app.use(express.json());
