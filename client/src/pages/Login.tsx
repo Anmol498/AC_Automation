@@ -46,10 +46,10 @@ const Login: React.FC = () => {
           <div className="absolute top-0 right-0 p-4 opacity-10">
             <i className="fa-solid fa-snowflake text-6xl rotate-12"></i>
           </div>
-          <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4 backdrop-blur-sm border border-white/30">
-            <i className="fa-solid fa-wind text-3xl"></i>
+          <div className="w-20 h-20 bg-white shadow-xl rounded-2xl flex items-center justify-center mx-auto mb-4 p-2 relative z-10">
+            <img src="/logo.png" alt="Logo" className="w-full h-full object-contain" />
           </div>
-          <h2 className="text-2xl font-bold tracking-tight">{APP_NAME}</h2>
+          <h2 className="text-2xl font-bold tracking-tight relative z-10">{APP_NAME}</h2>
           <p className="text-blue-100 mt-2 text-sm font-medium">Service & Installation Portal</p>
         </div>
 
