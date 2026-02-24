@@ -1,6 +1,6 @@
 
-CREATE DATABASE IF NOT EXISTS coolbreeze_ac;
-USE coolbreeze_ac;
+CREATE DATABASE IF NOT EXISTS railway;
+USE railway;
 
 -- Users Table
 CREATE TABLE IF NOT EXISTS users (
