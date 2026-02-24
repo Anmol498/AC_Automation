@@ -55,7 +55,7 @@ const Login: React.FC = () => {
 
         <form onSubmit={handleSubmit} className="p-8 space-y-6">
           <div className="text-center">
-            <h3 className="text-xl font-bold text-slate-800">Staff Sign In</h3>
+            <h3 className="text-xl font-bold text-slate-800">Sign In</h3>
             <p className="text-slate-500 text-xs mt-1 uppercase font-bold tracking-widest">Authorized Access Only</p>
           </div>
 
@@ -110,7 +110,7 @@ const Login: React.FC = () => {
               </>
             ) : (
               <>
-                <span>Sign In to Dashboard</span>
+                <span>Sign In</span>
                 <i className="fa-solid fa-arrow-right text-xs opacity-50"></i>
               </>
             )}
