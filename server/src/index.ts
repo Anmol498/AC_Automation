@@ -163,8 +163,26 @@ const sendPhaseNotification = async (customerEmail: any, customerName: any, jobT
 };
 
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+  origin: true, // Safely allow any origin while supporting credentials
+  credentials: true
+}));
 app.use('/api/uploads', express.static('uploads'));
+
+// VERY IMPORTANT - Railway health check
+app.get("/", (req, res) => {
+  res.status(200).send("AC Automation Backend Running");
+});
+
+// Health endpoint for uptime check
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    service: "ac-automation-api",
+    time: new Date()
+  });
+});
+
 
 import pool from './config/db.js';
 
