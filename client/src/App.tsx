@@ -24,19 +24,19 @@ export const useAuth = () => {
 
 const App: React.FC = () => {
   const [auth, setAuth] = useState<AuthState>(() => {
-    const saved = localStorage.getItem('coolbreeze_auth');
+    const saved = localStorage.getItem('satguru_auth');
     return saved ? JSON.parse(saved) : { user: null, token: null, isAuthenticated: false };
   });
 
   const login = (user: User, token: string) => {
     const newState = { user, token, isAuthenticated: true };
     setAuth(newState);
-    localStorage.setItem('coolbreeze_auth', JSON.stringify(newState));
+    localStorage.setItem('satguru_auth', JSON.stringify(newState));
   };
 
   const logout = () => {
     setAuth({ user: null, token: null, isAuthenticated: false });
-    localStorage.removeItem('coolbreeze_auth');
+    localStorage.removeItem('satguru_auth');
   };
 
   // Fix: Made children optional to resolve TypeScript errors where 'children' was reported missing in JSX

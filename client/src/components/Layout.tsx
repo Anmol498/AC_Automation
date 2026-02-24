@@ -27,8 +27,10 @@ const Layout: React.FC = () => {
       {/* Sidebar */}
       <aside className="w-full md:w-64 bg-slate-900 text-white flex-shrink-0 flex flex-col relative">
         <div className="p-6">
-          <h1 className="text-xl font-bold flex items-center gap-3">
-            <img src="/logo.png" alt="Logo" className="h-10 w-auto object-contain bg-white rounded p-1" />
+          <h1 className="text-xl font-bold flex items-center gap-2">
+            <span className="bg-blue-600 p-1.5 rounded-lg">
+              <i className="fa-solid fa-wind text-white"></i>
+            </span>
             {APP_NAME}
           </h1>
         </div>
@@ -72,9 +74,8 @@ const Layout: React.FC = () => {
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col min-w-0 overflow-y-auto">
         <header className="h-16 shrink-0 bg-white border-b border-slate-200 flex items-center justify-between px-6 sticky top-0 z-10 transition-shadow">
-          <div className="flex items-center gap-2 md:hidden">
-            <img src="/logo.png" alt="Logo" className="h-8 w-auto object-contain rounded bg-white p-0.5" />
-            <h1 className="text-lg font-bold text-slate-900">{APP_NAME}</h1>
+          <div className="flex items-center md:hidden">
+            <h1 className="text-lg font-bold">{APP_NAME}</h1>
           </div>
           <div className="hidden md:block">
             <span className="text-slate-400">Welcome back, </span>

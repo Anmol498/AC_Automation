@@ -119,7 +119,7 @@ const UserManagement: React.FC = () => {
             <form onSubmit={handleAdd} className="space-y-4">
               <div>
                 <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">Email</label>
-                <input type="email" placeholder="user@coolbreeze.com" className="w-full p-2.5 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} required />
+                <input type="email" placeholder="user@satguruengineers.com" className="w-full p-2.5 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} required />
               </div>
               <div>
                 <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">Password</label>
