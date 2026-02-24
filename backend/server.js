@@ -176,8 +176,63 @@ try {
 
 async function ensureDatabaseReady() {
   try {
-    const [tables] = await pool.query("SHOW TABLES LIKE 'users'");
-    if (tables.length === 0) return;
+    console.log("Initializing database schema...");
+
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        role ENUM('admin', 'superadmin', 'technician') DEFAULT 'admin',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS customers (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        email VARCHAR(255) NOT NULL,
+        phone VARCHAR(20),
+        address TEXT,
+        drawing_url VARCHAR(255),
+        quotation_url VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_customer_name (name)
+      )
+    `);
+
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS jobs (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        customer_id INT,
+        job_type ENUM('Installation', 'Service') NOT NULL,
+        start_date DATE,
+        technician VARCHAR(255),
+        status ENUM('Ongoing', 'Completed') DEFAULT 'Ongoing',
+        payment_status ENUM('Pending', '1/3rd Received', '2/3rd Received', 'Fully Received') DEFAULT 'Pending',
+        copper_piping_cost DECIMAL(10, 2) DEFAULT 0.00,
+        outdoor_fitting_cost DECIMAL(10, 2) DEFAULT 0.00,
+        commissioning_cost DECIMAL(10, 2) DEFAULT 0.00,
+        total_cost DECIMAL(10, 2) DEFAULT 0.00,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
+        INDEX idx_job_technician (technician),
+        INDEX idx_job_type (job_type)
+      )
+    `);
+
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS job_phases (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        job_id INT,
+        phase_name VARCHAR(255) NOT NULL,
+        is_completed BOOLEAN DEFAULT FALSE,
+        completed_at DATETIME,
+        phase_order INT,
+        FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE
+      )
+    `);
 
     await pool.execute(`
       CREATE TABLE IF NOT EXISTS payments (
@@ -193,15 +248,12 @@ async function ensureDatabaseReady() {
       )
     `);
 
-    const [rows] = await pool.execute('SELECT COUNT(*) as count FROM users');
-    if (rows[0].count === 0) {
-      console.log("Seeding default users...");
-      await pool.execute(
-        'INSERT INTO users (email, password_hash, role) VALUES (?, ?, ?), (?, ?, ?)',
-        ['hsd@icloud.com', '123', 'superadmin', 'admin@coolbreeze.com', 'admin123', 'admin']
-      );
-      console.log("Default users created successfully.");
-    }
+    await pool.execute(
+      `INSERT IGNORE INTO users (email, password_hash, role) VALUES (?, ?, ?)`,
+      ['hsd@icloud.com', '123', 'superadmin']
+    );
+
+    console.log("Database schema ready.");
   } catch (err) {
     console.error("Database initialization error:", err.message);
   }
