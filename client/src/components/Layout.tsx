@@ -26,12 +26,12 @@ const Layout: React.FC = () => {
     <div className="h-screen flex flex-col md:flex-row bg-slate-50 overflow-hidden">
       {/* Sidebar */}
       <aside className="w-full md:w-64 bg-slate-900 text-white flex-shrink-0 flex flex-col relative">
-        <div className="p-6">
-          <h1 className="text-xl font-bold flex items-center gap-2">
+        <div className="p-6 shrink-0">
+          <h1 className="text-lg font-bold flex items-center gap-2">
             <span className="bg-blue-600 rounded-lg flex items-center justify-center w-8 h-8 shrink-0">
               <span className="text-sm font-black tracking-tighter text-white">SE</span>
             </span>
-            <span className="truncate" title={APP_NAME}>{APP_NAME}</span>
+            <span className="tracking-tight leading-tight" title={APP_NAME}>{APP_NAME}</span>
           </h1>
         </div>
         <nav className="mt-4 px-4 space-y-1 overflow-y-auto">
