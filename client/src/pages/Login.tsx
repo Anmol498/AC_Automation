@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import axios from 'axios';
 import { useAuth } from '../App';
 import { UserRole } from '../types';
 import { APP_NAME, API_BASE_URL } from '../constants';
@@ -17,22 +18,22 @@ const Login: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), password }),
+      const response = await axios.post(`${API_BASE_URL}/login`, {
+        email: email.trim(),
+        password
+      }, {
+        withCredentials: true
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        login(data.user, data.token);
-      } else {
-        setError(data.error || 'Login failed. Please check your credentials.');
-      }
-    } catch (err) {
+      const data = response.data;
+      login(data.user, data.token);
+    } catch (err: any) {
       console.error('Login error:', err);
-      setError(`Connection Error: Unable to reach the server at ${API_BASE_URL}. Ensure your Node.js backend is running.`);
+      if (err.response && err.response.data && err.response.data.error) {
+        setError(err.response.data.error);
+      } else {
+        setError(`Connection Error: Unable to reach the server at ${API_BASE_URL}. Ensure your Node.js backend is running.`);
+      }
     } finally {
       setIsLoading(false);
     }
