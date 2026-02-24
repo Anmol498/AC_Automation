@@ -143,7 +143,7 @@ const sendPhaseNotification = async (customerEmail: any, customerName: any, jobT
 };
 
 app.use(express.json());
-app.use(cors({
+const corsOptions = {
   origin: [
     "http://localhost:5173",
     "https://ac-automation-one.vercel.app",
@@ -152,9 +152,11 @@ app.use(cors({
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
-}));
+};
+
+app.use(cors(corsOptions));
 app.set("trust proxy", 1);
-app.options("*", cors()); // VERY IMPORTANT (preflight fix)
+app.options("*", cors(corsOptions)); // VERY IMPORTANT (preflight fix)
 app.use('/api/uploads', express.static('uploads'));
 
 // VERY IMPORTANT - Railway health check
