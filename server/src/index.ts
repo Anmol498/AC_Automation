@@ -146,6 +146,7 @@ app.use(express.json());
 app.use(cors({
   origin: [
     "https://ac-automation-one.vercel.app",
+    "https://satguruengineers.vercel.app",
     "http://localhost:5173"
   ],
   credentials: true,
