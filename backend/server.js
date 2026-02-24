@@ -159,10 +159,10 @@ app.use(cors());
 app.use('/api/uploads', express.static('uploads'));
 
 const dbConfig = {
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || process.env.DB_PASS || '',
-  database: process.env.DB_NAME || 'coolbreeze_ac',
+  host: process.env.DB_HOST || process.env.MYSQLHOST || 'localhost',
+  user: process.env.DB_USER || process.env.MYSQLUSER || 'root',
+  password: process.env.DB_PASSWORD || process.env.DB_PASS || process.env.MYSQLPASSWORD || '',
+  database: process.env.DB_NAME || process.env.MYSQLDATABASE || 'coolbreeze_ac',
   waitForConnections: true,
   connectionLimit: 10
 };
