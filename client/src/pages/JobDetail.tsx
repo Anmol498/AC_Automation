@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Job, Customer, JobPhase, Payment } from '../../../shared/types';
+import { Job, Customer, JobPhase, Payment } from '../types';
 import { APP_NAME, SUPPORT_EMAIL, API_BASE_URL } from '../constants';
 import { useAuth } from '../App';
 import { GoogleGenAI } from '@google/genai';

@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '../App';
-import { UserRole } from '../../../shared/types';
+import { UserRole } from '../types';
 import { APP_NAME, API_BASE_URL } from '../constants';
 
 const Login: React.FC = () => {

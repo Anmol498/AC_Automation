@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { User, UserRole } from '../../../shared/types';
+import { User, UserRole } from '../types';
 import { useAuth } from '../App';
 import { API_BASE_URL } from '../constants';
 
