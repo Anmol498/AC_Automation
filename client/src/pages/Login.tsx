@@ -47,17 +47,13 @@ const Login: React.FC = () => {
             <i className="fa-solid fa-snowflake text-6xl rotate-12"></i>
           </div>
           <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4 backdrop-blur-sm border border-white/30">
-            <i className="fa-solid fa-wind text-3xl"></i>
+            <span className="text-3xl font-black tracking-tighter text-white">SE</span>
           </div>
           <h2 className="text-2xl font-bold tracking-tight">{APP_NAME}</h2>
           <p className="text-blue-100 mt-2 text-sm font-medium">Service & Installation Portal</p>
         </div>
 
         <form onSubmit={handleSubmit} className="p-8 space-y-6">
-          <div className="text-center">
-            <h3 className="text-xl font-bold text-slate-800">Sign In</h3>
-            <p className="text-slate-500 text-xs mt-1 uppercase font-bold tracking-widest">Authorized Access Only</p>
-          </div>
 
           {error && (
             <div className="bg-red-50 border border-red-100 text-red-600 px-4 py-3 rounded-xl text-sm flex items-start gap-3 animate-shake">
