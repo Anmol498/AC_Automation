@@ -32,8 +32,8 @@ export const SERVICE_PHASES = [
 // For legacy support or general reference
 export const AC_PHASES = INSTALLATION_PHASES;
 
-export const APP_NAME = "Satguru Engineers";
-export const SUPPORT_EMAIL = "support@satguruengineers.com";
+export const APP_NAME = "CoolBreeze AC Services";
+export const SUPPORT_EMAIL = "support@coolbreezeac.com";
 export const SUPPORT_PHONE = "+1 (555) 123-4567";
 
 // Intelligent API URL detection
