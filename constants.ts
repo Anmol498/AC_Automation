@@ -1,4 +1,6 @@
 
+/// <reference types="vite/client" />
+
 export const INSTALLATION_PHASES = [
   "Drain pipe",
   "Remote pipe",
@@ -35,7 +37,5 @@ export const SUPPORT_EMAIL = "support@coolbreezeac.com";
 export const SUPPORT_PHONE = "+1 (555) 123-4567";
 
 // Intelligent API URL detection
-export const API_BASE_URL = 
-  window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? 'http://localhost:5000/api'
-    : '/api';
+// Locally, this will use localhost:5000. In production on Vercel, it will use the Railway URL
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
