@@ -10,6 +10,14 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 
+declare global {
+  namespace Express {
+    interface Request {
+      user?: any;
+    }
+  }
+}
+
 dotenv.config();
 
 // Ensure uploads dir
@@ -48,13 +56,13 @@ const SERVICE_PHASES = [
 // --- EMAIL CONFIGURATION ---
 const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-  port: process.env.EMAIL_PORT || 587,
+  port: Number(process.env.EMAIL_PORT) || 587,
   secure: false,
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
-});
+} as any);
 
 const sendPhaseNotification = async (customerEmail: any, customerName: any, jobType: any, phaseName: any, jobId: any, technician: any, paymentStatus: any, isFinal: any, costs: any = {}) => {
   let paymentBlock = '';
@@ -247,22 +255,23 @@ async function ensureDatabaseReady() {
 
 ensureDatabaseReady();
 
-const authenticateToken = (req, res, next) => {
+const authenticateToken = (req: any, res: any, next: any) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
   if (!token) return res.sendStatus(401);
 
-  jwt.verify(token, process.env.JWT_SECRET || 'coolbreeze_secret_key_123', (err, user) => {
+  jwt.verify(token, process.env.JWT_SECRET || 'coolbreeze_secret_key_123', (err: any, user: any) => {
     if (err) return res.sendStatus(403);
     req.user = user;
     next();
   });
 };
 
-const isSuperAdmin = (req, res, next) => {
+const isSuperAdmin = (req: any, res: any, next: any) => {
   if (req.user.role === 'superadmin') return next();
   res.status(403).json({ error: 'Superadmin access required' });
 };
+
 
 // --- AUTH & USER ROUTES ---
 
@@ -763,5 +772,5 @@ app.patch('/api/phases/:id', authenticateToken, async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = Number(process.env.PORT) || 5000;
 app.listen(PORT, "0.0.0.0", () => console.log(`Server running on ${PORT}`));
