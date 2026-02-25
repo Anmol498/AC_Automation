@@ -1,17 +1,11 @@
-import nodemailer from 'nodemailer';
 import { google } from 'googleapis';
 import dotenv from 'dotenv';
-import dns from 'dns';
-
-// Force Node.js to prioritize IPv4 over IPv6. 
-// Railway's internal networks often drop external port 465 IPv6 packets (ETIMEDOUT).
-dns.setDefaultResultOrder('ipv4first');
 
 dotenv.config();
 
 const OAuth2 = google.auth.OAuth2;
 
-const createTransporter = async () => {
+const getGmailService = async () => {
     try {
         const oauth2Client = new OAuth2(
             process.env.GMAIL_CLIENT_ID,
@@ -23,37 +17,36 @@ const createTransporter = async () => {
             refresh_token: process.env.GMAIL_REFRESH_TOKEN,
         });
 
-        const accessToken = await new Promise((resolve, reject) => {
-            oauth2Client.getAccessToken((err, token) => {
-                if (err) {
-                    reject("Failed to create access token: " + err.message);
-                }
-                resolve(token);
-            });
-        });
-
-        const transporter = nodemailer.createTransport({
-            host: '142.250.110.108', // Hardcoded IPv4 for smtp.gmail.com to bypass Railway IPv6 block
-            port: 465,
-            secure: true,
-            auth: {
-                type: "OAuth2",
-                user: process.env.EMAIL_USER,
-                accessToken,
-                clientId: process.env.GMAIL_CLIENT_ID,
-                clientSecret: process.env.GMAIL_CLIENT_SECRET,
-                refreshToken: process.env.GMAIL_REFRESH_TOKEN
-            },
-            tls: {
-                rejectUnauthorized: false
-            }
-        } as any);
-
-        return transporter;
+        const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+        return gmail;
     } catch (err) {
-        console.error("Transporter creation error:", err);
+        console.error("Gmail service creation error:", err);
         throw err;
     }
+};
+
+const makeRawEmail = (to: string, subject: string, html: string) => {
+    const defaultFrom = `"${process.env.EMAIL_FROM || 'Satguru Engineers'}" <${process.env.EMAIL_USER}>`;
+
+    // Modern way to construct raw email headers and body
+    const emailLines = [
+        `To: ${to}`,
+        `From: ${defaultFrom}`,
+        `Subject: =?utf-8?B?${Buffer.from(subject).toString('base64')}?=`,
+        'MIME-Version: 1.0',
+        'Content-Type: text/html; charset=utf-8',
+        '',
+        html
+    ];
+
+    const email = emailLines.join('\r\n');
+
+    // Base64URL encode the string
+    return Buffer.from(email)
+        .toString('base64')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
 };
 
 export const sendEmail = async (to: string, subject: string, html: string) => {
@@ -66,18 +59,19 @@ export const sendEmail = async (to: string, subject: string, html: string) => {
             return;
         }
 
-        const emailTransporter = await createTransporter();
+        const gmail = await getGmailService();
+        const rawMessage = makeRawEmail(to, subject, html);
 
-        const mailOptions = {
-            subject: subject,
-            html: html,
-            to: to,
-            from: `"${process.env.EMAIL_FROM || 'Satguru Engineers'}" <${process.env.EMAIL_USER}>`,
-        };
+        // Send via official Gmail REST API (HTTPS port 443), completely bypassing SMTP
+        const response = await gmail.users.messages.send({
+            userId: 'me',
+            requestBody: {
+                raw: rawMessage,
+            },
+        });
 
-        await emailTransporter.sendMail(mailOptions);
-        console.log(`Gmail API email sent successfully to ${to}`);
-    } catch (error) {
-        console.error("Email delivery failed:", error);
+        console.log(`Gmail API email sent successfully to ${to} (Message ID: ${response.data.id})`);
+    } catch (error: any) {
+        console.error("Email delivery failed:", error.message || error);
     }
 };
