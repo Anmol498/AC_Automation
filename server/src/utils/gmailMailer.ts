@@ -62,7 +62,7 @@ export const sendEmail = async (to: string, subject: string, html: string) => {
             subject: subject,
             html: html,
             to: to,
-            from: `"${process.env.APP_NAME || 'Satguru Engineers'}" <${process.env.EMAIL_USER}>`,
+            from: `"${process.env.EMAIL_FROM || 'Satguru Engineers'}" <${process.env.EMAIL_USER}>`,
         };
 
         await emailTransporter.sendMail(mailOptions);

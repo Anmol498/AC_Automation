@@ -76,7 +76,7 @@ const sendPhaseNotification = async (customerEmail: any, customerName: any, jobT
         <p style="font-size: 14px; color: #334155; margin-bottom: 20px;">This phase is now complete. Please arrange the payment for this milestone.</p>
         <div style="background-color: #ffffff; border: 1px solid #fed7aa; padding: 15px; border-radius: 8px;">
           <p style="margin: 0; font-size: 24px; font-weight: bold; color: #c2410c;">
-            Amount Due: $${Number(amount).toLocaleString()}
+            Amount Due: ₹${Number(amount).toLocaleString()}
           </p>
           <p style="margin: 10px 0 0 0; font-size: 13px; color: #475569;">
             Current Payment Status: <strong>${paymentStatus}</strong>
@@ -111,13 +111,13 @@ const sendPhaseNotification = async (customerEmail: any, customerName: any, jobT
   }
 
   const mailOptions = {
-    from: `"CoolBreeze AC Services" <${process.env.EMAIL_USER || 'noreply@coolbreeze.com'}>`,
+    from: `"Satguru Engineers" <${process.env.EMAIL_USER || 'noreply@satguruengineers.com'}>`,
     to: customerEmail,
     subject: isFinal ? `Final Project Completion: Job #${jobId}` : `Update: Job #${jobId} - ${phaseName} Completed`,
     html: `
       <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
         <div style="background-color: #2563eb; color: white; padding: 24px; text-align: center;">
-          <h1 style="margin: 0; font-size: 20px;">CoolBreeze Service Update</h1>
+          <h1 style="margin: 0; font-size: 20px;">Satguru Engineers Service Update</h1>
         </div>
         <div style="padding: 24px; color: #1e293b; line-height: 1.6;">
           <p>Hello <strong>${customerName}</strong>,</p>
@@ -130,10 +130,10 @@ const sendPhaseNotification = async (customerEmail: any, customerName: any, jobT
           ${paymentBlock}
 
           <p style="margin-top: 32px;">Our team is dedicated to providing high-quality service. If you have any questions, feel free to reply to this email.</p>
-          <p style="margin-top: 32px; font-size: 14px; color: #64748b;">Thank you for choosing CoolBreeze AC Services.</p>
+          <p style="margin-top: 32px; font-size: 14px; color: #64748b;">Thank you for choosing Satguru Engineers.</p>
         </div>
         <div style="background-color: #f1f5f9; padding: 16px; text-align: center; font-size: 11px; color: #94a3b8;">
-          &copy; ${new Date().getFullYear()} CoolBreeze AC Services.
+          &copy; ${new Date().getFullYear()} Satguru Engineers.
         </div>
       </div>
     `
@@ -146,6 +146,7 @@ app.use(express.json());
 const corsOptions = {
   origin: [
     "http://localhost:5173",
+    "http://localhost:3000",
     "https://ac-automation-one.vercel.app",
     "https://satguruengineers.vercel.app"
   ],
@@ -782,3 +783,4 @@ app.patch('/api/phases/:id', authenticateToken, async (req, res) => {
 
 const PORT = Number(process.env.PORT) || 5000;
 app.listen(PORT, "0.0.0.0", () => console.log(`Server running on ${PORT}`));
+
