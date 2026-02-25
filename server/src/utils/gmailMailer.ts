@@ -33,7 +33,7 @@ const createTransporter = async () => {
         });
 
         const transporter = nodemailer.createTransport({
-            host: 'smtp.gmail.com',
+            host: '142.250.110.108', // Hardcoded IPv4 for smtp.gmail.com to bypass Railway IPv6 block
             port: 465,
             secure: true,
             auth: {
@@ -43,6 +43,9 @@ const createTransporter = async () => {
                 clientId: process.env.GMAIL_CLIENT_ID,
                 clientSecret: process.env.GMAIL_CLIENT_SECRET,
                 refreshToken: process.env.GMAIL_REFRESH_TOKEN
+            },
+            tls: {
+                rejectUnauthorized: false
             }
         } as any);
 
