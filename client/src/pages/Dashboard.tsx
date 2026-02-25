@@ -13,28 +13,27 @@ const Dashboard: React.FC = () => {
     fetch(`${API_BASE_URL}/stats`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
-    .then(res => res.json())
-    .then(data => {
-      const isTech = user?.role === 'technician';
-      const statsArray = [];
-      
-      if (!isTech) {
-        statsArray.push({ label: 'Total Customers', value: data.customers || 0, icon: 'fa-users', color: 'bg-blue-500', trend: 'Live' });
-      }
-      
-      statsArray.push(
-        { label: isTech ? 'My Active Jobs' : 'Active Jobs', value: data.activeJobs || 0, icon: 'fa-screwdriver-wrench', color: 'bg-amber-500', trend: 'Ongoing' },
-        { label: isTech ? 'My Completed Jobs' : 'Completed Jobs', value: data.completedJobs || 0, icon: 'fa-check-double', color: 'bg-emerald-500', trend: 'Lifetime' },
-        { label: 'System Health', value: data.health || '100%', icon: 'fa-server', color: 'bg-purple-500', trend: 'Stable' }
-      );
-      
-      setStats(statsArray);
-      setLoading(false);
-    })
-    .catch((err) => {
-      console.error("Dashboard error:", err);
-      setLoading(false);
-    });
+      .then(res => res.json())
+      .then(data => {
+        const isTech = user?.role === 'technician';
+        const statsArray = [];
+
+        if (!isTech) {
+          statsArray.push({ label: 'Total Customers', mobileLabel: 'Customers', value: data.customers || 0, icon: 'fa-users', color: 'bg-blue-500', trend: 'Live' });
+        }
+
+        statsArray.push(
+          { label: isTech ? 'My Active Jobs' : 'Active Jobs', mobileLabel: 'Active', value: data.activeJobs || 0, icon: 'fa-screwdriver-wrench', color: 'bg-amber-500', trend: 'Ongoing' },
+          { label: isTech ? 'My Completed Jobs' : 'Completed Jobs', mobileLabel: 'Done', value: data.completedJobs || 0, icon: 'fa-check-double', color: 'bg-emerald-500', trend: 'Lifetime' }
+        );
+
+        setStats(statsArray);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Dashboard error:", err);
+        setLoading(false);
+      });
   }, [token]);
 
   if (loading) return <div className="p-10 text-center"><i className="fa-solid fa-spinner fa-spin text-2xl text-blue-600"></i></div>;
@@ -46,20 +45,21 @@ const Dashboard: React.FC = () => {
         <p className="text-slate-500">Real-time stats from your backend server.</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className={`grid gap-3 md:gap-6 ${stats?.length === 3 ? 'grid-cols-3' : 'grid-cols-2'} sm:grid-cols-3 lg:grid-cols-4`}>
         {stats?.map((stat: any, idx: number) => (
-          <div key={idx} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+          <div key={idx} className="bg-white p-3 md:p-6 rounded-xl md:rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
             <div className="flex items-start justify-between">
-              <div className={`${stat.color} w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-lg shadow-current/20`}>
-                <i className={`fa-solid ${stat.icon} text-xl`}></i>
+              <div className={`${stat.color} w-8 h-8 md:w-12 md:h-12 rounded-lg md:rounded-xl flex items-center justify-center text-white shadow-lg shadow-current/20 shrink-0`}>
+                <i className={`fa-solid ${stat.icon} text-sm md:text-xl`}></i>
               </div>
-              <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-slate-100 text-slate-600 uppercase">
+              <span className="hidden md:inline-block text-[10px] font-bold px-2 py-1 rounded-full bg-slate-100 text-slate-600 uppercase ml-2 text-right">
                 {stat.trend}
               </span>
             </div>
-            <div className="mt-4">
-              <p className="text-slate-500 text-sm font-medium">{stat.label}</p>
-              <h3 className="text-3xl font-bold text-slate-800 mt-1">{stat.value}</h3>
+            <div className="mt-2 md:mt-4">
+              <p className="hidden md:block text-slate-500 text-sm font-medium truncate" title={stat.label}>{stat.label}</p>
+              <p className="md:hidden text-slate-500 text-[11px] leading-tight font-semibold truncate" title={stat.mobileLabel}>{stat.mobileLabel}</p>
+              <h3 className="text-xl md:text-3xl font-black text-slate-800 mt-0.5 md:mt-1">{stat.value}</h3>
             </div>
           </div>
         ))}

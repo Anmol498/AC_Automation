@@ -110,20 +110,33 @@ const CustomerList: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <h2 className="text-2xl font-bold text-slate-800">Customers</h2>
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative">
-            <i className="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight text-slate-800">Customers</h2>
+          <p className="md:hidden text-slate-500 text-xs mt-1">Manage your client directory and resources.</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1 group">
+            <i className="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors"></i>
             <input
               type="text"
               placeholder="Search customers..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-2 w-full sm:w-64 bg-white border border-slate-200 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all text-sm font-medium placeholder:text-slate-400"
+              className="pl-11 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all w-full md:w-64 text-sm font-medium shadow-sm"
             />
           </div>
-          <button onClick={openAddModal} className="bg-blue-600 text-white px-4 py-2 rounded-xl font-medium shadow-lg shadow-blue-500/20 hover:bg-blue-700 transition-colors whitespace-nowrap">
-            <i className="fa-solid fa-plus mr-2"></i> New Customer
+          <button
+            onClick={openAddModal}
+            className="md:hidden bg-blue-600 hover:bg-blue-700 text-white p-2.5 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20 transition-all aspect-square shrink-0"
+          >
+            <i className="fa-solid fa-plus text-lg"></i>
+          </button>
+          <button
+            onClick={openAddModal}
+            className="hidden md:flex bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 shadow-lg shadow-blue-500/20 transition-all font-medium shrink-0"
+          >
+            <i className="fa-solid fa-plus"></i>
+            New Customer
           </button>
         </div>
       </div>
@@ -131,62 +144,142 @@ const CustomerList: React.FC = () => {
       {loading ? (
         <div className="text-center p-10"><i className="fa-solid fa-spinner fa-spin text-blue-600 text-2xl"></i></div>
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead className="bg-slate-50 text-[10px] font-bold uppercase text-slate-500 tracking-wider">
-                <tr>
-                  <th className="px-6 py-4">Name</th>
-                  <th className="px-6 py-4">Contact</th>
-                  <th className="px-6 py-4">Address</th>
-                  <th className="px-6 py-4">Files</th>
-                  <th className="px-6 py-4">Created</th>
-                  <th className="px-6 py-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {customers.map(c => (
-                  <tr key={c.id} className="text-sm hover:bg-slate-50 transition-colors">
-                    <td className="px-6 py-4 font-semibold text-slate-800">{c.name}</td>
-                    <td className="px-6 py-4">
-                      <p className="text-slate-600">{c.email}</p>
-                      <p className="text-[10px] text-slate-400">{c.phone}</p>
-                    </td>
-                    <td className="px-6 py-4 text-slate-600 text-xs w-48 truncate" title={c.address}>{c.address || <span className="text-slate-400 italic">No Address</span>}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col gap-1">
-                        {c.drawingUrl ? (
-                          <a href={`${API_BASE_URL}${c.drawingUrl}`} target="_blank" rel="noreferrer" className="text-[10px] font-bold text-emerald-600 hover:underline inline-flex items-center gap-1">
-                            <i className="fa-solid fa-file-image"></i> Drawing
-                          </a>
-                        ) : <span className="text-[10px] text-slate-300 italic">No drawing</span>}
-                        {c.quotationUrl ? (
-                          <a href={`${API_BASE_URL}${c.quotationUrl}`} target="_blank" rel="noreferrer" className="text-[10px] font-bold text-blue-600 hover:underline inline-flex items-center gap-1">
-                            <i className="fa-solid fa-file-pdf"></i> Quotation
-                          </a>
-                        ) : <span className="text-[10px] text-slate-300 italic">No quotation</span>}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-slate-400">{new Date(c.createdAt).toLocaleDateString()}</td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex justify-end gap-3">
-                        <button onClick={() => openEditModal(c)} className="text-blue-400 hover:text-blue-600" title="Edit Customer">
-                          <i className="fa-solid fa-pen"></i>
-                        </button>
-                        <button onClick={() => handleDelete(c.id)} className="text-red-400 hover:text-red-600" title="Delete Customer">
-                          <i className="fa-solid fa-trash-can"></i>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {customers.length === 0 && (
-                  <tr><td colSpan={6} className="p-10 text-center text-slate-400 italic">No customers found.</td></tr>
-                )}
-              </tbody>
-            </table>
+        <>
+          {/* Mobile Card View (< md) */}
+          <div className="md:hidden space-y-4">
+            {customers.map((c, index) => (
+              <div key={c.id} className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 flex flex-col">
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${index % 2 === 0 ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-500'
+                      }`}>
+                      <i className="fa-solid fa-user text-xl"></i>
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-lg leading-tight text-slate-800">{c.name}</h3>
+                      <p className="text-xs text-slate-500 mt-0.5">C-ID: #{c.id}</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => openEditModal(c)} className="p-2.5 bg-slate-50 rounded-full text-slate-500 hover:text-blue-600 transition-colors">
+                      <i className="fa-solid fa-pen"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2.5 mb-5">
+                  <div className="flex items-center gap-3 text-sm text-slate-600">
+                    <i className="fa-solid fa-envelope text-slate-400 w-4 text-center"></i>
+                    <span className="truncate">{c.email}</span>
+                  </div>
+                  {c.phone && (
+                    <div className="flex items-center gap-3 text-sm text-slate-600">
+                      <i className="fa-solid fa-phone text-slate-400 w-4 text-center"></i>
+                      <span>{c.phone}</span>
+                    </div>
+                  )}
+                  {c.address && (
+                    <div className="flex items-start gap-3 text-sm text-slate-600">
+                      <i className="fa-solid fa-location-dot text-slate-400 w-4 text-center mt-1"></i>
+                      <span className="flex-1 leading-snug">{c.address}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between pt-4 border-t border-slate-50 mt-auto">
+                  <div className="flex flex-wrap gap-2">
+                    {c.drawingUrl ? (
+                      <a href={`${API_BASE_URL}${c.drawingUrl}`} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-600 uppercase bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-100/50">
+                        <i className="fa-solid fa-file-image"></i> Drawing
+                      </a>
+                    ) : (
+                      <span className="px-2.5 py-1.5 bg-slate-50 text-[10px] rounded-lg text-slate-400 font-bold border border-slate-100 uppercase">No Drawing</span>
+                    )}
+
+                    {c.quotationUrl ? (
+                      <a href={`${API_BASE_URL}${c.quotationUrl}`} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-[10px] font-bold text-blue-600 uppercase bg-blue-50 px-2.5 py-1.5 rounded-lg border border-blue-100/50">
+                        <i className="fa-solid fa-file-pdf"></i> Quotation
+                      </a>
+                    ) : (
+                      <span className="px-2.5 py-1.5 bg-slate-50 text-[10px] rounded-lg text-slate-400 font-bold border border-slate-100 uppercase">No Quote</span>
+                    )}
+                  </div>
+
+                  {c.phone && (
+                    <a href={`tel:${c.phone}`} className="bg-blue-50/50 hover:bg-blue-100 text-blue-600 px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors border border-blue-100/50 ml-2">
+                      <i className="fa-solid fa-phone"></i>
+                      Call
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
+            {customers.length === 0 && (
+              <div className="p-10 text-center text-slate-400 bg-white rounded-2xl border border-slate-200">
+                <i className="fa-solid fa-users text-3xl mb-3 text-slate-300"></i>
+                <p className="text-sm font-medium">No customers found.</p>
+              </div>
+            )}
           </div>
-        </div>
+
+          {/* Desktop Table View (>= md) */}
+          <div className="hidden md:block bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead className="bg-slate-50 text-[10px] font-bold uppercase text-slate-500 tracking-wider">
+                  <tr>
+                    <th className="px-6 py-4">Name</th>
+                    <th className="px-6 py-4">Contact</th>
+                    <th className="px-6 py-4">Address</th>
+                    <th className="px-6 py-4">Files</th>
+                    <th className="px-6 py-4">Created</th>
+                    <th className="px-6 py-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {customers.map(c => (
+                    <tr key={c.id} className="text-sm hover:bg-slate-50 transition-colors">
+                      <td className="px-6 py-4 font-semibold text-slate-800">{c.name}</td>
+                      <td className="px-6 py-4">
+                        <p className="text-slate-600">{c.email}</p>
+                        <p className="text-[10px] text-slate-400">{c.phone}</p>
+                      </td>
+                      <td className="px-6 py-4 text-slate-600 text-xs w-48 truncate" title={c.address}>{c.address || <span className="text-slate-400 italic">No Address</span>}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col gap-1">
+                          {c.drawingUrl ? (
+                            <a href={`${API_BASE_URL}${c.drawingUrl}`} target="_blank" rel="noreferrer" className="text-[10px] font-bold text-emerald-600 hover:underline inline-flex items-center gap-1">
+                              <i className="fa-solid fa-file-image"></i> Drawing
+                            </a>
+                          ) : <span className="text-[10px] text-slate-300 italic">No drawing</span>}
+                          {c.quotationUrl ? (
+                            <a href={`${API_BASE_URL}${c.quotationUrl}`} target="_blank" rel="noreferrer" className="text-[10px] font-bold text-blue-600 hover:underline inline-flex items-center gap-1">
+                              <i className="fa-solid fa-file-pdf"></i> Quotation
+                            </a>
+                          ) : <span className="text-[10px] text-slate-300 italic">No quotation</span>}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-slate-400">{new Date(c.createdAt).toLocaleDateString()}</td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex justify-end gap-3">
+                          <button onClick={() => openEditModal(c)} className="text-blue-400 hover:text-blue-600" title="Edit Customer">
+                            <i className="fa-solid fa-pen"></i>
+                          </button>
+                          <button onClick={() => handleDelete(c.id)} className="text-red-400 hover:text-red-600" title="Delete Customer">
+                            <i className="fa-solid fa-trash-can"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {customers.length === 0 && (
+                    <tr><td colSpan={6} className="p-10 text-center text-slate-400 italic">No customers found.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
       )}
 
       {isModalOpen && (

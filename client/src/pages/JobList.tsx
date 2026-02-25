@@ -147,11 +147,11 @@ const JobList: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800">{isTech ? 'My Assigned Jobs' : 'Jobs & Phases'}</h2>
-          <p className="text-slate-500 text-sm">{isTech ? 'Track progress on your allotted service workflows.' : 'Track real-time progress across all service workflows.'}</p>
+          <h2 className="text-2xl font-bold tracking-tight text-slate-800">{isTech ? 'My Assigned Jobs' : 'Jobs & Phases'}</h2>
+          <p className="text-slate-500 text-xs mt-1">{isTech ? 'Track progress on your allotted service workflows.' : 'Track real-time progress across all service workflows.'}</p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="relative group">
+          <div className="relative flex-1 group">
             <i className="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors"></i>
             <input
               type="text"
@@ -165,7 +165,7 @@ const JobList: React.FC = () => {
             <div className="flex gap-2">
               <button
                 onClick={exportToExcel}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all font-medium shrink-0"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white p-2.5 md:px-4 md:py-2.5 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all font-medium shrink-0"
                 title="Export Jobs to Excel"
               >
                 <i className="fa-solid fa-file-excel"></i>
@@ -173,9 +173,9 @@ const JobList: React.FC = () => {
               </button>
               <button
                 onClick={() => setIsModalOpen(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 shadow-lg shadow-blue-500/20 transition-all font-medium shrink-0"
+                className="bg-blue-600 hover:bg-blue-700 text-white p-2.5 md:px-4 md:py-2.5 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 transition-all font-medium shrink-0 aspect-square md:aspect-auto"
               >
-                <i className="fa-solid fa-calendar-plus"></i>
+                <i className="fa-solid fa-plus md:fa-calendar-plus"></i>
                 <span className="hidden sm:inline">Schedule Job</span>
               </button>
             </div>
@@ -186,105 +186,207 @@ const JobList: React.FC = () => {
       {loading ? (
         <div className="text-center p-10"><i className="fa-solid fa-spinner fa-spin text-blue-600 text-2xl"></i></div>
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead className="bg-slate-50 text-slate-500 text-[10px] font-bold uppercase tracking-widest">
-                <tr>
-                  <th className="px-6 py-4 border-b border-slate-200">ID</th>
-                  <th className="px-6 py-4 border-b border-slate-200">Customer</th>
-                  <th className="px-6 py-4 border-b border-slate-200">Job Type</th>
-                  {!isTech && <th className="px-6 py-4 border-b border-slate-200">Total Cost</th>}
-                  <th className="px-6 py-4 border-b border-slate-200 text-center">Remaining</th>
-                  <th className="px-6 py-4 border-b border-slate-200">Current Phase / Status</th>
-                  <th className="px-6 py-4 border-b border-slate-200 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {jobs.map((job) => (
-                  <tr key={job.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-6 py-4 font-mono text-xs font-bold text-slate-400">#{job.id}</td>
-                    <td className="px-6 py-4">
-                      <p className="font-semibold text-slate-800">{job.customerName}</p>
-                      <p className="text-[10px] text-slate-400">Scheduled: {new Date(job.startDate).toLocaleDateString()}</p>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${job.jobType === 'Service' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
+        <>
+          {/* Mobile Card View (< md) */}
+          <div className="md:hidden space-y-4">
+            {jobs.map((job) => {
+              const dueBalance = Math.max(0, Number(job.totalCost) - Number(job.totalPaid || 0));
+              const isPaid = dueBalance <= 0;
+              const isCompleted = job.status === 'Completed';
+              return (
+                <div key={job.id} className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex flex-col">
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${job.jobType === 'Service' ? 'bg-purple-50 text-purple-600' : 'bg-blue-50 text-blue-600'
                         }`}>
-                        {job.jobType}
-                      </span>
-                    </td>
-                    {!isTech && (
-                      <td className="px-6 py-4">
-                        <p className="font-bold text-slate-700">₹{Number(job.totalCost).toLocaleString()}</p>
-                      </td>
-                    )}
-                    <td className="px-6 py-4 text-center">
-                      {isTech ? (
-                        <span className="text-slate-400 text-[10px] italic">Hidden</span>
-                      ) : (
-                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider ${(Number(job.totalCost) - Number(job.totalPaid || 0)) <= 0 ? 'bg-emerald-100 text-emerald-700 shadow-sm border border-emerald-500/20' : 'bg-red-100 text-red-700 shadow-sm border border-red-500/20'}`}>
-                          {(Number(job.totalCost) - Number(job.totalPaid || 0)) <= 0 ? (
-                            <>
-                              <i className="fa-solid fa-circle-check"></i>
-                              Fully Paid
-                            </>
-                          ) : (
-                            <>
-                              <i className="fa-solid fa-triangle-exclamation text-[10px]"></i>
-                              ₹{Math.max(0, Number(job.totalCost) - Number(job.totalPaid || 0)).toLocaleString()}
-                            </>
-                          )}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
-                      {job.status === 'Completed' ? (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm">
-                          <i className="fa-solid fa-circle-check"></i>
-                          Completed
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm">
-                          <i className="fa-solid fa-spinner fa-spin text-[8px]"></i>
-                          {job.currentPhase || 'Ongoing'}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-3">
-                        <Link to={`/jobs/${job.id}`} className="p-2 bg-slate-50 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="View Progress">
-                          <i className="fa-solid fa-arrow-right"></i>
-                        </Link>
-                        {!isTech && (
-                          <button
-                            onClick={() => handleDelete(job.id)}
-                            className="p-2 text-slate-300 hover:text-red-500 transition-colors"
-                            title="Delete Job"
-                          >
-                            <i className="fa-solid fa-trash-can"></i>
-                          </button>
-                        )}
+                        <i className={`fa-solid ${job.jobType === 'Service' ? 'fa-screwdriver-wrench' : 'fa-hammer'} text-lg`}></i>
                       </div>
-                    </td>
-                  </tr>
-                ))}
-                {jobs.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="p-12 text-center">
-                      <div className="max-w-xs mx-auto space-y-3">
-                        <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-300 text-2xl">
-                          <i className="fa-solid fa-clipboard-list"></i>
+                      <div>
+                        <h3 className="font-bold text-slate-900 border-none m-0 leading-tight">{job.customerName}</h3>
+                        <p className="text-[10px] text-slate-500 mt-0.5">Scheduled: {new Date(job.startDate).toLocaleDateString()} • #{job.id}</p>
+                      </div>
+                    </div>
+                    <div className={`px-2 py-1 text-[10px] font-bold rounded-md uppercase shrink-0 ml-2 ${job.jobType === 'Service' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
+                      }`}>
+                      {job.jobType}
+                    </div>
+                  </div>
+
+                  {!isTech && (
+                    <div className="grid grid-cols-2 gap-4 mb-5">
+                      <div>
+                        <p className="text-[10px] text-slate-400 uppercase font-medium">Total Cost</p>
+                        <p className="text-lg font-bold text-slate-800">₹{Number(job.totalCost).toLocaleString()}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px] text-slate-400 uppercase font-medium">Remaining</p>
+                        <div className={`flex items-center justify-end gap-1 font-bold ${isPaid ? 'text-emerald-500' : 'text-red-500'}`}>
+                          {!isPaid && <i className="fa-solid fa-triangle-exclamation text-[10px]"></i>}
+                          <span className="text-lg">₹{dueBalance.toLocaleString()}</span>
                         </div>
-                        <p className="text-slate-400 text-sm font-medium">No active jobs found. Start by scheduling a new one.</p>
                       </div>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                    </div>
+                  )}
+
+                  <div className="space-y-3 mt-auto mb-4">
+                    <div className="flex justify-between items-center">
+                      <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${isCompleted ? 'bg-emerald-50 border-emerald-100' : 'bg-amber-50 border-amber-100'
+                        }`}>
+                        <i className={`fa-solid ${isCompleted ? 'fa-circle-check text-emerald-500' : 'fa-spinner fa-spin text-amber-500'} text-xs`}></i>
+                        <span className={`text-[10px] font-bold uppercase tracking-tight ${isCompleted ? 'text-emerald-600' : 'text-amber-600'
+                          }`}>
+                          {isCompleted ? 'COMPLETED' : (job.currentPhase || 'Ongoing')}
+                        </span>
+                      </div>
+                      <span className={`text-[10px] font-bold ${isCompleted ? 'text-emerald-500' : 'text-slate-400'}`}>
+                        {isCompleted ? '100%' : 'In Progress'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-slate-50 flex items-center justify-between">
+                    <div className="flex -space-x-2">
+                      <div className="w-7 h-7 rounded-full border-2 border-white bg-slate-200 flex items-center justify-center text-[9px] font-bold text-slate-600 shadow-sm" title={job.customerName}>
+                        {job.customerName.substring(0, 2).toUpperCase()}
+                      </div>
+                      {job.technician && (
+                        <div className="w-7 h-7 rounded-full border-2 border-white bg-blue-600 text-white flex items-center justify-center text-[9px] font-bold shadow-sm" title={job.technician}>
+                          {job.technician.substring(0, 2).toUpperCase()}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      {!isTech && (
+                        <button
+                          onClick={() => handleDelete(job.id)}
+                          className="p-2 text-slate-400 hover:text-red-500 transition-colors"
+                          title="Delete Job"
+                        >
+                          <i className="fa-solid fa-trash-can"></i>
+                        </button>
+                      )}
+                      <Link
+                        to={`/jobs/${job.id}`}
+                        className="px-4 py-1.5 bg-slate-100 text-slate-700 rounded-lg text-xs font-bold flex items-center gap-1 hover:bg-slate-200 transition-colors"
+                      >
+                        Details <i className="fa-solid fa-chevron-right text-[10px]"></i>
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            {jobs.length === 0 && (
+              <div className="p-12 text-center bg-white rounded-2xl border border-slate-200">
+                <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-300 text-2xl mb-3">
+                  <i className="fa-solid fa-clipboard-list"></i>
+                </div>
+                <p className="text-slate-400 text-sm font-medium">No active jobs found. Start by scheduling a new one.</p>
+              </div>
+            )}
           </div>
-        </div>
+
+          {/* Desktop Table View (>= md) */}
+          <div className="hidden md:block bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead className="bg-slate-50 text-slate-500 text-[10px] font-bold uppercase tracking-widest">
+                  <tr>
+                    <th className="px-6 py-4 border-b border-slate-200">ID</th>
+                    <th className="px-6 py-4 border-b border-slate-200">Customer</th>
+                    <th className="px-6 py-4 border-b border-slate-200">Job Type</th>
+                    {!isTech && <th className="px-6 py-4 border-b border-slate-200">Total Cost</th>}
+                    <th className="px-6 py-4 border-b border-slate-200 text-center">Remaining</th>
+                    <th className="px-6 py-4 border-b border-slate-200">Current Phase / Status</th>
+                    <th className="px-6 py-4 border-b border-slate-200 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {jobs.map((job) => (
+                    <tr key={job.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-6 py-4 font-mono text-xs font-bold text-slate-400">#{job.id}</td>
+                      <td className="px-6 py-4">
+                        <p className="font-semibold text-slate-800">{job.customerName}</p>
+                        <p className="text-[10px] text-slate-400">Scheduled: {new Date(job.startDate).toLocaleDateString()}</p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${job.jobType === 'Service' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
+                          }`}>
+                          {job.jobType}
+                        </span>
+                      </td>
+                      {!isTech && (
+                        <td className="px-6 py-4">
+                          <p className="font-bold text-slate-700">₹{Number(job.totalCost).toLocaleString()}</p>
+                        </td>
+                      )}
+                      <td className="px-6 py-4 text-center">
+                        {isTech ? (
+                          <span className="text-slate-400 text-[10px] italic">Hidden</span>
+                        ) : (
+                          <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider ${(Number(job.totalCost) - Number(job.totalPaid || 0)) <= 0 ? 'bg-emerald-100 text-emerald-700 shadow-sm border border-emerald-500/20' : 'bg-red-100 text-red-700 shadow-sm border border-red-500/20'}`}>
+                            {(Number(job.totalCost) - Number(job.totalPaid || 0)) <= 0 ? (
+                              <>
+                                <i className="fa-solid fa-circle-check"></i>
+                                Fully Paid
+                              </>
+                            ) : (
+                              <>
+                                <i className="fa-solid fa-triangle-exclamation text-[10px]"></i>
+                                ₹{Math.max(0, Number(job.totalCost) - Number(job.totalPaid || 0)).toLocaleString()}
+                              </>
+                            )}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
+                        {job.status === 'Completed' ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm">
+                            <i className="fa-solid fa-circle-check"></i>
+                            Completed
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm">
+                            <i className="fa-solid fa-spinner fa-spin text-[8px]"></i>
+                            {job.currentPhase || 'Ongoing'}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end gap-3">
+                          <Link to={`/jobs/${job.id}`} className="p-2 bg-slate-50 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="View Progress">
+                            <i className="fa-solid fa-arrow-right"></i>
+                          </Link>
+                          {!isTech && (
+                            <button
+                              onClick={() => handleDelete(job.id)}
+                              className="p-2 text-slate-300 hover:text-red-500 transition-colors"
+                              title="Delete Job"
+                            >
+                              <i className="fa-solid fa-trash-can"></i>
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {jobs.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="p-12 text-center">
+                        <div className="max-w-xs mx-auto space-y-3">
+                          <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-300 text-2xl">
+                            <i className="fa-solid fa-clipboard-list"></i>
+                          </div>
+                          <p className="text-slate-400 text-sm font-medium">No active jobs found. Start by scheduling a new one.</p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
       )}
 
       {isModalOpen && (
