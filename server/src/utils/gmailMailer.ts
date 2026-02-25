@@ -1,6 +1,11 @@
 import nodemailer from 'nodemailer';
 import { google } from 'googleapis';
 import dotenv from 'dotenv';
+import dns from 'dns';
+
+// Force Node.js to prioritize IPv4 over IPv6. 
+// Railway's internal networks often drop external port 465 IPv6 packets (ETIMEDOUT).
+dns.setDefaultResultOrder('ipv4first');
 
 dotenv.config();
 
@@ -28,7 +33,9 @@ const createTransporter = async () => {
         });
 
         const transporter = nodemailer.createTransport({
-            service: "gmail",
+            host: 'smtp.gmail.com',
+            port: 465,
+            secure: true,
             auth: {
                 type: "OAuth2",
                 user: process.env.EMAIL_USER,
