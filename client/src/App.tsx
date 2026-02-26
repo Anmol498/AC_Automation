@@ -7,6 +7,8 @@ import CustomerList from './pages/CustomerList';
 import JobList from './pages/JobList';
 import JobDetail from './pages/JobDetail';
 import UserManagement from './pages/UserManagement';
+import Home from './pages/Home';
+import ProductDetail from './pages/ProductDetail';
 import Layout from './components/Layout';
 
 interface AuthContextType extends AuthState {
@@ -50,6 +52,8 @@ const App: React.FC = () => {
     <AuthContext.Provider value={{ ...auth, login, logout }}>
       <HashRouter>
         <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/product/:id" element={<ProductDetail />} />
           <Route path="/login" element={!auth.isAuthenticated ? <Login /> : <Navigate to="/dashboard" />} />
 
           <Route element={
@@ -68,7 +72,7 @@ const App: React.FC = () => {
             } />
           </Route>
 
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </HashRouter>
     </AuthContext.Provider>
