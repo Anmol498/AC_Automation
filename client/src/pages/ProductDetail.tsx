@@ -6,14 +6,20 @@ import { APP_NAME } from '../constants';
 const ProductDetail: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const [selectedModel, setSelectedModel] = React.useState(0);
+    const [selectedImageIndex, setSelectedImageIndex] = React.useState(0);
+    const [showPhonePopup, setShowPhonePopup] = React.useState(false);
 
-    // Safely attempt to use auth in case of unauthenticated access on public routes
+    React.useEffect(() => {
+        setSelectedImageIndex(0);
+        setShowPhonePopup(false);
+    }, [id]);
+
     let isAuthenticated = false;
     try {
         const auth = useAuth();
         isAuthenticated = auth.isAuthenticated;
     } catch (e) {
-        // useAuth throws if not wrapped in provider, which shouldn't happen, but we'll default just in case
+        // useAuth throws if not wrapped in provider
     }
 
     const isGK = id === 'ms-gk';
@@ -22,8 +28,7 @@ const ProductDetail: React.FC = () => {
     const isGR = id === 'msy-gr';
     const isRJS = id === 'msy-rjs';
 
-    // Model variants data based on screenshots
-    let models = [];
+    let models: any[] = [];
 
     if (isGK) {
         models = [
@@ -190,7 +195,6 @@ const ProductDetail: React.FC = () => {
     } else {
         models = [
             {
-                // From model.png
                 title: 'MS-AGZ13VF | 1 TR',
                 idu: 'MS-AGZ13VF', odu: 'MU-AGZ13VF', capacity: '1.0 Tr', rating: 3,
                 powerSupply: '230 V / 50 Hz / Single Phase', ratedCapacity: '3400 W', ratedPower: '872 W',
@@ -199,7 +203,6 @@ const ProductDetail: React.FC = () => {
                 pipeDia: '12.7/6.35', maxLength: '15', maxElev: '10', mrp: '₹ 44000'
             },
             {
-                // From model2.png
                 title: 'MS-AGZ18VF | 1.5 TR',
                 idu: 'MS-AGZ18VF', odu: 'MU-AGZ18VF', capacity: '1.5 Tr', rating: 3,
                 powerSupply: '230 V / 50 Hz / Single Phase', ratedCapacity: '5100 W', ratedPower: '1416 W',
@@ -208,7 +211,6 @@ const ProductDetail: React.FC = () => {
                 pipeDia: '12.7/6.35', maxLength: '15', maxElev: '10', mrp: '₹ 55000'
             },
             {
-                // From model3.png
                 title: 'MS-AGZ22VF | 2 TR',
                 idu: 'MS-AGZ22VF', odu: 'MU-AGZ22VF', capacity: '2.0 Tr', rating: 3,
                 powerSupply: '230 V / 50 Hz / Single Phase', ratedCapacity: '6400 W', ratedPower: '1882 W',
@@ -220,244 +222,402 @@ const ProductDetail: React.FC = () => {
     }
 
     const currentModel = models[selectedModel];
+    const rawCapacity = currentModel.capacity.replace(' Tr', '');
+
+    const productImages = isGK ? [
+        '/MS-GK.png',
+        '/images/gk/gk1.png',
+        '/images/gk/gk2.png',
+        '/images/gk/gk3.png',
+        '/images/gk/gk4.png',
+        '/images/gk/gk5.png',
+        '/images/gk/gk6.png'
+    ] : isGRT ? [
+        '/msy-grt.jpg',
+        '/images/grt/grt (1).png',
+        '/images/grt/grt (2).png',
+        '/images/grt/grt (3).png',
+        '/images/grt/grt (4).png',
+        '/images/grt/grt (5).png',
+        '/images/grt/grt (6).png',
+        '/images/grt/grt (7).png',
+        '/images/grt/grt (8).png',
+        '/images/grt/grt (9).png',
+        '/images/grt/grt (10).png',
+        '/images/grt/grt (11).png',
+        '/images/grt/grt (12).png'
+    ] :
+        isHP ? [
+            '/msz-hp.jpg',
+            '/images/hp/hp1.png',
+            '/images/hp/hp2.png',
+            '/images/hp/hp3.png',
+            '/images/hp/hp4.png',
+            '/images/hp/hp5.png',
+            '/images/hp/hp6.png'
+        ] :
+            isGR ? [
+                '/msy-gr.jpg',
+                '/images/gr/gr1.png',
+                '/images/gr/gr2.png',
+                '/images/gr/gr3.png',
+                '/images/gr/gr4.png',
+                '/images/gr/gr5.png',
+                '/images/gr/gr6.png',
+                '/images/gr/gr7.png',
+                '/images/gr/gr8.png',
+                '/images/gr/gr9.png',
+                '/images/gr/gr10.png',
+                '/images/gr/gr11.png',
+                '/images/gr/gr12.png'
+            ] :
+                isRJS ? [
+                    '/msy-rjs.png',
+                    '/images/rjs/rjs1.png',
+                    '/images/rjs/rjs2.png',
+                    '/images/rjs/rjs3.png',
+                    '/images/rjs/rjs4.png',
+                    '/images/rjs/rjs5.png',
+                    '/images/rjs/rjs6.png',
+                    '/images/rjs/rjs7.png',
+                    '/images/rjs/rjs8.png',
+                    '/images/rjs/rjs9.png',
+                    '/images/rjs/rjs10.png',
+                    '/images/rjs/rjs11.png',
+                    '/images/rjs/rjs12.png',
+                    '/images/rjs/rjs13.png',
+                    '/images/rjs/rjs14.png'
+                ] :
+                    ['/MS-AGZ.png'];
 
     return (
-        <div className="min-h-screen bg-white font-sans text-slate-800">
-            {/* Header */}
-            <header className="border-b border-slate-200 py-4 px-6 flex justify-between items-center bg-white sticky top-0 z-50">
-                <Link to="/" className="flex items-center gap-3 transition-transform hover:scale-105">
-                    <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center shadow-sm">
-                        <span className="text-xl font-black text-white">SE</span>
+        <div className="bg-background-light text-slate-800 min-h-screen transition-colors duration-300 font-sans">
+            <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center text-white font-bold text-xl">SE</div>
+                        <span className="font-display font-bold text-xl tracking-tight text-slate-900 uppercase">{APP_NAME}</span>
                     </div>
-                    <span className="font-bold text-xl tracking-tight text-slate-900">{APP_NAME}</span>
-                </Link>
-                <Link to="/" className="flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-[#cc3333] transition-colors group">
-                    <svg className="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-                    Back to Catalog
-                </Link>
-            </header>
-
-            {/* Red Product Summary Bar */}
-            <div className="bg-[#cc3333] text-white py-6 px-4">
-                <div className="max-w-7xl mx-auto flex flex-wrap lg:flex-nowrap divide-y lg:divide-y-0 lg:divide-x divide-white/20 text-center items-center justify-between">
-                    <div className="w-full lg:w-auto flex-1 p-4">
-                        <div className="text-sm font-medium mb-2 opacity-90">Total Capacity / Model Name</div>
-                        <select
-                            className="bg-white text-slate-800 py-2 px-4 rounded shadow-sm outline-none w-full max-w-[250px] font-medium mx-auto block cursor-pointer"
-                            value={selectedModel}
-                            onChange={(e) => setSelectedModel(Number(e.target.value))}
-                        >
-                            {models.map((m, idx) => (
-                                <option key={idx} value={idx}>{m.title}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="w-1/2 lg:w-auto flex-1 p-4">
-                        <div className="text-sm font-medium mb-1 opacity-90">Capacity</div>
-                        <div className="text-xl font-bold">{currentModel.capacity}</div>
-                    </div>
-
-                    <div className="w-1/2 lg:w-auto flex-1 p-4 flex flex-col items-center">
-                        <div className="text-sm font-medium mb-1 opacity-90">Rating</div>
-                        <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center p-1">
-                            <img src={`/${currentModel.rating}-star.png`} alt={`${currentModel.rating} Star`} className="max-w-full max-h-full object-contain" onError={(e) => (e.currentTarget.style.display = 'none')} />
-                        </div>
-                    </div>
-
-                    <div className="w-1/2 lg:w-auto flex-1 p-4 flex flex-col items-center">
-                        <div className="text-sm font-medium mb-1 opacity-90">Refrigerant</div>
-                        <div className="w-12 h-12 border-2 border-[#4CAF50] rounded-full flex items-center justify-center text-[#4CAF50] bg-white text-xs font-bold leading-none p-1 text-center flex-col">
-                            <span>{currentModel.refrigerant}</span>
-                            <span className="text-[8px] font-normal">REFRIGERANT</span>
-                        </div>
-                    </div>
-
-                    <div className="w-1/2 lg:w-auto flex-1 p-4">
-                        <div className="text-sm font-medium mb-1 opacity-90">MRP</div>
-                        <div className="text-xl font-bold">{currentModel.mrp}</div>
+                    <div className="flex items-center gap-4">
+                        <Link className="flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-primary transition-colors" to="/">
+                            <span className="material-icons-outlined text-[20px]">arrow_back</span>
+                            Back to Catalog
+                        </Link>
+                        {isAuthenticated && (
+                            <>
+                                <div className="h-6 w-px bg-slate-200 mx-2" />
+                                <Link to="/staff" className="bg-primary hover:bg-red-700 text-white px-5 py-2 rounded-full text-sm font-semibold transition-all shadow-lg shadow-red-900/20">
+                                    Staff Portal
+                                </Link>
+                            </>
+                        )}
                     </div>
                 </div>
-            </div>
+            </nav>
 
-            {/* Technical Specifications */}
-            <main className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-                <h1 className="text-3xl md:text-4xl font-bold text-center text-[#cc3333] mb-10">Technical Specifications</h1>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-
-                    {/* Column 1: Type */}
-                    <div>
-                        <table className="w-full border-collapse border border-[#e2e8f0] text-sm">
-                            <thead>
-                                <tr>
-                                    <th className="bg-[#cc3333] text-white text-left p-3 font-semibold border border-[#cc3333]">Type (Cooling)</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td className="p-3 border border-[#e2e8f0] font-bold bg-slate-50 text-[#cc3333]">Indoor Unit</td>
-                                </tr>
-                                <tr>
-                                    <td className="p-3 border border-[#e2e8f0]">{currentModel.idu}</td>
-                                </tr>
-                                <tr>
-                                    <td className="p-3 border border-[#e2e8f0] font-bold bg-slate-50 text-[#cc3333]">Outdoor Unit</td>
-                                </tr>
-                                <tr>
-                                    <td className="p-3 border border-[#e2e8f0]">{currentModel.odu}</td>
-                                </tr>
-                            </tbody>
-                        </table>
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <div className="grid lg:grid-cols-2 gap-12 items-center mb-12">
+                    <div className="relative group w-full max-w-full overflow-hidden">
+                        <div className="absolute -inset-4 bg-primary/5 rounded-3xl blur-2xl group-hover:bg-primary/10 transition-all" />
+                        <img
+                            alt={`Sleek Modern Split AC Unit - ${currentModel.idu}`}
+                            className="relative z-10 w-full max-h-[300px] md:max-h-none h-auto drop-shadow-2xl rounded-2xl bg-white p-4 object-contain aspect-square md:aspect-auto mix-blend-multiply"
+                            src={productImages[selectedImageIndex] || productImages[0]}
+                        />
+                        {productImages.length > 1 && (
+                            <div className="relative z-10 flex gap-3 mt-6 overflow-x-auto pb-4 snap-x hide-scrollbar w-full">
+                                {productImages.map((img, idx) => (
+                                    <button
+                                        key={idx}
+                                        onClick={() => setSelectedImageIndex(idx)}
+                                        className={`snap-center shrink-0 w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-xl bg-white border-2 overflow-hidden transition-all ${selectedImageIndex === idx
+                                            ? 'border-primary ring-4 ring-primary/10 shadow-md'
+                                            : 'border-slate-100 opacity-60 hover:opacity-100 hover:border-slate-300'
+                                            }`}
+                                    >
+                                        <img src={img} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-contain p-2 mix-blend-multiply" />
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
-                    {/* Column 2: Performance Output */}
-                    <div>
-                        <table className="w-full border-collapse border border-[#e2e8f0] text-sm">
-                            <thead>
-                                <tr>
-                                    <th colSpan={2} className="bg-[#cc3333] text-white text-left p-3 font-semibold border border-[#cc3333]">Performance Parameters</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td className="p-3 border border-[#e2e8f0] text-slate-600">Capacity (Tr)</td>
-                                    <td className="p-3 border border-[#e2e8f0] font-medium">{currentModel.capacity}</td>
-                                </tr>
-                                <tr>
-                                    <td className="p-3 border border-[#e2e8f0] text-slate-600">Star Rating - As Per BEE</td>
-                                    <td className="p-3 border border-[#e2e8f0] font-medium flex items-center gap-2">
-                                        {currentModel.rating} Star
-                                        <img src={`/${currentModel.rating}-star.png`} alt={`${currentModel.rating} Star`} className="h-6" onError={(e) => (e.currentTarget.style.display = 'none')} />
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td className="p-3 border border-[#e2e8f0] text-slate-600">Power Supply</td>
-                                    <td className="p-3 border border-[#e2e8f0] font-medium">{currentModel.powerSupply}</td>
-                                </tr>
-                                <tr>
-                                    <td className="p-3 border border-[#e2e8f0] text-slate-600">{isHP ? 'Cooling Capacity (Rated Min-Max)' : 'Rated Capacity'}</td>
-                                    <td className="p-3 border border-[#e2e8f0] font-medium">{currentModel.ratedCapacity}</td>
-                                </tr>
-                                {isHP && (
-                                    <tr>
-                                        <td className="p-3 border border-[#e2e8f0] text-slate-600">Heating Capacity (Rated Min-Max)</td>
-                                        <td className="p-3 border border-[#e2e8f0] font-medium">{currentModel.heatingCapacity}</td>
-                                    </tr>
-                                )}
-                                <tr>
-                                    <td className="p-3 border border-[#e2e8f0] text-slate-600">{isHP ? 'Total Input (Rated Min-Max)-Cooling' : 'Rated Power Input'}</td>
-                                    <td className="p-3 border border-[#e2e8f0] font-medium">{currentModel.ratedPower}</td>
-                                </tr>
-                                {isHP && (
-                                    <tr>
-                                        <td className="p-3 border border-[#e2e8f0] text-slate-600">Total Input (Rated Min-Max)-Heating</td>
-                                        <td className="p-3 border border-[#e2e8f0] font-medium">{currentModel.heatingPower}</td>
-                                    </tr>
-                                )}
-                                <tr>
-                                    <td className="p-3 border border-[#e2e8f0] text-slate-600">{isGK ? 'EER' : 'ISEER'}</td>
-                                    <td className="p-3 border border-[#e2e8f0] font-medium">{currentModel.iseer}</td>
-                                </tr>
-                                <tr>
-                                    <td className="p-3 border border-[#e2e8f0] text-slate-600">{isHP ? 'Operating Current (Rated)-Cooling' : 'Rated Current (Amps)'}</td>
-                                    <td className="p-3 border border-[#e2e8f0] font-medium">{currentModel.current}</td>
-                                </tr>
-                                {isHP && (
-                                    <tr>
-                                        <td className="p-3 border border-[#e2e8f0] text-slate-600">Operating Current (Rated)-Heating</td>
-                                        <td className="p-3 border border-[#e2e8f0] font-medium">{currentModel.heatingCurrent}</td>
-                                    </tr>
-                                )}
-                                <tr>
-                                    <td className="p-3 border border-[#e2e8f0] text-slate-600">
-                                        {isHP ? 'Air Volume (CFM) Indoor Unit(Low/Mid/High/SHi)-Cooling' : (isGRT || isGR || isRJS) ? 'Air Volume(CFM) Indoor Unit(Silent-Low-Mid-Hi-SHi)' : 'Indoor Air Flow (m3/h) (Turbo/Hi/Mi/Lo)'}
-                                    </td>
-                                    <td className="p-3 border border-[#e2e8f0] font-medium">{currentModel.airFlow}</td>
-                                </tr>
-                                {isHP && (
-                                    <tr>
-                                        <td className="p-3 border border-[#e2e8f0] text-slate-600">Air Volume (CFM) Indoor Unit(Low/Mid/High/SHi)-Heating</td>
-                                        <td className="p-3 border border-[#e2e8f0] font-medium">{currentModel.heatingAirFlow}</td>
-                                    </tr>
-                                )}
-                                <tr>
-                                    <td className="p-3 border border-[#e2e8f0] text-slate-600">
-                                        {isHP ? 'SPL Indoor Unit(Low/Mid/High/SHi) In dB(A)-Cooling' : (isGRT || isGR || isRJS) ? 'SPL Indoor Unit(Silent-Low-Mid-Hi-SHi) dB(A)' : 'Indoor Noise(Low/Mid/Hi/Turbo Speed)'}
-                                    </td>
-                                    <td className="p-3 border border-[#e2e8f0] font-medium">{currentModel.noise}</td>
-                                </tr>
-                                {isHP && (
-                                    <tr>
-                                        <td className="p-3 border border-[#e2e8f0] text-slate-600">SPL Indoor Unit(Low/Mid/High/SHi) In dB(A)-Heating</td>
-                                        <td className="p-3 border border-[#e2e8f0] font-medium">{currentModel.heatingNoise}</td>
-                                    </tr>
-                                )}
-                                <tr>
-                                    <td className="p-3 border border-[#e2e8f0] text-slate-600">Refrigerant</td>
-                                    <td className="p-3 border border-[#e2e8f0] font-medium">{currentModel.refrigerant}</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                    <div className="flex flex-col gap-6">
+                        <div>
+                            <div>
+                                <div>
+                                    <span className="inline-block px-3 py-1 bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider rounded-full mb-3">MS Series - Inverter</span>
+                                    <h1 className="text-4xl lg:text-5xl font-bold text-slate-900 leading-tight font-display mb-4">{currentModel.idu}</h1>
+                                </div>
+
+                                <div className="flex items-center gap-2 text-sm bg-slate-50 p-2 rounded-xl border border-slate-100 max-w-sm mt-2">
+                                    <span className="text-slate-500 font-medium pl-2">Model Selector:</span>
+                                    <select
+                                        className="flex-1 bg-white border-slate-200 rounded-lg text-sm font-semibold focus:ring-primary focus:border-primary px-3 py-2 outline-none shadow-sm cursor-pointer"
+                                        value={selectedModel}
+                                        onChange={(e) => setSelectedModel(Number(e.target.value))}
+                                    >
+                                        {models.map((m, idx) => (
+                                            <option key={idx} value={idx}>{m.title}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                            <p className="text-lg text-slate-500 mt-2 leading-relaxed font-body">
+                                Engineered for silence and efficiency. The series combines precision with tropical climate endurance, delivering rapid cooling even at high temperatures.
+                            </p>
+                        </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-0 p-4 md:p-6 bg-white rounded-2xl border border-slate-100 shadow-sm mx-auto w-full">
+                            <div className="flex flex-col gap-1 p-2 md:p-0">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Capacity</span>
+                                <div className="flex items-end gap-1">
+                                    <span className="text-2xl font-bold text-slate-900">{rawCapacity}</span>
+                                    <span className="text-sm font-medium text-slate-500 mb-1">Tr</span>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col gap-1 md:border-l md:border-slate-100 md:pl-4 p-2 md:p-0">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Rating</span>
+                                <div className="flex items-center">
+                                    {currentModel.rating >= 2 ? (
+                                        <img src={`/${currentModel.rating}-star.png`} alt={`${currentModel.rating} Star Rating`} className="h-6 object-contain" />
+                                    ) : (
+                                        <span className="text-sm font-bold text-slate-900">{currentModel.rating > 0 ? `${currentModel.rating}-Star` : 'N/A'}</span>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col gap-1 md:border-l md:border-slate-100 md:pl-4 p-2 md:p-0">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Refrigerant</span>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                                    <span className="text-xl font-bold text-slate-900 uppercase">{currentModel.refrigerant}</span>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col gap-1 md:border-l md:border-slate-100 md:pl-4 p-2 md:p-0">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Price (MRP)</span>
+                                <div className="text-2xl font-bold text-primary max-w-full overflow-hidden text-ellipsis whitespace-nowrap" title={currentModel.mrp}>{currentModel.mrp}</div>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-4">
+                            <button onClick={() => setShowPhonePopup(true)} className="flex-1 bg-slate-900 text-white font-bold py-4 px-6 rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2">
+                                <span className="material-icons-outlined text-[20px]">phone</span>
+                                Enquire Now
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="pt-12 border-t border-slate-200">
+                    <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
+                        <div>
+                            <h2 className="text-3xl font-bold text-slate-900 font-display">Technical Specifications</h2>
+                            <p className="text-slate-500 mt-1">Detailed engineering data for professional installation.</p>
+                        </div>
                     </div>
 
-                    {/* Column 3: Dimensions */}
-                    <div>
-                        <table className="w-full border-collapse border border-[#e2e8f0] text-sm">
-                            <thead>
-                                <tr>
-                                    <th colSpan={3} className="bg-[#cc3333] text-white text-left p-3 font-semibold border border-[#cc3333]">Dimensions & Weight</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td rowSpan={2} className="p-3 border border-[#e2e8f0] text-slate-600 w-1/3 align-top">IDU Dimension</td>
-                                    <td className="p-3 border border-[#e2e8f0] text-slate-600">Net Dimensions (W x D x H) mm</td>
-                                    <td className="p-3 border border-[#e2e8f0] font-medium">{currentModel.iduDim}</td>
-                                </tr>
-                                <tr>
-                                    <td className="p-3 border border-[#e2e8f0] text-slate-600">Net Weight kg</td>
-                                    <td className="p-3 border border-[#e2e8f0] font-medium">{currentModel.iduWeight}</td>
-                                </tr>
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div className="space-y-6">
+                            <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
+                                <div className="bg-primary px-6 py-4">
+                                    <h3 className="text-white font-bold uppercase tracking-wider text-sm font-body">Unit Identification</h3>
+                                </div>
+                                <div className="divide-y divide-slate-100">
+                                    <div className="p-4 px-6">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Indoor Unit</label>
+                                        <div className="text-lg font-bold text-slate-900">{currentModel.idu}</div>
+                                    </div>
+                                    <div className="p-4 px-6">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Outdoor Unit</label>
+                                        <div className="text-lg font-bold text-slate-900">{currentModel.odu}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-                                <tr>
-                                    <td rowSpan={2} className="p-3 border border-[#e2e8f0] text-slate-600 align-top">Outdoor unit</td>
-                                    <td className="p-3 border border-[#e2e8f0] text-slate-600">Net Dim (W * D * H) mm</td>
-                                    <td className="p-3 border border-[#e2e8f0] font-medium">{currentModel.oduDim}</td>
-                                </tr>
-                                <tr>
-                                    <td className="p-3 border border-[#e2e8f0] text-slate-600">Net Weight kg</td>
-                                    <td className="p-3 border border-[#e2e8f0] font-medium">{currentModel.oduWeight}</td>
-                                </tr>
+                        <div className="lg:col-span-1 border border-slate-100 rounded-2xl overflow-hidden self-start">
+                            <div className="bg-white shadow-sm">
+                                <div className="bg-slate-800 px-6 py-4">
+                                    <h3 className="text-white font-bold uppercase tracking-wider text-sm">Performance Parameters</h3>
+                                </div>
+                                <table className="w-full text-left border-collapse">
+                                    <tbody>
+                                        <tr className="table-row-even border-b border-slate-100">
+                                            <td className="p-4 px-6 text-sm font-medium text-slate-500">Capacity (Tr)</td>
+                                            <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.capacity}</td>
+                                        </tr>
+                                        <tr className="border-b border-slate-100 bg-white">
+                                            <td className="p-4 px-6 text-sm font-medium text-slate-500">BEE Star Rating</td>
+                                            <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.rating} Star</td>
+                                        </tr>
+                                        <tr className="table-row-even border-b border-slate-100">
+                                            <td className="p-4 px-6 text-sm font-medium text-slate-500">Power Supply</td>
+                                            <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.powerSupply}</td>
+                                        </tr>
+                                        <tr className="border-b border-slate-100 bg-white">
+                                            <td className="p-4 px-6 text-sm font-medium text-slate-500">{isHP ? 'Cooling Capacity (Rated Min-Max)' : 'Rated Capacity'}</td>
+                                            <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.ratedCapacity}</td>
+                                        </tr>
+                                        {isHP && (
+                                            <tr className="table-row-even border-b border-slate-100">
+                                                <td className="p-4 px-6 text-sm font-medium text-slate-500">Heating Capacity (Min-Max)</td>
+                                                <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.heatingCapacity}</td>
+                                            </tr>
+                                        )}
+                                        <tr className="table-row-even border-b border-slate-100 bg-slate-50">
+                                            <td className="p-4 px-6 text-sm font-medium text-slate-500">{isHP ? 'Total Input (Cooling)' : 'Rated Power Input'}</td>
+                                            <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.ratedPower}</td>
+                                        </tr>
+                                        {isHP && (
+                                            <tr className="border-b border-slate-100 bg-white">
+                                                <td className="p-4 px-6 text-sm font-medium text-slate-500">Total Input (Heating)</td>
+                                                <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.heatingPower}</td>
+                                            </tr>
+                                        )}
+                                        <tr className="border-b border-slate-100 bg-white">
+                                            <td className="p-4 px-6 text-sm font-medium text-slate-500">{isGK ? 'EER' : 'ISEER'}</td>
+                                            <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.iseer}</td>
+                                        </tr>
+                                        <tr className="table-row-even border-b border-slate-100 bg-slate-50">
+                                            <td className="p-4 px-6 text-sm font-medium text-slate-500">{isHP ? 'Current (Cooling)' : 'Rated Current'}</td>
+                                            <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.current} {isHP ? '' : 'Amps'}</td>
+                                        </tr>
+                                        {isHP && (
+                                            <tr className="border-b border-slate-100 bg-white">
+                                                <td className="p-4 px-6 text-sm font-medium text-slate-500">Current (Heating)</td>
+                                                <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.heatingCurrent}</td>
+                                            </tr>
+                                        )}
+                                        <tr className="border-b border-slate-100 bg-white">
+                                            <td className="p-4 px-6 text-sm font-medium text-slate-500">Indoor Air Flow (m3/h)</td>
+                                            <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.airFlow}</td>
+                                        </tr>
+                                        {isHP && (
+                                            <tr className="table-row-even border-b border-slate-100">
+                                                <td className="p-4 px-6 text-sm font-medium text-slate-500">Air Flow (Heating)</td>
+                                                <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.heatingAirFlow}</td>
+                                            </tr>
+                                        )}
+                                        <tr className="table-row-even border-b border-slate-100 bg-slate-50">
+                                            <td className="p-4 px-6 text-sm font-medium text-slate-500">Indoor Noise (dB(A))</td>
+                                            <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.noise}</td>
+                                        </tr>
+                                        {isHP && (
+                                            <tr className="border-b border-slate-100 bg-white">
+                                                <td className="p-4 px-6 text-sm font-medium text-slate-500">Noise (Heating)</td>
+                                                <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.heatingNoise}</td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
 
-                                <tr>
-                                    <td rowSpan={2} className="p-3 border border-[#e2e8f0] text-slate-600 align-top">Connecting Pipe</td>
-                                    <td className="p-3 border border-[#e2e8f0] text-slate-600">Liquid and Gas Side Dia mm</td>
-                                    <td className="p-3 border border-[#e2e8f0] font-medium">{currentModel.pipeDia}</td>
-                                </tr>
-                                <tr>
-                                    <td className="p-3 border border-[#e2e8f0] text-slate-600">Maximum Length m</td>
-                                    <td className="p-3 border border-[#e2e8f0] font-medium">{currentModel.maxLength}</td>
-                                </tr>
-                                <tr>
-                                    <td colSpan={2} className="p-3 border border-[#e2e8f0] text-slate-600">Maximum Elevation m</td>
-                                    <td className="p-3 border border-[#e2e8f0] font-medium">{currentModel.maxElev}</td>
-                                </tr>
+                        <div className="lg:col-span-1 border border-slate-100 rounded-2xl overflow-hidden self-start">
+                            <div className="bg-white shadow-sm">
+                                <div className="bg-slate-800 px-6 py-4">
+                                    <h3 className="text-white font-bold uppercase tracking-wider text-sm">Dimensions & Weight</h3>
+                                </div>
+                                <table className="w-full text-left border-collapse">
+                                    <tbody>
+                                        <tr className="bg-slate-50">
+                                            <td colSpan={2} className="p-4 px-6 text-xs font-bold text-primary uppercase tracking-tighter">Indoor Unit (IDU)</td>
+                                        </tr>
+                                        <tr className="border-b border-slate-100">
+                                            <td className="p-4 px-6 text-sm font-medium text-slate-500">Net Dim (WxDxH) mm</td>
+                                            <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.iduDim}</td>
+                                        </tr>
+                                        <tr className="table-row-even bg-slate-50 border-b border-slate-100">
+                                            <td className="p-4 px-6 text-sm font-medium text-slate-500">Net Weight</td>
+                                            <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.iduWeight} kg</td>
+                                        </tr>
 
-                                <tr>
-                                    <td colSpan={2} className="p-3 border border-[#e2e8f0] text-slate-600">Ambient Operating Range °C</td>
-                                    <td className="p-3 border border-[#e2e8f0] font-medium">48°</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                                        <tr className="bg-slate-50">
+                                            <td colSpan={2} className="p-4 px-6 text-xs font-bold text-primary uppercase tracking-tighter">Outdoor Unit (ODU)</td>
+                                        </tr>
+                                        <tr className="border-b border-slate-100">
+                                            <td className="p-4 px-6 text-sm font-medium text-slate-500">Net Dim (WxDxH) mm</td>
+                                            <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.oduDim}</td>
+                                        </tr>
+                                        <tr className="table-row-even bg-slate-50 border-b border-slate-100">
+                                            <td className="p-4 px-6 text-sm font-medium text-slate-500">Net Weight</td>
+                                            <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.oduWeight} kg</td>
+                                        </tr>
+
+                                        <tr className="bg-slate-50">
+                                            <td colSpan={2} className="p-4 px-6 text-xs font-bold text-primary uppercase tracking-tighter">Installation Details</td>
+                                        </tr>
+                                        <tr className="border-b border-slate-100">
+                                            <td className="p-4 px-6 text-sm font-medium text-slate-500">Ambient Op Range</td>
+                                            <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">Up to 48°C / 52°C</td>
+                                        </tr>
+                                        <tr className="table-row-even bg-slate-50 border-b border-slate-100">
+                                            <td className="p-4 px-6 text-sm font-medium text-slate-500">Piping Dia (Gas/Liq)</td>
+                                            <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.pipeDia}</td>
+                                        </tr>
+                                        <tr className="table-row-even bg-slate-50">
+                                            <td className="p-4 px-6 text-sm font-medium text-slate-500">Max Length/Elevation</td>
+                                            <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.maxLength}m / {currentModel.maxElev}m</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
-
                 </div>
             </main>
 
-            <footer className="text-center py-8 text-slate-500 text-sm border-t border-slate-100 mt-12 bg-[#f8fafc]">
-                &copy; {new Date().getFullYear()} Satguru Engineers. All rights reserved.
+            <footer className="mt-20 border-t border-slate-200 py-12 bg-white">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+                        <div className="flex items-center gap-2 grayscale opacity-60">
+                            <div className="w-8 h-8 bg-slate-400 rounded-md flex items-center justify-center text-white font-bold text-sm">SE</div>
+                            <span className="font-display font-bold text-sm tracking-tight text-slate-600 uppercase">{APP_NAME}</span>
+                        </div>
+                        <p className="text-sm text-slate-500">
+                            © {new Date().getFullYear()} {APP_NAME}. All rights reserved. Precision cooling solutions.
+                        </p>
+                        <div className="flex gap-6">
+                            <a href="#" className="text-slate-400 hover:text-primary transition-colors text-sm">Privacy Policy</a>
+                            <a href="#" className="text-slate-400 hover:text-primary transition-colors text-sm">Support</a>
+                            <a href="#" className="text-slate-400 hover:text-primary transition-colors text-sm">Contact</a>
+                        </div>
+                    </div>
+                </div>
             </footer>
+
+            {/* Phone Enquiry Modal */}
+            {showPhonePopup && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={() => setShowPhonePopup(false)}>
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 text-center animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+                        <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6 text-primary shadow-inner">
+                            <span className="material-icons-outlined text-4xl">phone_in_talk</span>
+                        </div>
+                        <h3 className="text-2xl font-display font-bold text-slate-900 mb-2">Sales & Enquiry</h3>
+                        <p className="text-slate-500 mb-8 text-sm px-4">Our experts are ready to help you find the perfect cooling solution.</p>
+
+                        <a href="tel:09914215001" className="block w-full bg-slate-50 border border-slate-200 hover:border-primary/50 hover:bg-primary/5 rounded-2xl p-4 transition-all mb-6 group cursor-pointer shadow-sm hover:shadow-md">
+                            <div className="text-3xl font-bold tracking-wider text-slate-800 group-hover:text-primary transition-colors">
+                                099142 15001
+                            </div>
+                            <div className="text-xs font-bold text-slate-400 mt-2 uppercase tracking-widest flex items-center justify-center gap-1">
+                                <span className="material-icons-outlined text-[14px]">touch_app</span>
+                                Tap to Call on Mobile
+                            </div>
+                        </a>
+
+                        <button
+                            onClick={() => setShowPhonePopup(false)}
+                            className="w-full py-4 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors rounded-xl hover:bg-slate-100"
+                        >
+                            Close
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
