@@ -251,6 +251,43 @@ async function ensureDatabaseReady() {
       )
     `);
 
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS inventory (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        model_name VARCHAR(255) NOT NULL,
+        brand ENUM('Mitsubishi', 'Akabishi') NOT NULL,
+        type VARCHAR(50),
+        tonnage VARCHAR(50),
+        star_rating VARCHAR(50),
+        quantity INT DEFAULT 0,
+        sold_quantity INT DEFAULT 0,
+        our_price DECIMAL(10, 2) DEFAULT 0.00,
+        sale_price DECIMAL(10, 2) DEFAULT 0.00,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_inventory_brand (brand),
+        INDEX idx_inventory_model (model_name)
+      )
+    `);
+
+    try {
+      await pool.execute('ALTER TABLE inventory ADD COLUMN type VARCHAR(50) AFTER brand');
+      console.log('Added type column to inventory table');
+    } catch (e: any) {
+      if (!e.message.includes('Duplicate column name')) {
+        console.error('Error adding type column:', e.message);
+      }
+    }
+
+    try {
+      await pool.execute('ALTER TABLE inventory ADD COLUMN sold_quantity INT DEFAULT 0 AFTER quantity');
+      console.log('Added sold_quantity column to inventory table');
+    } catch (e: any) {
+      if (!e.message.includes('Duplicate column name')) {
+        console.error('Error adding sold_quantity column:', e.message);
+      }
+    }
+
     await pool.execute(
       `INSERT IGNORE INTO users (email, password_hash, role) VALUES (?, ?, ?)`,
       ['hsd@icloud.com', '123', 'superadmin']
@@ -277,8 +314,14 @@ const authenticateToken = (req: any, res: any, next: any) => {
 };
 
 const isSuperAdmin = (req: any, res: any, next: any) => {
-  if (req.user.role === 'superadmin') return next();
+  if (req.user.role?.toLowerCase() === 'superadmin') return next();
   res.status(403).json({ error: 'Superadmin access required' });
+};
+
+const isAdminOrSuperAdmin = (req: any, res: any, next: any) => {
+  const role = req.user.role?.toLowerCase();
+  if (role === 'admin' || role === 'superadmin') return next();
+  res.status(403).json({ error: 'Admin or Superadmin access required' });
 };
 
 
@@ -782,5 +825,62 @@ app.patch('/api/phases/:id', authenticateToken, async (req, res) => {
 });
 
 const PORT = Number(process.env.PORT) || 5000;
+
+// --- INVENTORY ROUTES ---
+
+app.get('/api/inventory', authenticateToken, isAdminOrSuperAdmin, async (req, res) => {
+  try {
+    console.log("GET /api/inventory - User role via middleware:", req.user?.role);
+    const [rows] = await pool.execute('SELECT id, model_name as modelName, brand, type, tonnage, star_rating as starRating, quantity, sold_quantity as soldQuantity, our_price as ourPrice, sale_price as salePrice, created_at as createdAt, updated_at as updatedAt FROM inventory ORDER BY updated_at DESC');
+    console.log("GET /api/inventory - returned rows count:", (rows as any).length);
+    res.json(rows);
+  } catch (err) {
+    console.error("GET /api/inventory ERROR:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/inventory', authenticateToken, isAdminOrSuperAdmin, async (req, res) => {
+  const { modelName, brand, type, tonnage, starRating, quantity, soldQuantity, ourPrice, salePrice } = req.body;
+  if (!modelName || !brand) {
+    return res.status(400).json({ error: 'Model name and brand are required.' });
+  }
+  try {
+    const [result]: any = await pool.execute(
+      'INSERT INTO inventory (model_name, brand, type, tonnage, star_rating, quantity, sold_quantity, our_price, sale_price) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [modelName, brand, type || null, tonnage || null, starRating || null, quantity || 0, soldQuantity || 0, ourPrice || 0, salePrice || 0]
+    );
+    res.json({ id: result.insertId, success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/inventory/:id', authenticateToken, isAdminOrSuperAdmin, async (req, res) => {
+  const { id } = req.params;
+  const { modelName, brand, type, tonnage, starRating, quantity, soldQuantity, ourPrice, salePrice } = req.body;
+  if (!modelName || !brand) {
+    return res.status(400).json({ error: 'Model name and brand are required.' });
+  }
+  try {
+    await pool.execute(
+      'UPDATE inventory SET model_name = ?, brand = ?, type = ?, tonnage = ?, star_rating = ?, quantity = ?, sold_quantity = ?, our_price = ?, sale_price = ? WHERE id = ?',
+      [modelName, brand, type || null, tonnage || null, starRating || null, quantity || 0, soldQuantity || 0, ourPrice || 0, salePrice || 0, id]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/inventory/:id', authenticateToken, isAdminOrSuperAdmin, async (req, res) => {
+  try {
+    await pool.execute('DELETE FROM inventory WHERE id = ?', [req.params.id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.listen(PORT, "0.0.0.0", () => console.log(`Server running on ${PORT}`));
 

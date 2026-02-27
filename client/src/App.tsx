@@ -10,6 +10,7 @@ import UserManagement from './pages/UserManagement';
 import Home from './pages/Home';
 import ProductDetail from './pages/ProductDetail';
 import Layout from './components/Layout';
+import InventoryManagement from './pages/InventoryManagement';
 
 interface AuthContextType extends AuthState {
   login: (user: User, token: string) => void;
@@ -65,6 +66,11 @@ const App: React.FC = () => {
             <Route path="/customers" element={<CustomerList />} />
             <Route path="/jobs" element={<JobList />} />
             <Route path="/jobs/:id" element={<JobDetail />} />
+            <Route path="/inventory" element={
+              <ProtectedRoute roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN]}>
+                <InventoryManagement />
+              </ProtectedRoute>
+            } />
             <Route path="/users" element={
               <ProtectedRoute roles={[UserRole.SUPER_ADMIN]}>
                 <UserManagement />

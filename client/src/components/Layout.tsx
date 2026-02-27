@@ -16,6 +16,7 @@ const Layout: React.FC = () => {
 
   if (user?.role !== UserRole.TECHNICIAN) {
     navItems.splice(1, 0, { path: '/customers', label: 'Customers', icon: 'fa-users' });
+    navItems.push({ path: '/inventory', label: 'Inventory', icon: 'fa-boxes-stacked' });
   }
 
   if (user?.role === UserRole.SUPER_ADMIN) {

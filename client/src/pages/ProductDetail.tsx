@@ -261,7 +261,7 @@ const ProductDetail: React.FC = () => {
                     <div className="w-1/2 lg:w-auto flex-1 p-4 flex flex-col items-center">
                         <div className="text-sm font-medium mb-1 opacity-90">Rating</div>
                         <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center p-1">
-                            <img src={`https://mitsubishielectric.in/assets/images/star-rating/${currentModel.rating}-star.png`} alt={`${currentModel.rating} Star`} className="max-w-full max-h-full object-contain" onError={(e) => (e.currentTarget.style.display = 'none')} />
+                            <img src={`/${currentModel.rating}-star.png`} alt={`${currentModel.rating} Star`} className="max-w-full max-h-full object-contain" onError={(e) => (e.currentTarget.style.display = 'none')} />
                         </div>
                     </div>
 
@@ -328,7 +328,7 @@ const ProductDetail: React.FC = () => {
                                     <td className="p-3 border border-[#e2e8f0] text-slate-600">Star Rating - As Per BEE</td>
                                     <td className="p-3 border border-[#e2e8f0] font-medium flex items-center gap-2">
                                         {currentModel.rating} Star
-                                        <img src={`https://mitsubishielectric.in/assets/images/star-rating/${currentModel.rating}-star.png`} alt={`${currentModel.rating} Star`} className="h-6" onError={(e) => (e.currentTarget.style.display = 'none')} />
+                                        <img src={`/${currentModel.rating}-star.png`} alt={`${currentModel.rating} Star`} className="h-6" onError={(e) => (e.currentTarget.style.display = 'none')} />
                                     </td>
                                 </tr>
                                 <tr>
@@ -447,11 +447,6 @@ const ProductDetail: React.FC = () => {
                                 <tr>
                                     <td colSpan={2} className="p-3 border border-[#e2e8f0] text-slate-600">Ambient Operating Range °C</td>
                                     <td className="p-3 border border-[#e2e8f0] font-medium">48°</td>
-                                </tr>
-                                <tr>
-                                    <td className="p-3 border border-[#e2e8f0] text-slate-600">Installation Kit</td>
-                                    <td className="p-3 border border-[#e2e8f0] text-slate-600 text-xs">(Includes Copper Kit/Insulation/Wire)</td>
-                                    <td className="p-3 border border-[#e2e8f0] font-medium">Included</td>
                                 </tr>
                             </tbody>
                         </table>
