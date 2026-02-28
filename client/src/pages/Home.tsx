@@ -68,12 +68,12 @@ const Home: React.FC = () => {
                 </div>
                 <div>
                     {isAuthenticated ? (
-                        <Link to="/dashboard" className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors">
-                            Dashboard
+                        <Link to="/dashboard" className="w-10 h-10 flex items-center justify-center bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white rounded-lg transition-all" title="Dashboard">
+                            <i className="fa-solid fa-gauge text-lg"></i>
                         </Link>
                     ) : (
-                        <Link to="/login" className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors">
-                            Staff Login
+                        <Link to="/login" className="w-10 h-10 flex items-center justify-center bg-slate-50 text-slate-500 hover:bg-blue-600 hover:text-white rounded-lg transition-all" title="Staff Login">
+                            <i className="fa-solid fa-user-lock text-lg"></i>
                         </Link>
                     )}
                 </div>
@@ -85,17 +85,17 @@ const Home: React.FC = () => {
                     <div className="flex flex-col md:flex-row bg-slate-100 rounded-lg p-1 w-full shadow-inner relative z-10 overflow-x-auto select-none gap-1 md:gap-0">
                         <button
                             onClick={() => setMainTab('split')}
-                            className={`flex-1 min-w-[150px] text-center py-3 px-6 rounded-md font-medium transition-all duration-300 ${mainTab === 'split' ? 'bg-[#cc3333] text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
+                            className={`flex-1 min-w-[150px] text-center py-3 px-6 rounded-md font-medium transition-all duration-300 ${mainTab === 'split' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
                             Split
                         </button>
                         <button
                             onClick={() => setMainTab('pac')}
-                            className={`flex-1 min-w-[150px] text-center py-3 px-6 rounded-md font-medium transition-all duration-300 ${mainTab === 'pac' ? 'bg-[#cc3333] text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
+                            className={`flex-1 min-w-[150px] text-center py-3 px-6 rounded-md font-medium transition-all duration-300 ${mainTab === 'pac' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
                             PAC
                         </button>
                         <button
                             onClick={() => setMainTab('vrf')}
-                            className={`flex-1 min-w-[150px] text-center py-3 px-6 rounded-md font-medium transition-all duration-300 ${mainTab === 'vrf' ? 'bg-[#cc3333] text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
+                            className={`flex-1 min-w-[150px] text-center py-3 px-6 rounded-md font-medium transition-all duration-300 ${mainTab === 'vrf' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
                             VRF
                         </button>
                     </div>
@@ -116,17 +116,17 @@ const Home: React.FC = () => {
                             <div className="flex flex-col md:flex-row bg-slate-100 rounded-lg p-1 w-full shadow-inner relative z-10 overflow-x-auto select-none gap-1 md:gap-0">
                                 <button
                                     onClick={() => setActiveTab('inverter')}
-                                    className={`flex-1 min-w-[200px] text-center py-4 px-6 rounded-md font-medium transition-all duration-300 ${activeTab === 'inverter' ? 'bg-[#cc3333] text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
+                                    className={`flex-1 min-w-[200px] text-center py-4 px-6 rounded-md font-medium transition-all duration-300 ${activeTab === 'inverter' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
                                     Inverter
                                 </button>
                                 <button
                                     onClick={() => setActiveTab('non-inverter')}
-                                    className={`flex-1 min-w-[200px] text-center py-4 px-6 rounded-md font-medium transition-all duration-300 ${activeTab === 'non-inverter' ? 'bg-[#cc3333] text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
+                                    className={`flex-1 min-w-[200px] text-center py-4 px-6 rounded-md font-medium transition-all duration-300 ${activeTab === 'non-inverter' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
                                     Non Inverter
                                 </button>
                                 <button
                                     onClick={() => setActiveTab('winter-summer')}
-                                    className={`flex-1 min-w-[200px] text-center py-4 px-6 rounded-md font-medium transition-all duration-300 ${activeTab === 'winter-summer' ? 'bg-[#cc3333] text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
+                                    className={`flex-1 min-w-[200px] text-center py-4 px-6 rounded-md font-medium transition-all duration-300 ${activeTab === 'winter-summer' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
                                     Hot & Cold
                                 </button>
                             </div>
