@@ -288,7 +288,23 @@ const ProductDetail: React.FC = () => {
                     '/images/rjs/rjs13.png',
                     '/images/rjs/rjs14.png'
                 ] :
-                    ['/MS-AGZ.png'];
+                    [
+                        '/MS-AGZ.png',
+                        '/images/agz/agz1.png',
+                        '/images/agz/agz2.png',
+                        '/images/agz/agz3.png',
+                        '/images/agz/agz4.png',
+                        '/images/agz/agz5.png',
+                        '/images/agz/agz6.png',
+                        '/images/agz/agz7.png',
+                        '/images/agz/agz8.png',
+                        '/images/agz/agz9.png',
+                        '/images/agz/agz10.png',
+                        '/images/agz/agz11.png',
+                        '/images/agz/agz12.png',
+                        '/images/agz/agz13.png',
+                        '/images/agz/agz14.png'
+                    ];
 
     return (
         <div className="bg-background-light text-slate-800 min-h-screen transition-colors duration-300 font-sans">
