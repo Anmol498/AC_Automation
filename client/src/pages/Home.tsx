@@ -117,17 +117,17 @@ const Home: React.FC = () => {
                                 <button
                                     onClick={() => setActiveTab('inverter')}
                                     className={`flex-1 min-w-[200px] text-center py-4 px-6 rounded-md font-medium transition-all duration-300 ${activeTab === 'inverter' ? 'bg-[#cc3333] text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
-                                    Inverter Series
+                                    Inverter
                                 </button>
                                 <button
                                     onClick={() => setActiveTab('non-inverter')}
                                     className={`flex-1 min-w-[200px] text-center py-4 px-6 rounded-md font-medium transition-all duration-300 ${activeTab === 'non-inverter' ? 'bg-[#cc3333] text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
-                                    Non Inverter Series
+                                    Non Inverter
                                 </button>
                                 <button
                                     onClick={() => setActiveTab('winter-summer')}
                                     className={`flex-1 min-w-[200px] text-center py-4 px-6 rounded-md font-medium transition-all duration-300 ${activeTab === 'winter-summer' ? 'bg-[#cc3333] text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
-                                    Hot & Cold Series
+                                    Hot & Cold
                                 </button>
                             </div>
                         </div>
