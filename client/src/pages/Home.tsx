@@ -109,59 +109,71 @@ const Home: React.FC = () => {
                     <p className="text-lg text-slate-600">Range Of Most Powerful Yet Elegant Air Conditioners</p>
                 </div>
 
-                {/* Tabs */}
-                <div className="flex justify-center max-w-4xl mx-auto mb-16 px-4">
-                    <div className="flex flex-col md:flex-row bg-slate-100 rounded-lg p-1 w-full shadow-inner relative z-10 overflow-x-auto select-none gap-1 md:gap-0">
-                        <button
-                            onClick={() => setActiveTab('winter-summer')}
-                            className={`flex-1 min-w-[200px] text-center py-4 px-6 rounded-md font-medium transition-all duration-300 ${activeTab === 'winter-summer' ? 'bg-[#cc3333] text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
-                            Inverter - Winter and Summer Series
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('inverter')}
-                            className={`flex-1 min-w-[200px] text-center py-4 px-6 rounded-md font-medium transition-all duration-300 ${activeTab === 'inverter' ? 'bg-[#cc3333] text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
-                            Inverter Series
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('non-inverter')}
-                            className={`flex-1 min-w-[200px] text-center py-4 px-6 rounded-md font-medium transition-all duration-300 ${activeTab === 'non-inverter' ? 'bg-[#cc3333] text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
-                            Non Inverter Series
-                        </button>
-                    </div>
-                </div>
+                {mainTab === 'split' ? (
+                    <>
+                        {/* Tabs */}
+                        <div className="flex justify-center max-w-4xl mx-auto mb-16 px-4">
+                            <div className="flex flex-col md:flex-row bg-slate-100 rounded-lg p-1 w-full shadow-inner relative z-10 overflow-x-auto select-none gap-1 md:gap-0">
+                                <button
+                                    onClick={() => setActiveTab('winter-summer')}
+                                    className={`flex-1 min-w-[200px] text-center py-4 px-6 rounded-md font-medium transition-all duration-300 ${activeTab === 'winter-summer' ? 'bg-[#cc3333] text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
+                                    Inverter - Winter and Summer Series
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab('inverter')}
+                                    className={`flex-1 min-w-[200px] text-center py-4 px-6 rounded-md font-medium transition-all duration-300 ${activeTab === 'inverter' ? 'bg-[#cc3333] text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
+                                    Inverter Series
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab('non-inverter')}
+                                    className={`flex-1 min-w-[200px] text-center py-4 px-6 rounded-md font-medium transition-all duration-300 ${activeTab === 'non-inverter' ? 'bg-[#cc3333] text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
+                                    Non Inverter Series
+                                </button>
+                            </div>
+                        </div>
 
-                {/* Background Banner for Products */}
-                <div className="relative">
-                    <div className="absolute inset-0 bg-slate-100 top-20 bottom-0 rounded-xl z-0"></div>
+                        {/* Background Banner for Products */}
+                        <div className="relative">
+                            <div className="absolute inset-0 bg-slate-100 top-20 bottom-0 rounded-xl z-0"></div>
 
-                    {/* Products Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10 max-w-5xl mx-auto p-8">
-                        {filteredProducts.map((product) => (
-                            <Link to={`/product/${product.id}`} key={product.id} className="bg-white rounded-xl shadow-lg border border-slate-100 overflow-hidden group hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col h-full cursor-pointer block">
-                                {/* Energy Rating Badge Placeholder (top right) */}
-                                <div className="p-8 flex justify-center items-center relative aspect-video bg-white">
-                                    <div className="absolute top-4 right-4 w-12 h-12 bg-cover bg-center" style={{ backgroundImage: "url('https://mitsubishielectric.in/assets/images/star-rating/3-star.png')" }}></div>
-                                    <img
-                                        src={product.imageUrl}
-                                        alt={product.name}
-                                        className="max-h-32 object-contain group-hover:scale-105 transition-transform duration-500 will-change-transform"
-                                        onError={(e) => {
-                                            (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x200?text=AC+Unit+Image';
-                                        }}
-                                    />
-                                </div>
-                                <div className="p-8 border-t border-slate-100 flex-grow flex flex-col">
-                                    <h3 className="text-2xl font-bold text-slate-900 mb-3 group-hover:text-blue-600 transition-colors">{product.name}</h3>
-                                    <p className="text-slate-600 text-sm leading-relaxed mb-6 flex-grow">{product.description}</p>
-                                    <span className="text-red-600 font-medium text-sm self-start group-hover:text-red-700 flex items-center gap-2 mt-auto">
-                                        View Specifications
-                                        <i className="fa-solid fa-arrow-right-long group-hover:translate-x-1 transition-transform"></i>
-                                    </span>
-                                </div>
-                            </Link>
-                        ))}
+                            {/* Products Grid */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10 max-w-5xl mx-auto p-8">
+                                {filteredProducts.map((product) => (
+                                    <Link to={`/product/${product.id}`} key={product.id} className="bg-white rounded-xl shadow-lg border border-slate-100 overflow-hidden group hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col h-full cursor-pointer block">
+                                        {/* Energy Rating Badge Placeholder (top right) */}
+                                        <div className="p-8 flex justify-center items-center relative aspect-video bg-white">
+                                            <div className="absolute top-4 right-4 w-12 h-12 bg-cover bg-center" style={{ backgroundImage: "url('https://mitsubishielectric.in/assets/images/star-rating/3-star.png')" }}></div>
+                                            <img
+                                                src={product.imageUrl}
+                                                alt={product.name}
+                                                className="max-h-32 object-contain group-hover:scale-105 transition-transform duration-500 will-change-transform"
+                                                onError={(e) => {
+                                                    (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x200?text=AC+Unit+Image';
+                                                }}
+                                            />
+                                        </div>
+                                        <div className="p-8 border-t border-slate-100 flex-grow flex flex-col">
+                                            <h3 className="text-2xl font-bold text-slate-900 mb-3 group-hover:text-blue-600 transition-colors">{product.name}</h3>
+                                            <p className="text-slate-600 text-sm leading-relaxed mb-6 flex-grow">{product.description}</p>
+                                            <span className="text-red-600 font-medium text-sm self-start group-hover:text-red-700 flex items-center gap-2 mt-auto">
+                                                View Specifications
+                                                <i className="fa-solid fa-arrow-right-long group-hover:translate-x-1 transition-transform"></i>
+                                            </span>
+                                        </div>
+                                    </Link>
+                                ))}
+                            </div>
+                        </div>
+                    </>
+                ) : (
+                    <div className="text-center py-24 bg-white rounded-2xl border border-slate-100 shadow-sm mx-auto max-w-3xl">
+                        <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <i className="fa-solid fa-person-digging text-3xl text-slate-400"></i>
+                        </div>
+                        <h2 className="text-2xl font-bold text-slate-800 mb-3">Coming Soon</h2>
+                        <p className="text-slate-500 px-8">We are currently curating our catalog with the latest {mainTab === 'pac' ? 'PAC Air Conditioners' : 'VRF Systems'}. Please check back later.</p>
                     </div>
-                </div>
+                )}
             </main>
 
             {/* Footer / Info */}
