@@ -1,5 +1,5 @@
-
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../App';
 import { UserRole } from '../types';
@@ -40,7 +40,14 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 relative">
+      <Link to="/" className="absolute top-6 left-6 md:top-8 md:left-8 text-slate-400 hover:text-white transition-colors flex items-center gap-3 group">
+        <div className="w-10 h-10 rounded-full bg-slate-800/50 flex items-center justify-center group-hover:bg-blue-600 transition-colors border border-slate-800">
+          <i className="fa-solid fa-arrow-left"></i>
+        </div>
+        <span className="font-medium hidden sm:block">Back to Catalog</span>
+      </Link>
+
       <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden transition-all duration-500">
         <div className="bg-blue-600 p-8 text-center text-white relative">
           <div className="absolute top-0 right-0 p-4 opacity-10">
