@@ -599,13 +599,25 @@ const ProductDetail: React.FC = () => {
                         <h3 className="text-2xl font-display font-bold text-slate-900 mb-2">Sales & Enquiry</h3>
                         <p className="text-slate-500 mb-8 text-sm px-4">Our experts are ready to help you find the perfect cooling solution.</p>
 
-                        <a href="tel:09914215001" className="block w-full bg-slate-50 border border-slate-200 hover:border-primary/50 hover:bg-primary/5 rounded-2xl p-4 transition-all mb-6 group cursor-pointer shadow-sm hover:shadow-md">
-                            <div className="text-3xl font-bold tracking-wider text-slate-800 group-hover:text-primary transition-colors">
-                                099142 15001
+                        <a href="tel:09592292292" className="block w-full bg-slate-50 border border-slate-200 hover:border-primary/50 hover:bg-primary/5 rounded-2xl p-4 transition-all mb-4 group cursor-pointer shadow-sm hover:shadow-md">
+                            <div className="text-3xl font-bold tracking-wider text-slate-800 group-hover:text-primary transition-colors flex items-center justify-center gap-2">
+                                <span className="material-icons-outlined text-primary">phone</span>
+                                95922 92292
                             </div>
                             <div className="text-xs font-bold text-slate-400 mt-2 uppercase tracking-widest flex items-center justify-center gap-1">
                                 <span className="material-icons-outlined text-[14px]">touch_app</span>
-                                Tap to Call on Mobile
+                                Tap to Call
+                            </div>
+                        </a>
+
+                        <a href="https://maps.google.com/?q=Mitsubishi+Electric+-+Satguru+Engineers,+SEF-29+PH-2,+Sahibzada+Ajit+Singh+Nagar,+Punjab+160055" target="_blank" rel="noopener noreferrer" className="block w-full bg-slate-50 border border-slate-200 hover:border-blue-500/50 hover:bg-blue-50/50 rounded-2xl p-4 transition-all mb-6 group cursor-pointer shadow-sm hover:shadow-md">
+                            <div className="text-sm font-bold tracking-tight text-slate-800 group-hover:text-blue-600 transition-colors flex items-start text-left gap-3">
+                                <span className="material-icons-outlined text-blue-500 shrink-0 mt-0.5">place</span>
+                                <span>Mitsubishi Electric - Satguru Engineers, SEF-29 PH-2, Sahibzada Ajit Singh Nagar, Punjab 160055</span>
+                            </div>
+                            <div className="text-xs font-bold text-slate-400 mt-3 uppercase tracking-widest flex items-center justify-center gap-1">
+                                <span className="material-icons-outlined text-[14px]">directions</span>
+                                Open in Maps
                             </div>
                         </a>
 
