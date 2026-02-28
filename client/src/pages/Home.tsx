@@ -6,7 +6,7 @@ import { useAuth } from '../App';
 const Home: React.FC = () => {
     const { isAuthenticated } = useAuth();
     const [mainTab, setMainTab] = React.useState('split');
-    const [activeTab, setActiveTab] = React.useState('non-inverter');
+    const [activeTab, setActiveTab] = React.useState('inverter');
 
     // Hardcoded products for catalog based on the screenshot
     const products = [
@@ -115,11 +115,6 @@ const Home: React.FC = () => {
                         <div className="flex justify-center max-w-4xl mx-auto mb-16 px-4">
                             <div className="flex flex-col md:flex-row bg-slate-100 rounded-lg p-1 w-full shadow-inner relative z-10 overflow-x-auto select-none gap-1 md:gap-0">
                                 <button
-                                    onClick={() => setActiveTab('winter-summer')}
-                                    className={`flex-1 min-w-[200px] text-center py-4 px-6 rounded-md font-medium transition-all duration-300 ${activeTab === 'winter-summer' ? 'bg-[#cc3333] text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
-                                    Inverter - Winter and Summer Series
-                                </button>
-                                <button
                                     onClick={() => setActiveTab('inverter')}
                                     className={`flex-1 min-w-[200px] text-center py-4 px-6 rounded-md font-medium transition-all duration-300 ${activeTab === 'inverter' ? 'bg-[#cc3333] text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
                                     Inverter Series
@@ -128,6 +123,11 @@ const Home: React.FC = () => {
                                     onClick={() => setActiveTab('non-inverter')}
                                     className={`flex-1 min-w-[200px] text-center py-4 px-6 rounded-md font-medium transition-all duration-300 ${activeTab === 'non-inverter' ? 'bg-[#cc3333] text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
                                     Non Inverter Series
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab('winter-summer')}
+                                    className={`flex-1 min-w-[200px] text-center py-4 px-6 rounded-md font-medium transition-all duration-300 ${activeTab === 'winter-summer' ? 'bg-[#cc3333] text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
+                                    Hot & Cold Series
                                 </button>
                             </div>
                         </div>
