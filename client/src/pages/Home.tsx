@@ -9,6 +9,16 @@ const Home: React.FC = () => {
     const [activeTab, setActiveTab] = React.useState('inverter');
     const [activePacSeries, setActivePacSeries] = React.useState('inverter');
     const [isVideoMuted, setIsVideoMuted] = React.useState(true);
+    const sectionRef = React.useRef<HTMLDivElement>(null);
+
+    const scrollToSection = () => {
+        if (sectionRef.current) {
+            const yOffset = -20; // Slight offset to not hug the very top
+            const element = sectionRef.current;
+            const y = element.getBoundingClientRect().top + window.scrollY + yOffset;
+            window.scrollTo({ top: y, behavior: 'smooth' });
+        }
+    };
 
     // Hardcoded products for catalog based on the screenshot
     const products = [
@@ -179,17 +189,26 @@ const Home: React.FC = () => {
                 <div className="flex justify-center max-w-4xl mx-auto mb-10 px-4">
                     <div className="flex flex-row flex-nowrap bg-slate-100 rounded-lg p-1 w-full shadow-inner relative z-10 overflow-x-auto select-none gap-2 md:gap-0 snap-x hide-scrollbar">
                         <button
-                            onClick={() => setMainTab('split')}
+                            onClick={() => {
+                                setMainTab('split');
+                                scrollToSection();
+                            }}
                             className={`flex-1 min-w-[30%] md:w-auto text-center py-2 md:py-3 px-2 md:px-4 rounded-md text-sm md:text-base font-medium transition-all duration-300 ${mainTab === 'split' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
                             Split
                         </button>
                         <button
-                            onClick={() => setMainTab('pac')}
+                            onClick={() => {
+                                setMainTab('pac');
+                                scrollToSection();
+                            }}
                             className={`flex-1 min-w-[30%] md:w-auto text-center py-2 md:py-3 px-2 md:px-4 rounded-md text-sm md:text-base font-medium transition-all duration-300 ${mainTab === 'pac' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
                             PAC
                         </button>
                         <button
-                            onClick={() => setMainTab('vrf')}
+                            onClick={() => {
+                                setMainTab('vrf');
+                                scrollToSection();
+                            }}
                             className={`flex-1 min-w-[30%] md:w-auto text-center py-2 md:py-3 px-2 md:px-4 rounded-md text-sm md:text-base font-medium transition-all duration-300 ${mainTab === 'vrf' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
                             VRF
                         </button>
@@ -197,7 +216,7 @@ const Home: React.FC = () => {
                 </div>
 
                 {/* Hero Title Section */}
-                <div className="text-center mb-12">
+                <div className="text-center mb-12" ref={sectionRef}>
                     <h1 className="text-4xl md:text-5xl font-bold mb-4 text-slate-900">
                         {mainTab === 'split' ? 'Split Air Conditioners' : mainTab === 'pac' ? 'PAC Air Conditioners' : 'VRF Systems'}
                     </h1>
