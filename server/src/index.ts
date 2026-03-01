@@ -270,6 +270,22 @@ async function ensureDatabaseReady() {
       )
     `);
 
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS inventory_history (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        inventory_id INT NOT NULL,
+        user_email VARCHAR(255) NOT NULL,
+        action_type ENUM('ADDED_STOCK', 'SOLD_STOCK', 'UPDATED_DETAILS') NOT NULL,
+        quantity_change INT DEFAULT 0,
+        previous_quantity INT NOT NULL,
+        new_quantity INT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (inventory_id) REFERENCES inventory(id) ON DELETE CASCADE,
+        INDEX idx_history_inventory (inventory_id),
+        INDEX idx_history_user (user_email)
+      )
+    `);
+
     try {
       await pool.execute('ALTER TABLE inventory ADD COLUMN type VARCHAR(50) AFTER brand');
       console.log('Added type column to inventory table');
@@ -359,6 +375,36 @@ app.post('/api/login', async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ error: "Server connection error." });
+  }
+});
+
+app.put('/api/auth/change-password', authenticateToken, async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  const userId = req.user.id;
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ error: 'Current password and new password are required' });
+  }
+
+  try {
+    const [users]: any = await pool.execute('SELECT * FROM users WHERE id = ?', [userId]);
+    if (users.length === 0) return res.status(404).json({ error: 'User not found' });
+
+    const user = users[0];
+    let validPass = false;
+    try {
+      validPass = await bcrypt.compare(currentPassword, user.password_hash);
+    } catch (e) {
+      if (currentPassword === user.password_hash) validPass = true;
+    }
+
+    if (!validPass) return res.status(401).json({ error: 'Incorrect current password' });
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await pool.execute('UPDATE users SET password_hash = ? WHERE id = ?', [hashedPassword, userId]);
+    res.json({ success: true, message: 'Password updated successfully' });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Server error' });
   }
 });
 
@@ -845,14 +891,30 @@ app.post('/api/inventory', authenticateToken, isAdminOrSuperAdmin, async (req, r
   if (!modelName || !brand) {
     return res.status(400).json({ error: 'Model name and brand are required.' });
   }
+
+  const connection = await pool.getConnection();
   try {
-    const [result]: any = await pool.execute(
+    await connection.beginTransaction();
+    const [result]: any = await connection.execute(
       'INSERT INTO inventory (model_name, brand, type, tonnage, star_rating, quantity, sold_quantity, our_price, sale_price) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [modelName, brand, type || null, tonnage || null, starRating || null, quantity || 0, soldQuantity || 0, ourPrice || 0, salePrice || 0]
     );
-    res.json({ id: result.insertId, success: true });
+    const newId = result.insertId;
+
+    if (quantity > 0) {
+      await connection.execute(
+        'INSERT INTO inventory_history (inventory_id, user_email, action_type, quantity_change, previous_quantity, new_quantity) VALUES (?, ?, ?, ?, ?, ?)',
+        [newId, req.user.email, 'ADDED_STOCK', quantity, 0, quantity]
+      );
+    }
+    await connection.commit();
+
+    res.json({ id: newId, success: true });
   } catch (err) {
+    await connection.rollback();
     res.status(500).json({ error: err.message });
+  } finally {
+    connection.release();
   }
 });
 
@@ -862,13 +924,69 @@ app.put('/api/inventory/:id', authenticateToken, isAdminOrSuperAdmin, async (req
   if (!modelName || !brand) {
     return res.status(400).json({ error: 'Model name and brand are required.' });
   }
+
+  const connection = await pool.getConnection();
   try {
-    await pool.execute(
+    await connection.beginTransaction();
+
+    // Fetch previous state to calculate diffs
+    const [oldRows]: any = await connection.execute('SELECT quantity, sold_quantity FROM inventory WHERE id = ?', [id]);
+    if (oldRows.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({ error: 'Item not found' });
+    }
+
+    const oldQty = oldRows[0].quantity;
+    const oldSoldQty = oldRows[0].sold_quantity;
+
+    // Calculate effective available stock before and after
+    const oldAvailable = oldQty - oldSoldQty;
+    const newAvailable = (quantity || 0) - (soldQuantity || 0);
+
+    await connection.execute(
       'UPDATE inventory SET model_name = ?, brand = ?, type = ?, tonnage = ?, star_rating = ?, quantity = ?, sold_quantity = ?, our_price = ?, sale_price = ? WHERE id = ?',
       [modelName, brand, type || null, tonnage || null, starRating || null, quantity || 0, soldQuantity || 0, ourPrice || 0, salePrice || 0, id]
     );
+
+    // Determine what changed for the audit log
+    if (quantity > oldQty) {
+      const added = quantity - oldQty;
+      await connection.execute(
+        'INSERT INTO inventory_history (inventory_id, user_email, action_type, quantity_change, previous_quantity, new_quantity) VALUES (?, ?, ?, ?, ?, ?)',
+        [id, req.user.email, 'ADDED_STOCK', added, oldAvailable, newAvailable]
+      );
+    } else if (soldQuantity > oldSoldQty) {
+      const sold = soldQuantity - oldSoldQty;
+      await connection.execute(
+        'INSERT INTO inventory_history (inventory_id, user_email, action_type, quantity_change, previous_quantity, new_quantity) VALUES (?, ?, ?, ?, ?, ?)',
+        [id, req.user.email, 'SOLD_STOCK', -sold, oldAvailable, newAvailable]
+      );
+    } else if (quantity !== oldQty || soldQuantity !== oldSoldQty) {
+      // Manual correction or other change
+      await connection.execute(
+        'INSERT INTO inventory_history (inventory_id, user_email, action_type, quantity_change, previous_quantity, new_quantity) VALUES (?, ?, ?, ?, ?, ?)',
+        [id, req.user.email, 'UPDATED_DETAILS', newAvailable - oldAvailable, oldAvailable, newAvailable]
+      );
+    }
+
+    await connection.commit();
     res.json({ success: true });
   } catch (err) {
+    await connection.rollback();
+    res.status(500).json({ error: err.message });
+  } finally {
+    connection.release();
+  }
+});
+
+app.get('/api/inventory/history', authenticateToken, isAdminOrSuperAdmin, async (req, res) => {
+  try {
+    const [rows] = await pool.execute(
+      'SELECT h.id, i.model_name as modelName, i.brand, h.user_email as userEmail, h.action_type as actionType, h.quantity_change as quantityChange, h.previous_quantity as previousQuantity, h.new_quantity as newQuantity, h.created_at as createdAt FROM inventory_history h JOIN inventory i ON h.inventory_id = i.id ORDER BY h.created_at DESC'
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error("GET /api/inventory/history ERROR:", err.message);
     res.status(500).json({ error: err.message });
   }
 });

@@ -4,7 +4,11 @@ import { User, UserRole } from '../types';
 import { useAuth } from '../App';
 import { API_BASE_URL } from '../constants';
 
-const UserManagement: React.FC = () => {
+interface UserManagementProps {
+  inSettingsView?: boolean;
+}
+
+const UserManagement: React.FC<UserManagementProps> = ({ inSettingsView = false }) => {
   const { token } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,8 +67,19 @@ const UserManagement: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-slate-800">Admin Management</h2>
-          <p className="text-slate-500 text-sm">Control who can access the service dashboard.</p>
+          {inSettingsView ? (
+            <div className="flex items-center gap-3">
+              <div className="bg-purple-100 text-purple-600 w-10 h-10 rounded-full flex items-center justify-center shrink-0">
+                <i className="fa-solid fa-users-gear text-lg"></i>
+              </div>
+              <h2 className="text-xl font-bold tracking-tight text-slate-800">Team Management</h2>
+            </div>
+          ) : (
+            <>
+              <h2 className="text-2xl font-bold tracking-tight text-slate-800">Admin Management</h2>
+              <p className="text-slate-500 text-sm">Control who can access the service dashboard.</p>
+            </>
+          )}
         </div>
         <div className="flex items-center gap-3 w-full md:w-auto mt-2 md:mt-0">
           <div className="relative flex-1 group md:hidden">
@@ -96,16 +111,16 @@ const UserManagement: React.FC = () => {
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-4">
                     <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl shrink-0 ${user.role === UserRole.SUPER_ADMIN ? 'bg-purple-100/50 text-purple-600' :
-                        user.role === UserRole.TECHNICIAN ? 'bg-emerald-100/50 text-emerald-600' : 'bg-blue-100/50 text-blue-600'
+                      user.role === UserRole.TECHNICIAN ? 'bg-emerald-100/50 text-emerald-600' : 'bg-blue-100/50 text-blue-600'
                       }`}>
                       <i className={`fa-solid ${user.role === UserRole.SUPER_ADMIN ? 'fa-crown text-purple-600' :
-                          user.role === UserRole.TECHNICIAN ? 'fa-screwdriver-wrench text-emerald-600' : 'fa-user-shield text-blue-600'
+                        user.role === UserRole.TECHNICIAN ? 'fa-screwdriver-wrench text-emerald-600' : 'fa-user-shield text-blue-600'
                         }`}></i>
                     </div>
                     <div>
                       <h3 className="font-semibold text-slate-900 leading-tight truncate w-48">{user.email}</h3>
                       <span className={`inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded tracking-wide uppercase ${user.role === UserRole.SUPER_ADMIN ? 'bg-purple-50 text-purple-700' :
-                          user.role === UserRole.TECHNICIAN ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-700'
+                        user.role === UserRole.TECHNICIAN ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-700'
                         }`}>
                         {user.role}
                       </span>
@@ -165,12 +180,14 @@ const UserManagement: React.FC = () => {
           </div>
 
           {/* Mobile Floating Action Button */}
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="md:hidden fixed bottom-[84px] right-6 bg-blue-600 text-white w-14 h-14 rounded-full shadow-lg shadow-blue-500/30 flex items-center justify-center active:scale-95 transition-transform z-40"
-          >
-            <i className="fa-solid fa-user-plus text-xl"></i>
-          </button>
+          {!inSettingsView && (
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="md:hidden fixed bottom-[84px] right-6 bg-blue-600 text-white w-14 h-14 rounded-full shadow-lg shadow-blue-500/30 flex items-center justify-center active:scale-95 transition-transform z-40"
+            >
+              <i className="fa-solid fa-user-plus text-xl"></i>
+            </button>
+          )}
         </>
       )}
 

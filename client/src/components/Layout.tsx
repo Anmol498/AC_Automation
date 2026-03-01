@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../App';
@@ -17,10 +16,6 @@ const Layout: React.FC = () => {
   if (user?.role !== UserRole.TECHNICIAN) {
     navItems.splice(1, 0, { path: '/customers', label: 'Customers', icon: 'fa-users' });
     navItems.push({ path: '/inventory', label: 'Inventory', icon: 'fa-boxes-stacked' });
-  }
-
-  if (user?.role === UserRole.SUPER_ADMIN) {
-    navItems.push({ path: '/users', label: 'Manage Users', icon: 'fa-user-shield' });
   }
 
   return (
@@ -49,6 +44,18 @@ const Layout: React.FC = () => {
               {item.label}
             </Link>
           ))}
+          {user?.role !== UserRole.TECHNICIAN && (
+            <Link
+              to="/settings"
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${location.pathname.startsWith('/settings')
+                ? 'bg-blue-600 text-white font-medium shadow-md shadow-blue-500/20'
+                : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                }`}
+            >
+              <i className="fa-solid fa-gear w-5 text-center"></i>
+              Settings
+            </Link>
+          )}
         </nav>
 
         {/* User Profile / Logout (pushed to bottom) */}
@@ -73,7 +80,7 @@ const Layout: React.FC = () => {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-y-auto relative bg-slate-50 relative pb-[68px] md:pb-0">
+      <main className="flex-1 flex flex-col min-w-0 overflow-y-auto bg-slate-50 pb-[68px] md:pb-0">
         {/* Mobile Header */}
         <header className="h-14 md:h-16 shrink-0 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-4 md:px-6 sticky top-0 z-30 transition-shadow shadow-sm">
           <div className="flex items-center md:hidden gap-3">
@@ -102,7 +109,7 @@ const Layout: React.FC = () => {
         </header>
 
         {/* Page Content */}
-        <div className="flex-1 p-4 md:p-6 w-full max-w-full overflow-x-hidden relative z-0">
+        <div className="flex-1 p-4 md:p-6 w-full max-w-full overflow-x-hidden">
           <Outlet />
         </div>
       </main>
@@ -123,11 +130,25 @@ const Layout: React.FC = () => {
               )}
               <i className={`fa-solid ${item.icon} text-lg mb-0.5 transition-transform duration-200 ${isActive ? '-translate-y-px scale-110' : ''}`}></i>
               <span className={`text-[10px] font-semibold leading-none tracking-tight transition-all duration-200 ${isActive ? 'opacity-100' : 'opacity-80'}`}>
-                {item.label === 'Manage Users' ? 'Users' : item.label === 'Jobs & Phases' ? 'Jobs' : item.label}
+                {item.label === 'Jobs & Phases' ? 'Jobs' : item.label}
               </span>
             </Link>
           );
         })}
+        {user?.role !== UserRole.TECHNICIAN && (
+          <Link
+            to="/settings"
+            className={`flex flex-col items-center justify-center w-full h-full gap-1 pt-1 pb-2 relative transition-all duration-200 ${location.pathname.startsWith('/settings') ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
+          >
+            {location.pathname.startsWith('/settings') && (
+              <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-1 bg-blue-600 rounded-b-full shadow-[0_2px_4px_rgba(37,99,235,0.4)]"></span>
+            )}
+            <i className={`fa-solid fa-gear text-lg mb-0.5 transition-transform duration-200 ${location.pathname.startsWith('/settings') ? '-translate-y-px scale-110' : ''}`}></i>
+            <span className={`text-[10px] font-semibold leading-none tracking-tight transition-all duration-200 ${location.pathname.startsWith('/settings') ? 'opacity-100' : 'opacity-80'}`}>
+              Settings
+            </span>
+          </Link>
+        )}
       </nav>
     </div>
   );

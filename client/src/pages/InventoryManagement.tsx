@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useAuth } from '../App';
+import { useAuth, useSettings } from '../App';
 
 interface InventoryItem {
     id: number;
@@ -17,17 +17,34 @@ interface InventoryItem {
     updatedAt: string;
 }
 
+interface HistoryRecord {
+    id: number;
+    modelName?: string;
+    brand?: string;
+    userEmail: string;
+    actionType: 'ADDED_STOCK' | 'SOLD_STOCK' | 'UPDATED_DETAILS';
+    quantityChange: number;
+    previousQuantity: number;
+    newQuantity: number;
+    createdAt: string;
+}
+
 const InventoryManagement: React.FC = () => {
     const { token } = useAuth();
+    const { lowStockThreshold, enableLowStockAlert } = useSettings();
     const [items, setItems] = useState<InventoryItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState('');
     const [activeTab, setActiveTab] = useState<'Mitsubishi' | 'Akabishi'>('Mitsubishi');
     const [lastSoldItem, setLastSoldItem] = useState<{ id: number, quantity: number, soldQuantity: number } | null>(null);
+    const [isLowStockModalOpen, setIsLowStockModalOpen] = useState(false);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
     const [addQtyAmount, setAddQtyAmount] = useState<number>(0);
+
+    const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+    const [historyLogs, setHistoryLogs] = useState<HistoryRecord[]>([]);
 
     const [formData, setFormData] = useState({
         modelName: '',
@@ -125,6 +142,27 @@ const InventoryManagement: React.FC = () => {
         }
     };
 
+    const fetchHistory = async () => {
+        try {
+            const apiUrl = import.meta.env.VITE_API_URL
+                ? `${import.meta.env.VITE_API_URL}/inventory/history`
+                : `http://localhost:5000/api/inventory/history`;
+
+            const res = await axios.get(apiUrl, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setHistoryLogs(res.data);
+            setIsHistoryModalOpen(true);
+        } catch (err: any) {
+            alert(err.response?.data?.error || 'Failed to fetch history');
+        }
+    };
+
+    const closeHistoryModal = () => {
+        setIsHistoryModalOpen(false);
+        setHistoryLogs([]);
+    };
+
     const handleSold = async (item: InventoryItem) => {
         if (item.quantity <= 0) {
             alert('Out of stock!');
@@ -212,6 +250,8 @@ const InventoryManagement: React.FC = () => {
     };
 
     const filteredItems = items.filter(item => item.brand === activeTab);
+    const lowStockItems = enableLowStockAlert ? items.filter(i => (i.quantity - i.soldQuantity) <= lowStockThreshold) : [];
+    const totalLowStockCount = lowStockItems.length;
 
     if (isLoading) return <div className="p-6">Loading inventory...</div>;
     if (error) return <div className="p-6 text-red-500">{error}</div>;
@@ -223,7 +263,7 @@ const InventoryManagement: React.FC = () => {
                     <h1 className="text-2xl font-bold tracking-tight text-slate-900">Inventory Management</h1>
                     <p className="text-slate-500 text-sm mt-1">Manage stock, pricing, and product details</p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                     {lastSoldItem && (
                         <button
                             onClick={handleUndo}
@@ -233,6 +273,29 @@ const InventoryManagement: React.FC = () => {
                             Undo
                         </button>
                     )}
+                    <div className="flex items-center gap-2 mr-2 bg-slate-50 p-1.5 rounded-xl border border-slate-200">
+                        <button
+                            onClick={fetchHistory}
+                            title="Global Audit History"
+                            className="w-10 h-10 rounded-lg flex items-center justify-center text-amber-600 bg-amber-50 hover:bg-amber-100 transition-colors border border-amber-200 shadow-sm"
+                        >
+                            <i className="fa-solid fa-history text-lg"></i>
+                        </button>
+                        {enableLowStockAlert && (
+                            <button
+                                onClick={() => setIsLowStockModalOpen(true)}
+                                title="Low Stock Vehicles"
+                                className="relative w-10 h-10 rounded-lg flex items-center justify-center text-red-600 bg-red-50 hover:bg-red-100 transition-colors border border-red-200 shadow-sm"
+                            >
+                                <i className="fa-solid fa-triangle-exclamation text-lg"></i>
+                                {totalLowStockCount > 0 && (
+                                    <span className="absolute -top-1.5 -right-1.5 bg-red-600 text-white text-[10px] font-bold px-1.5 min-w-[18px] h-[18px] rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+                                        {totalLowStockCount}
+                                    </span>
+                                )}
+                            </button>
+                        )}
+                    </div>
                     <button
                         onClick={() => openModal()}
                         className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm shadow-blue-500/30 transition-all flex items-center gap-2"
@@ -310,7 +373,7 @@ const InventoryManagement: React.FC = () => {
                                         </td>
                                         <td className="flex sm:table-cell justify-between items-center px-4 sm:px-2 py-2 sm:py-3 border-b border-slate-50 sm:border-none sm:text-center">
                                             <span className="sm:hidden font-semibold text-slate-500 text-[10px] uppercase w-1/3">Qty</span>
-                                            <span className={`inline-block px-2 py-1 rounded-full text-[10px] sm:text-xs font-bold whitespace-nowrap text-right sm:text-center ${item.quantity <= 5 ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                                            <span className={`inline-block px-2 py-1 rounded-full text-[10px] sm:text-xs font-bold whitespace-nowrap text-right sm:text-center ${(item.quantity - item.soldQuantity) <= 5 ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
                                                 {item.quantity}
                                             </span>
                                         </td>
@@ -327,7 +390,7 @@ const InventoryManagement: React.FC = () => {
                                                 <button onClick={() => handleSold(item)} title="Mark Sold" className="text-emerald-600 hover:text-emerald-800 p-1.5 rounded-lg hover:bg-emerald-50 transition-colors bg-emerald-50 sm:bg-transparent border border-emerald-200 sm:border-none shadow-sm sm:shadow-none flex items-center justify-center w-8 h-8">
                                                     <span className="material-icons-outlined text-[18px]">check_circle</span>
                                                 </button>
-                                                <button onClick={() => openModal(item)} title="Update" className="text-blue-600 hover:text-blue-800 p-1.5 rounded-lg hover:bg-blue-50 transition-colors bg-blue-50 sm:bg-transparent border border-blue-200 sm:border-none shadow-sm sm:shadow-none flex items-center justify-center w-8 h-8">
+                                                <button onClick={() => openModal(item)} title="Update Stock" className="text-blue-600 hover:text-blue-800 p-1.5 rounded-lg hover:bg-blue-50 transition-colors bg-blue-50 sm:bg-transparent border border-blue-200 sm:border-none shadow-sm sm:shadow-none flex items-center justify-center w-8 h-8">
                                                     <span className="material-icons-outlined text-[18px]">edit</span>
                                                 </button>
                                                 <button onClick={() => handleDelete(item.id)} title="Delete" className="text-red-600 hover:text-red-800 p-1.5 rounded-lg hover:bg-red-50 transition-colors bg-red-50 sm:bg-transparent border border-red-200 sm:border-none shadow-sm sm:shadow-none flex items-center justify-center w-8 h-8">
@@ -503,6 +566,159 @@ const InventoryManagement: React.FC = () => {
                             >
                                 {editingItem ? 'Update Stock' : 'Add Product'}
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Low Stock Modal */}
+            {isLowStockModalOpen && (
+                <div className="fixed top-0 left-0 w-screen h-screen z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-hidden" style={{ margin: 0 }}>
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh] relative z-[101]">
+                        <div className="p-6 border-b border-red-100 flex justify-between items-center shrink-0 bg-red-50/80">
+                            <div className="flex flex-row items-center gap-3">
+                                <div className="bg-red-100 text-red-600 w-10 h-10 rounded-full flex items-center justify-center shrink-0">
+                                    <i className="fa-solid fa-triangle-exclamation text-xl"></i>
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-bold text-red-800">Low Stock Alert</h2>
+                                    <p className="text-red-600 text-sm mt-0.5">Products with {lowStockThreshold} or fewer units available.</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setIsLowStockModalOpen(false)} className="text-red-400 hover:text-red-600 transition-colors rounded-lg p-2 hover:bg-red-100 bg-white shadow-sm border border-red-100">
+                                <i className="fa-solid fa-xmark text-lg"></i>
+                            </button>
+                        </div>
+                        <div className="p-0 overflow-y-auto flex-1 bg-slate-50/30">
+                            {lowStockItems.length === 0 ? (
+                                <div className="p-10 text-center text-slate-500">
+                                    <i className="fa-solid fa-check-circle text-4xl mb-3 text-emerald-400"></i>
+                                    <p className="text-slate-700 font-bold mb-1">All Stock Levels Healthy</p>
+                                    <p className="text-sm">No items are currently running low on stock.</p>
+                                </div>
+                            ) : (
+                                <table className="w-full text-left text-sm border-collapse">
+                                    <thead className="bg-white text-slate-600 uppercase text-[10px] sm:text-xs font-semibold border-b border-slate-200 sticky top-0 z-10 shadow-sm">
+                                        <tr>
+                                            <th className="px-6 py-4">Product Model</th>
+                                            <th className="px-6 py-4">Brand</th>
+                                            <th className="px-6 py-4">Type / Ton</th>
+                                            <th className="px-6 py-4 text-right">Stock Extant</th>
+                                            <th className="px-6 py-4 text-center">Available</th>
+                                            <th className="px-6 py-4 text-center">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 bg-white">
+                                        {lowStockItems.map(item => {
+                                            const available = item.quantity - item.soldQuantity;
+                                            return (
+                                                <tr key={item.id} className="hover:bg-red-50/30 transition-colors">
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <div className="font-bold text-slate-900">{item.modelName}</div>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-slate-700 text-xs font-bold uppercase tracking-wider">
+                                                        {item.brand}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-slate-600">
+                                                        {item.type} {item.tonnage ? `· ${item.tonnage}` : ''}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-right text-slate-500 text-xs">
+                                                        {item.quantity} brought - {item.soldQuantity} sold
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                        <span className="inline-block px-3 py-1 bg-red-100 text-red-700 font-bold rounded-full border border-red-200 shadow-sm">
+                                                            {available}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                        <button
+                                                            onClick={() => {
+                                                                setIsLowStockModalOpen(false);
+                                                                openModal(item);
+                                                            }}
+                                                            className="text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm transition-colors"
+                                                        >
+                                                            Update Stock
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* History Modal */}
+            {isHistoryModalOpen && (
+                <div className="fixed top-0 left-0 w-screen h-screen z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-hidden" style={{ margin: 0 }}>
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-5xl overflow-hidden flex flex-col max-h-[90vh] relative z-[101]">
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-center shrink-0 bg-slate-50/80">
+                            <div>
+                                <h2 className="text-xl font-bold text-slate-800">Global Inventory Audit Log</h2>
+                                <p className="text-slate-500 text-sm mt-1">Review all stock additions, sales, and corrections.</p>
+                            </div>
+                            <button onClick={closeHistoryModal} className="text-slate-400 hover:text-slate-600 transition-colors rounded-lg p-2 hover:bg-slate-200 bg-white shadow-sm">
+                                <i className="fa-solid fa-xmark text-lg"></i>
+                            </button>
+                        </div>
+                        <div className="p-0 overflow-y-auto flex-1 bg-slate-50/30">
+                            {historyLogs.length === 0 ? (
+                                <div className="p-10 text-center text-slate-500">
+                                    <i className="fa-solid fa-clock-rotate-left text-4xl mb-3 text-slate-300"></i>
+                                    <p>No history available yet.</p>
+                                    <p className="text-xs mt-2">History tracking begins from when the items are next updated.</p>
+                                </div>
+                            ) : (
+                                <table className="w-full text-left text-sm border-collapse">
+                                    <thead className="bg-white text-slate-600 uppercase text-[10px] sm:text-xs font-semibold border-b border-slate-200 sticky top-0 z-10 shadow-sm">
+                                        <tr>
+                                            <th className="px-6 py-4">Date / Time</th>
+                                            <th className="px-6 py-4">Product Model</th>
+                                            <th className="px-6 py-4">User</th>
+                                            <th className="px-6 py-4">Action</th>
+                                            <th className="px-6 py-4 text-center">Change</th>
+                                            <th className="px-6 py-4 text-center">Available Stock</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 bg-white">
+                                        {historyLogs.map(log => (
+                                            <tr key={log.id} className="hover:bg-slate-50 transition-colors">
+                                                <td className="px-6 py-4 whitespace-nowrap text-slate-600">
+                                                    <div className="font-semibold text-slate-800">{new Date(log.createdAt).toLocaleDateString('en-GB')}</div>
+                                                    <div className="text-xs">{new Date(log.createdAt).toLocaleTimeString('en-US')}</div>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-slate-700">
+                                                    <div className="font-bold text-slate-900">{log.modelName || 'Unknown Model'}</div>
+                                                    <div className="text-[10px] uppercase text-slate-500">{log.brand}</div>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-slate-700">
+                                                    {log.userEmail}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <span className={`inline-block px-2.5 py-1 rounded-md text-[10px] font-bold uppercase ${log.actionType === 'ADDED_STOCK' ? 'bg-blue-100 text-blue-700' :
+                                                        log.actionType === 'SOLD_STOCK' ? 'bg-emerald-100 text-emerald-700' :
+                                                            'bg-amber-100 text-amber-700'
+                                                        }`}>
+                                                        {log.actionType.replace('_', ' ')}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-center font-bold">
+                                                    <span className={log.quantityChange > 0 ? 'text-blue-600' : log.quantityChange < 0 ? 'text-red-500' : 'text-slate-500'}>
+                                                        {log.quantityChange > 0 ? '+' : ''}{log.quantityChange}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-center text-slate-700 font-semibold">
+                                                    {log.newQuantity}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
                         </div>
                     </div>
                 </div>
