@@ -8,6 +8,7 @@ const Home: React.FC = () => {
     const [mainTab, setMainTab] = React.useState('split');
     const [activeTab, setActiveTab] = React.useState('inverter');
     const [activePacSeries, setActivePacSeries] = React.useState('inverter');
+    const [showPhonePopup, setShowPhonePopup] = React.useState(false);
     const [isVideoMuted, setIsVideoMuted] = React.useState(true);
     const sectionRef = React.useRef<HTMLDivElement>(null);
 
@@ -198,6 +199,32 @@ const Home: React.FC = () => {
                     <p className="text-lg text-slate-600">Range Of Most Powerful Yet Elegant Air Conditioners</p>
                 </div>
 
+                {mainTab === 'vrf' && (
+                    <div className="max-w-4xl mx-auto mb-12 px-4 animate-in fade-in zoom-in-95 duration-500">
+                        <div className="w-full mx-auto overflow-hidden rounded-2xl shadow-xl border border-slate-200 bg-black aspect-video relative group">
+                            <video
+                                className="w-full h-full object-cover"
+                                autoPlay
+                                loop
+                                muted={isVideoMuted}
+                                playsInline
+                                src="/vrf.mp4"
+                            />
+                            <button
+                                onClick={() => setIsVideoMuted(!isVideoMuted)}
+                                className="absolute bottom-4 right-4 bg-slate-900/60 hover:bg-slate-900/80 backdrop-blur-md text-white w-10 h-10 rounded-full flex items-center justify-center transition-all opacity-0 group-hover:opacity-100"
+                                title={isVideoMuted ? "Unmute Video" : "Mute Video"}
+                            >
+                                {isVideoMuted ? (
+                                    <i className="fa-solid fa-volume-xmark"></i>
+                                ) : (
+                                    <i className="fa-solid fa-volume-high"></i>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                )}
+
                 {mainTab === 'split' ? (
                     <>
                         {/* Intro Video (Only for Split) */}
@@ -347,15 +374,15 @@ const Home: React.FC = () => {
                     </>
                 ) : mainTab === 'vrf' ? (
                     <div className="text-center py-24 bg-white rounded-2xl border border-slate-100 shadow-sm mx-auto max-w-3xl">
-                        <h2 className="text-3xl font-black text-slate-800 mb-8 tracking-tight">Get your quotation Today</h2>
+                        <h2 className="text-3xl font-black text-slate-800 mb-8 tracking-tight">Get your quotation Now</h2>
 
-                        <a
-                            href="mailto:contact@satguruengineers.com?subject=VRF%20System%20Enquiry"
+                        <button
+                            onClick={() => setShowPhonePopup(true)}
                             className="inline-flex items-center gap-2 px-10 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-[0_10px_20px_rgba(37,99,235,0.2)] hover:shadow-[0_15px_30px_rgba(37,99,235,0.3)] hover:-translate-y-1 transition-all active:scale-95 mx-auto text-lg"
                         >
                             <i className="fa-solid fa-paper-plane mr-1 scale-110"></i>
                             Enquire now
-                        </a>
+                        </button>
                     </div>
                 ) : null}
             </main>
@@ -364,6 +391,48 @@ const Home: React.FC = () => {
             <footer className="text-center py-8 text-slate-500 text-sm border-t border-slate-100 mt-12 bg-white">
                 &copy; {new Date().getFullYear()} Satguru Engineers. All rights reserved.
             </footer>
+
+            {/* Phone Enquiry Modal */}
+            {showPhonePopup && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={() => setShowPhonePopup(false)}>
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 text-center animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+                        <div className="w-20 h-20 bg-blue-600/10 rounded-full flex items-center justify-center mx-auto mb-6 text-blue-600 shadow-inner">
+                            <span className="material-icons-outlined text-4xl">phone_in_talk</span>
+                        </div>
+                        <h3 className="text-2xl font-display font-bold text-slate-900 mb-2">Sales & Enquiry</h3>
+                        <p className="text-slate-500 mb-8 text-sm px-4">Our experts are ready to help you find the perfect cooling solution.</p>
+
+                        <a href="tel:09592292292" className="block w-full bg-slate-50 border border-slate-200 hover:border-blue-600/50 hover:bg-blue-60/5 rounded-2xl p-4 transition-all mb-4 group cursor-pointer shadow-sm hover:shadow-md">
+                            <div className="text-3xl font-bold tracking-wider text-slate-800 group-hover:text-blue-600 transition-colors flex items-center justify-center gap-2">
+                                <span className="material-icons-outlined text-blue-600">phone</span>
+                                95922 92292
+                            </div>
+                            <div className="text-xs font-bold text-slate-400 mt-2 uppercase tracking-widest flex items-center justify-center gap-1">
+                                <span className="material-icons-outlined text-[14px]">touch_app</span>
+                                Tap to Call
+                            </div>
+                        </a>
+
+                        <a href="https://maps.google.com/?q=Mitsubishi+Electric+-+Satguru+Engineers,+SEF-29+PH-2,+Sahibzada+Ajit+Singh+Nagar,+Punjab+160055" target="_blank" rel="noopener noreferrer" className="block w-full bg-slate-50 border border-slate-200 hover:border-blue-500/50 hover:bg-blue-50/50 rounded-2xl p-4 transition-all mb-6 group cursor-pointer shadow-sm hover:shadow-md">
+                            <div className="text-sm font-bold tracking-tight text-slate-800 group-hover:text-blue-600 transition-colors flex items-start text-left gap-3">
+                                <span className="material-icons-outlined text-blue-500 shrink-0 mt-0.5">place</span>
+                                <span>Mitsubishi Electric - Satguru Engineers, SEF-29 PH-2, Sahibzada Ajit Singh Nagar, Punjab 160055</span>
+                            </div>
+                            <div className="text-xs font-bold text-slate-400 mt-3 uppercase tracking-widest flex items-center justify-center gap-1">
+                                <span className="material-icons-outlined text-[14px]">directions</span>
+                                Open in Maps
+                            </div>
+                        </a>
+
+                        <button
+                            onClick={() => setShowPhonePopup(false)}
+                            className="w-full py-4 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors rounded-xl hover:bg-slate-100"
+                        >
+                            Close
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
