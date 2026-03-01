@@ -151,7 +151,7 @@ const Home: React.FC = () => {
             <main className="max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
                 {/* Main Category Tabs */}
                 <div className="flex justify-center max-w-4xl mx-auto mb-10 px-4">
-                    <div className="flex flex-col md:flex-row bg-slate-100 rounded-lg p-1 w-full shadow-inner relative z-10 overflow-x-auto select-none gap-1 md:gap-0">
+                    <div className="flex bg-slate-100 rounded-lg p-1 w-full shadow-inner relative z-10 overflow-x-auto select-none gap-1 sm:gap-0 snap-x">
                         <button
                             onClick={() => setMainTab('split')}
                             className={`flex-1 min-w-[150px] text-center py-3 px-6 rounded-md font-medium transition-all duration-300 ${mainTab === 'split' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
@@ -182,7 +182,7 @@ const Home: React.FC = () => {
                     <>
                         {/* Tabs */}
                         <div className="flex justify-center max-w-4xl mx-auto mb-16 px-4">
-                            <div className="flex flex-col md:flex-row bg-slate-100 rounded-lg p-1 w-full shadow-inner relative z-10 overflow-x-auto select-none gap-1 md:gap-0">
+                            <div className="flex bg-slate-100 rounded-lg p-1 w-full shadow-inner relative z-10 overflow-x-auto select-none gap-1 sm:gap-0 snap-x">
                                 <button
                                     onClick={() => setActiveTab('inverter')}
                                     className={`flex-1 min-w-[200px] text-center py-4 px-6 rounded-md font-medium transition-all duration-300 ${activeTab === 'inverter' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
@@ -238,7 +238,7 @@ const Home: React.FC = () => {
                     <>
                         {/* PAC Series Tabs */}
                         <div className="flex justify-center max-w-4xl mx-auto mb-16 px-4">
-                            <div className="flex flex-col md:flex-row bg-slate-100 rounded-lg p-1 w-full shadow-inner relative z-10 overflow-x-auto select-none gap-1 md:gap-0">
+                            <div className="flex bg-slate-100 rounded-lg p-1 w-full shadow-inner relative z-10 overflow-x-auto select-none gap-1 sm:gap-0 snap-x">
                                 <button
                                     onClick={() => setActivePacSeries('inverter')}
                                     className={`flex-1 min-w-[200px] text-center py-4 px-6 rounded-md font-medium transition-all duration-300 ${activePacSeries === 'inverter' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
