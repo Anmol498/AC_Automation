@@ -347,11 +347,15 @@ const Home: React.FC = () => {
                     </>
                 ) : mainTab === 'vrf' ? (
                     <div className="text-center py-24 bg-white rounded-2xl border border-slate-100 shadow-sm mx-auto max-w-3xl">
-                        <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                            <i className="fa-solid fa-person-digging text-3xl text-slate-400"></i>
-                        </div>
-                        <h2 className="text-2xl font-bold text-slate-800 mb-3">Coming Soon</h2>
-                        <p className="text-slate-500 px-8">We are currently curating our catalog with the latest VRF Systems. Please check back later.</p>
+                        <h2 className="text-3xl font-black text-slate-800 mb-8 tracking-tight">Get your quotation Today</h2>
+
+                        <a
+                            href="mailto:contact@satguruengineers.com?subject=VRF%20System%20Enquiry"
+                            className="inline-flex items-center gap-2 px-10 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-[0_10px_20px_rgba(37,99,235,0.2)] hover:shadow-[0_15px_30px_rgba(37,99,235,0.3)] hover:-translate-y-1 transition-all active:scale-95 mx-auto text-lg"
+                        >
+                            <i className="fa-solid fa-paper-plane mr-1 scale-110"></i>
+                            Enquire now
+                        </a>
                     </div>
                 ) : null}
             </main>
