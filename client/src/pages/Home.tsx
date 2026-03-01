@@ -151,20 +151,20 @@ const Home: React.FC = () => {
             <main className="max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
                 {/* Main Category Tabs */}
                 <div className="flex justify-center max-w-4xl mx-auto mb-10 px-4">
-                    <div className="flex bg-slate-100 rounded-lg p-1 w-full shadow-inner relative z-10 overflow-x-auto select-none gap-1 sm:gap-0 snap-x">
+                    <div className="flex flex-row flex-nowrap bg-slate-100 rounded-lg p-1 w-full shadow-inner relative z-10 overflow-x-auto select-none gap-2 md:gap-0 snap-x hide-scrollbar">
                         <button
                             onClick={() => setMainTab('split')}
-                            className={`flex-1 min-w-[150px] text-center py-3 px-6 rounded-md font-medium transition-all duration-300 ${mainTab === 'split' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
+                            className={`shrink-0 w-[140px] md:flex-1 md:w-auto text-center py-3 px-4 rounded-md font-medium transition-all duration-300 ${mainTab === 'split' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
                             Split
                         </button>
                         <button
                             onClick={() => setMainTab('pac')}
-                            className={`flex-1 min-w-[150px] text-center py-3 px-6 rounded-md font-medium transition-all duration-300 ${mainTab === 'pac' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
+                            className={`shrink-0 w-[140px] md:flex-1 md:w-auto text-center py-3 px-4 rounded-md font-medium transition-all duration-300 ${mainTab === 'pac' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
                             PAC
                         </button>
                         <button
                             onClick={() => setMainTab('vrf')}
-                            className={`flex-1 min-w-[150px] text-center py-3 px-6 rounded-md font-medium transition-all duration-300 ${mainTab === 'vrf' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
+                            className={`shrink-0 w-[140px] md:flex-1 md:w-auto text-center py-3 px-4 rounded-md font-medium transition-all duration-300 ${mainTab === 'vrf' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
                             VRF
                         </button>
                     </div>
@@ -182,20 +182,20 @@ const Home: React.FC = () => {
                     <>
                         {/* Tabs */}
                         <div className="flex justify-center max-w-4xl mx-auto mb-16 px-4">
-                            <div className="flex bg-slate-100 rounded-lg p-1 w-full shadow-inner relative z-10 overflow-x-auto select-none gap-1 sm:gap-0 snap-x">
+                            <div className="flex flex-row flex-nowrap bg-slate-100 rounded-lg p-1 w-full shadow-inner relative z-10 overflow-x-auto select-none gap-2 md:gap-0 snap-x hide-scrollbar">
                                 <button
                                     onClick={() => setActiveTab('inverter')}
-                                    className={`flex-1 min-w-[200px] text-center py-4 px-6 rounded-md font-medium transition-all duration-300 ${activeTab === 'inverter' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
+                                    className={`shrink-0 w-[160px] md:flex-1 md:w-auto text-center py-4 px-4 rounded-md font-medium transition-all duration-300 ${activeTab === 'inverter' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
                                     Inverter
                                 </button>
                                 <button
                                     onClick={() => setActiveTab('non-inverter')}
-                                    className={`flex-1 min-w-[200px] text-center py-4 px-6 rounded-md font-medium transition-all duration-300 ${activeTab === 'non-inverter' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
+                                    className={`shrink-0 w-[160px] md:flex-1 md:w-auto text-center py-4 px-4 rounded-md font-medium transition-all duration-300 ${activeTab === 'non-inverter' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
                                     Non Inverter
                                 </button>
                                 <button
                                     onClick={() => setActiveTab('winter-summer')}
-                                    className={`flex-1 min-w-[200px] text-center py-4 px-6 rounded-md font-medium transition-all duration-300 ${activeTab === 'winter-summer' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
+                                    className={`shrink-0 w-[160px] md:flex-1 md:w-auto text-center py-4 px-4 rounded-md font-medium transition-all duration-300 ${activeTab === 'winter-summer' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
                                     Hot & Cold
                                 </button>
                             </div>
@@ -238,20 +238,20 @@ const Home: React.FC = () => {
                     <>
                         {/* PAC Series Tabs */}
                         <div className="flex justify-center max-w-4xl mx-auto mb-16 px-4">
-                            <div className="flex bg-slate-100 rounded-lg p-1 w-full shadow-inner relative z-10 overflow-x-auto select-none gap-1 sm:gap-0 snap-x">
+                            <div className="flex flex-row flex-nowrap bg-slate-100 rounded-lg p-1 w-full shadow-inner relative z-10 overflow-x-auto select-none gap-2 md:gap-0 snap-x hide-scrollbar">
                                 <button
                                     onClick={() => setActivePacSeries('inverter')}
-                                    className={`flex-1 min-w-[200px] text-center py-4 px-6 rounded-md font-medium transition-all duration-300 ${activePacSeries === 'inverter' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
+                                    className={`shrink-0 w-[160px] md:flex-1 md:w-auto text-center py-4 px-4 rounded-md font-medium transition-all duration-300 ${activePacSeries === 'inverter' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
                                     Inverter
                                 </button>
                                 <button
                                     onClick={() => setActivePacSeries('non-inverter')}
-                                    className={`flex-1 min-w-[200px] text-center py-4 px-6 rounded-md font-medium transition-all duration-300 ${activePacSeries === 'non-inverter' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
+                                    className={`shrink-0 w-[160px] md:flex-1 md:w-auto text-center py-4 px-4 rounded-md font-medium transition-all duration-300 ${activePacSeries === 'non-inverter' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
                                     Non Inverter
                                 </button>
                                 <button
                                     onClick={() => setActivePacSeries('winter-summer')}
-                                    className={`flex-1 min-w-[200px] text-center py-4 px-6 rounded-md font-medium transition-all duration-300 ${activePacSeries === 'winter-summer' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
+                                    className={`shrink-0 w-[160px] md:flex-1 md:w-auto text-center py-4 px-4 rounded-md font-medium transition-all duration-300 ${activePacSeries === 'winter-summer' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
                                     Hot & Cold
                                 </button>
                             </div>
