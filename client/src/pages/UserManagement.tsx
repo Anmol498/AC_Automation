@@ -92,10 +92,10 @@ const UserManagement: React.FC<UserManagementProps> = ({ inSettingsView = false 
           </div>
           <button
             onClick={() => setIsModalOpen(true)}
-            className="hidden md:flex bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 shadow-lg shadow-blue-500/20 transition-all font-medium shrink-0"
+            className={`${inSettingsView ? 'flex w-12 h-12 justify-center p-0 md:px-4 md:py-2.5 md:w-auto md:h-auto' : 'hidden md:flex px-4 py-2.5'} bg-blue-600 hover:bg-blue-700 text-white rounded-xl items-center gap-2 shadow-lg shadow-blue-500/20 transition-all font-medium shrink-0`}
           >
             <i className="fa-solid fa-user-plus"></i>
-            Add User
+            <span className={inSettingsView ? "hidden md:inline" : ""}>Add User</span>
           </button>
         </div>
       </div>
