@@ -8,6 +8,7 @@ const Home: React.FC = () => {
     const [mainTab, setMainTab] = React.useState('split');
     const [activeTab, setActiveTab] = React.useState('inverter');
     const [activePacSeries, setActivePacSeries] = React.useState('inverter');
+    const [isVideoMuted, setIsVideoMuted] = React.useState(true);
 
     // Hardcoded products for catalog based on the screenshot
     const products = [
@@ -149,6 +150,31 @@ const Home: React.FC = () => {
             </header>
 
             <main className="max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
+                {/* Intro Video */}
+                <div className="max-w-4xl mx-auto mb-12 px-4">
+                    <div className="relative rounded-2xl overflow-hidden shadow-xl aspect-video bg-slate-200 group">
+                        <video
+                            src="/intro.mp4"
+                            autoPlay
+                            loop
+                            muted={isVideoMuted}
+                            playsInline
+                            className="w-full h-full object-cover"
+                        />
+                        <button
+                            onClick={() => setIsVideoMuted(!isVideoMuted)}
+                            className="absolute bottom-4 right-4 bg-slate-900/60 hover:bg-slate-900/80 backdrop-blur-md text-white w-10 h-10 rounded-full flex items-center justify-center transition-all opacity-0 group-hover:opacity-100"
+                            title={isVideoMuted ? "Unmute Video" : "Mute Video"}
+                        >
+                            {isVideoMuted ? (
+                                <i className="fa-solid fa-volume-xmark"></i>
+                            ) : (
+                                <i className="fa-solid fa-volume-high"></i>
+                            )}
+                        </button>
+                    </div>
+                </div>
+
                 {/* Main Category Tabs */}
                 <div className="flex justify-center max-w-4xl mx-auto mb-10 px-4">
                     <div className="flex flex-row flex-nowrap bg-slate-100 rounded-lg p-1 w-full shadow-inner relative z-10 overflow-x-auto select-none gap-2 md:gap-0 snap-x hide-scrollbar">
