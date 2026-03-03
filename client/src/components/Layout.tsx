@@ -23,12 +23,10 @@ const Layout: React.FC = () => {
       {/* Sidebar (Desktop) */}
       <aside className="hidden md:flex w-64 bg-slate-900 text-white flex-shrink-0 flex-col relative z-20 shadow-xl">
         <div className="p-6 shrink-0 border-b border-slate-800">
-          <h1 className="text-lg font-bold flex items-center gap-2">
-            <span className="bg-blue-600 rounded-lg flex items-center justify-center w-8 h-8 shrink-0 shadow-md shadow-blue-500/20">
-              <span className="text-sm font-black tracking-tighter text-white">SE</span>
-            </span>
+          <Link to="/" className="text-lg font-bold flex items-center gap-2 hover:opacity-90 transition-opacity">
+            <img src="/logo.png" alt={`${APP_NAME} Logo`} className="h-10 sm:h-12 w-auto object-contain drop-shadow-sm shrink-0" />
             <span className="tracking-tight leading-tight" title={APP_NAME}>{APP_NAME}</span>
-          </h1>
+          </Link>
         </div>
         <nav className="mt-4 px-4 space-y-1 overflow-y-auto flex-1">
           {navItems.map((item) => (
@@ -83,12 +81,10 @@ const Layout: React.FC = () => {
       <main className="flex-1 flex flex-col min-w-0 overflow-y-auto bg-slate-50 pb-[68px] md:pb-0">
         {/* Mobile Header */}
         <header className="h-14 md:h-16 shrink-0 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-4 md:px-6 sticky top-0 z-30 transition-shadow shadow-sm">
-          <div className="flex items-center md:hidden gap-3">
-            <span className="bg-blue-600 rounded-lg flex items-center justify-center w-8 h-8 shrink-0 shadow-md shadow-blue-500/20">
-              <span className="text-sm font-black tracking-tighter text-white">SE</span>
-            </span>
+          <Link to="/" className="flex items-center md:hidden gap-3 hover:opacity-90 transition-opacity">
+            <img src="/logo.png" alt={`${APP_NAME} Logo`} className="h-8 sm:h-10 w-auto object-contain drop-shadow-sm shrink-0" />
             <h1 className="text-base font-bold text-slate-800 truncate pr-2">{APP_NAME}</h1>
-          </div>
+          </Link>
           <div className="hidden md:flex items-center gap-2">
             <span className="text-slate-500">Welcome back, </span>
             <span className="font-semibold text-slate-800">{user?.email}</span>

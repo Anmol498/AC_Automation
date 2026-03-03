@@ -53,8 +53,8 @@ const Login: React.FC = () => {
           <div className="absolute top-0 right-0 p-4 opacity-10">
             <i className="fa-solid fa-snowflake text-6xl rotate-12"></i>
           </div>
-          <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4 backdrop-blur-sm border border-white/30">
-            <span className="text-3xl font-black tracking-tighter text-white">SE</span>
+          <div className="w-32 h-32 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl border-2 border-white/20 p-2 backdrop-blur-sm shadow-black/10">
+            <img src="/logo.png" alt={`${APP_NAME} Logo`} className="w-full h-full object-contain" />
           </div>
           <h2 className="text-2xl font-bold tracking-tight">{APP_NAME}</h2>
           <p className="text-blue-100 mt-2 text-sm font-medium">Service & Installation Portal</p>

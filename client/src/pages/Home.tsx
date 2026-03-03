@@ -141,12 +141,10 @@ const Home: React.FC = () => {
         <div className="min-h-screen bg-white font-sans text-slate-800">
             {/* Header / Navigation Bar Placeholder */}
             <header className="border-b border-slate-200 py-4 px-6 flex flex-wrap justify-between items-center gap-y-4 bg-white sticky top-0 z-50">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-                        <span className="text-xl font-black text-white">SE</span>
-                    </div>
+                <Link to="/" className="flex items-center gap-3 hover:opacity-90 transition-opacity">
+                    <img src="/logo.png" alt={`${APP_NAME} Logo`} className="h-10 sm:h-12 w-auto object-contain drop-shadow-sm" />
                     <span className="font-bold text-xl tracking-tight text-slate-900">{APP_NAME}</span>
-                </div>
+                </Link>
                 <div>
                     {isAuthenticated ? (
                         <Link to="/dashboard" className="w-10 h-10 flex items-center justify-center bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white rounded-lg transition-all" title="Dashboard">
@@ -158,7 +156,7 @@ const Home: React.FC = () => {
                         </Link>
                     )}
                 </div>
-            </header>
+            </header >
 
             <main className="max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
                 {/* Main Category Tabs */}
@@ -350,33 +348,33 @@ const Home: React.FC = () => {
                     </>
                 ) : mainTab === 'vrf' ? (
                     <div className="text-center py-8 md:py-24 bg-slate-50 rounded-2xl border border-slate-100 shadow-inner mx-auto max-w-5xl mt-8">
-                        <div className="flex flex-col items-center justify-center gap-4 mb-6 md:mb-8 px-4">
-                            <button
-                                onClick={() => setShowPhonePopup(true)}
-                                className="inline-flex items-center justify-center gap-2 px-6 md:px-10 py-4 md:py-5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-[0_10px_20px_rgba(37,99,235,0.2)] hover:shadow-[0_15px_30px_rgba(37,99,235,0.3)] hover:-translate-y-1 transition-all active:scale-95 text-base md:text-lg w-full sm:w-auto"
-                            >
-                                <i className="fa-solid fa-paper-plane mr-1 scale-110"></i>
-                                Get your quotation
-                            </button>
+                        <div className="flex flex-col md:flex-row items-center justify-center gap-4 mb-6 md:mb-8 px-4">
                             <a
                                 href="/City-Multi.pdf"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="md:hidden inline-flex items-center justify-center gap-2 px-6 py-4 bg-white border-2 border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 font-bold rounded-xl shadow-sm hover:shadow-md transition-all active:scale-95 text-base w-full sm:w-auto"
+                                className="flex md:hidden items-center justify-center gap-2 px-6 md:px-10 py-4 md:py-5 bg-white text-blue-600 border-2 border-blue-600 hover:bg-blue-50 font-bold rounded-xl shadow-[0_10px_20px_rgba(37,99,235,0.1)] hover:shadow-[0_15px_30px_rgba(37,99,235,0.2)] hover:-translate-y-1 transition-all active:scale-95 text-base md:text-lg w-full md:w-auto"
                             >
-                                <i className="fa-solid fa-file-pdf text-red-500 mr-1 scale-110"></i>
-                                View Catalog
+                                <i className="fa-solid fa-file-pdf mr-1 scale-110"></i>
+                                View VRF
                             </a>
+                            <button
+                                onClick={() => setShowPhonePopup(true)}
+                                className="inline-flex items-center justify-center gap-2 px-6 md:px-10 py-4 md:py-5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-[0_10px_20px_rgba(37,99,235,0.2)] hover:shadow-[0_15px_30px_rgba(37,99,235,0.3)] hover:-translate-y-1 transition-all active:scale-95 text-base md:text-lg w-full md:w-auto"
+                            >
+                                <i className="fa-solid fa-paper-plane mr-1 scale-110"></i>
+                                Get your Quotation
+                            </button>
                         </div>
 
-                        {/* Desktop PDF Viewer */}
-                        <div className="w-full px-2 md:px-8 hidden md:block">
+                        <div className="w-full mt-4">
                             <div
-                                className="bg-white p-1 md:p-2 rounded-xl md:rounded-2xl shadow-xl border border-slate-200 relative w-full h-[800px] lg:h-[1100px]"
+                                className="bg-slate-100 shadow-xl border-y border-slate-200 overflow-hidden relative w-full aspect-[1/1.414] max-h-[85vh]"
+                                style={{ WebkitOverflowScrolling: 'touch' }}
                             >
                                 <iframe
-                                    src="/City-Multi.pdf#view=FitH"
-                                    className="w-full h-full rounded-lg md:rounded-xl border-0"
+                                    src="/City-Multi.pdf#view=FitV"
+                                    className="absolute inset-0 w-full h-full border-0 block"
                                     title="VRF City Multi PDF"
                                 />
                             </div>
@@ -391,47 +389,49 @@ const Home: React.FC = () => {
             </footer>
 
             {/* Phone Enquiry Modal */}
-            {showPhonePopup && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={() => setShowPhonePopup(false)}>
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 text-center animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-                        <div className="w-20 h-20 bg-blue-600/10 rounded-full flex items-center justify-center mx-auto mb-6 text-blue-600 shadow-inner">
-                            <span className="material-icons-outlined text-4xl">phone_in_talk</span>
+            {
+                showPhonePopup && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={() => setShowPhonePopup(false)}>
+                        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 text-center animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+                            <div className="w-20 h-20 bg-blue-600/10 rounded-full flex items-center justify-center mx-auto mb-6 text-blue-600 shadow-inner">
+                                <span className="material-icons-outlined text-4xl">phone_in_talk</span>
+                            </div>
+                            <h3 className="text-2xl font-display font-bold text-slate-900 mb-2">Sales & Enquiry</h3>
+                            <p className="text-slate-500 mb-8 text-sm px-4">Our experts are ready to help you find the perfect cooling solution.</p>
+
+                            <a href="tel:09592292292" className="block w-full bg-slate-50 border border-slate-200 hover:border-blue-600/50 hover:bg-blue-60/5 rounded-2xl p-4 transition-all mb-4 group cursor-pointer shadow-sm hover:shadow-md">
+                                <div className="text-3xl font-bold tracking-wider text-slate-800 group-hover:text-blue-600 transition-colors flex items-center justify-center gap-2">
+                                    <span className="material-icons-outlined text-blue-600">phone</span>
+                                    95922 92292
+                                </div>
+                                <div className="text-xs font-bold text-slate-400 mt-2 uppercase tracking-widest flex items-center justify-center gap-1">
+                                    <span className="material-icons-outlined text-[14px]">touch_app</span>
+                                    Tap to Call
+                                </div>
+                            </a>
+
+                            <a href="https://maps.google.com/?q=Mitsubishi+Electric+-+Satguru+Engineers,+SCF-29+PH-2,+Sahibzada+Ajit+Singh+Nagar,+Punjab+160055" target="_blank" rel="noopener noreferrer" className="block w-full bg-slate-50 border border-slate-200 hover:border-blue-500/50 hover:bg-blue-50/50 rounded-2xl p-4 transition-all mb-6 group cursor-pointer shadow-sm hover:shadow-md">
+                                <div className="text-sm font-bold tracking-tight text-slate-800 group-hover:text-blue-600 transition-colors flex items-start text-left gap-3">
+                                    <span className="material-icons-outlined text-blue-500 shrink-0 mt-0.5">place</span>
+                                    <span>Mitsubishi Electric - Satguru Engineers, SCF-29 PH-2, Sahibzada Ajit Singh Nagar, Punjab 160055</span>
+                                </div>
+                                <div className="text-xs font-bold text-slate-400 mt-3 uppercase tracking-widest flex items-center justify-center gap-1">
+                                    <span className="material-icons-outlined text-[14px]">directions</span>
+                                    Open in Maps
+                                </div>
+                            </a>
+
+                            <button
+                                onClick={() => setShowPhonePopup(false)}
+                                className="w-full py-4 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors rounded-xl hover:bg-slate-100"
+                            >
+                                Close
+                            </button>
                         </div>
-                        <h3 className="text-2xl font-display font-bold text-slate-900 mb-2">Sales & Enquiry</h3>
-                        <p className="text-slate-500 mb-8 text-sm px-4">Our experts are ready to help you find the perfect cooling solution.</p>
-
-                        <a href="tel:09592292292" className="block w-full bg-slate-50 border border-slate-200 hover:border-blue-600/50 hover:bg-blue-60/5 rounded-2xl p-4 transition-all mb-4 group cursor-pointer shadow-sm hover:shadow-md">
-                            <div className="text-3xl font-bold tracking-wider text-slate-800 group-hover:text-blue-600 transition-colors flex items-center justify-center gap-2">
-                                <span className="material-icons-outlined text-blue-600">phone</span>
-                                95922 92292
-                            </div>
-                            <div className="text-xs font-bold text-slate-400 mt-2 uppercase tracking-widest flex items-center justify-center gap-1">
-                                <span className="material-icons-outlined text-[14px]">touch_app</span>
-                                Tap to Call
-                            </div>
-                        </a>
-
-                        <a href="https://maps.google.com/?q=Mitsubishi+Electric+-+Satguru+Engineers,+SEF-29+PH-2,+Sahibzada+Ajit+Singh+Nagar,+Punjab+160055" target="_blank" rel="noopener noreferrer" className="block w-full bg-slate-50 border border-slate-200 hover:border-blue-500/50 hover:bg-blue-50/50 rounded-2xl p-4 transition-all mb-6 group cursor-pointer shadow-sm hover:shadow-md">
-                            <div className="text-sm font-bold tracking-tight text-slate-800 group-hover:text-blue-600 transition-colors flex items-start text-left gap-3">
-                                <span className="material-icons-outlined text-blue-500 shrink-0 mt-0.5">place</span>
-                                <span>Mitsubishi Electric - Satguru Engineers, SEF-29 PH-2, Sahibzada Ajit Singh Nagar, Punjab 160055</span>
-                            </div>
-                            <div className="text-xs font-bold text-slate-400 mt-3 uppercase tracking-widest flex items-center justify-center gap-1">
-                                <span className="material-icons-outlined text-[14px]">directions</span>
-                                Open in Maps
-                            </div>
-                        </a>
-
-                        <button
-                            onClick={() => setShowPhonePopup(false)}
-                            className="w-full py-4 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors rounded-xl hover:bg-slate-100"
-                        >
-                            Close
-                        </button>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 };
 

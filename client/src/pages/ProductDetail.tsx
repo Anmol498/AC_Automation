@@ -751,10 +751,10 @@ const ProductDetail: React.FC = () => {
         <div className="bg-background-light text-slate-800 min-h-screen transition-colors duration-300 font-sans">
             <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-xl shadow-md shadow-blue-500/20">SE</div>
+                    <Link to="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
+                        <img src="/logo.png" alt={`${APP_NAME} Logo`} className="h-10 sm:h-12 w-auto object-contain drop-shadow-sm" />
                         <span className="font-display font-bold text-xl tracking-tight text-slate-900 uppercase">{APP_NAME}</span>
-                    </div>
+                    </Link>
                     <div className="flex items-center gap-4">
                         <Link className="flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-primary transition-colors" to="/">
                             <span className="material-icons-outlined text-[20px]">arrow_back</span>
@@ -1257,10 +1257,10 @@ const ProductDetail: React.FC = () => {
                             </div>
                         </a>
 
-                        <a href="https://maps.google.com/?q=Mitsubishi+Electric+-+Satguru+Engineers,+SEF-29+PH-2,+Sahibzada+Ajit+Singh+Nagar,+Punjab+160055" target="_blank" rel="noopener noreferrer" className="block w-full bg-slate-50 border border-slate-200 hover:border-blue-500/50 hover:bg-blue-50/50 rounded-2xl p-4 transition-all mb-6 group cursor-pointer shadow-sm hover:shadow-md">
+                        <a href="https://maps.google.com/?q=Mitsubishi+Electric+-+Satguru+Engineers,+SCF-29+PH-2,+Sahibzada+Ajit+Singh+Nagar,+Punjab+160055" target="_blank" rel="noopener noreferrer" className="block w-full bg-slate-50 border border-slate-200 hover:border-blue-500/50 hover:bg-blue-50/50 rounded-2xl p-4 transition-all mb-6 group cursor-pointer shadow-sm hover:shadow-md">
                             <div className="text-sm font-bold tracking-tight text-slate-800 group-hover:text-blue-600 transition-colors flex items-start text-left gap-3">
                                 <span className="material-icons-outlined text-blue-500 shrink-0 mt-0.5">place</span>
-                                <span>Mitsubishi Electric - Satguru Engineers, SEF-29 PH-2, Sahibzada Ajit Singh Nagar, Punjab 160055</span>
+                                <span>Mitsubishi Electric - Satguru Engineers, SCF-29 PH-2, Sahibzada Ajit Singh Nagar, Punjab 160055</span>
                             </div>
                             <div className="text-xs font-bold text-slate-400 mt-3 uppercase tracking-widest flex items-center justify-center gap-1">
                                 <span className="material-icons-outlined text-[14px]">directions</span>
