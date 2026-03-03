@@ -358,12 +358,21 @@ const Home: React.FC = () => {
                                 <i className="fa-solid fa-paper-plane mr-1 scale-110"></i>
                                 Get your quotation
                             </button>
+                            <a
+                                href="/City-Multi.pdf"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="md:hidden inline-flex items-center justify-center gap-2 px-6 py-4 bg-white border-2 border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 font-bold rounded-xl shadow-sm hover:shadow-md transition-all active:scale-95 text-base w-full sm:w-auto"
+                            >
+                                <i className="fa-solid fa-file-pdf text-red-500 mr-1 scale-110"></i>
+                                View Catalog
+                            </a>
                         </div>
 
-                        <div className="w-full px-2 md:px-8">
+                        {/* Desktop PDF Viewer */}
+                        <div className="w-full px-2 md:px-8 hidden md:block">
                             <div
-                                className="bg-white p-1 md:p-2 rounded-xl md:rounded-2xl shadow-xl border border-slate-200 overflow-y-auto relative w-full h-[400px] md:h-[700px]"
-                                style={{ WebkitOverflowScrolling: 'touch' }}
+                                className="bg-white p-1 md:p-2 rounded-xl md:rounded-2xl shadow-xl border border-slate-200 relative w-full h-[800px] lg:h-[1100px]"
                             >
                                 <iframe
                                     src="/City-Multi.pdf#view=FitH"
