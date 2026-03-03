@@ -250,7 +250,7 @@ const InventoryManagement: React.FC = () => {
     };
 
     const filteredItems = items.filter(item => item.brand === activeTab);
-    const lowStockItems = enableLowStockAlert ? items.filter(i => (i.quantity - i.soldQuantity) <= lowStockThreshold) : [];
+    const lowStockItems = enableLowStockAlert ? items.filter(i => i.quantity <= lowStockThreshold) : [];
     const totalLowStockCount = lowStockItems.length;
 
     if (isLoading) return <div className="p-6">Loading inventory...</div>;
@@ -373,7 +373,7 @@ const InventoryManagement: React.FC = () => {
                                         </td>
                                         <td className="flex sm:table-cell justify-between items-center px-4 sm:px-2 py-2 sm:py-3 border-b border-slate-50 sm:border-none sm:text-center">
                                             <span className="sm:hidden font-semibold text-slate-500 text-[10px] uppercase w-1/3">Qty</span>
-                                            <span className={`inline-block px-2 py-1 rounded-full text-[10px] sm:text-xs font-bold whitespace-nowrap text-right sm:text-center ${(item.quantity - item.soldQuantity) <= 5 ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                                            <span className={`inline-block px-2 py-1 rounded-full text-[10px] sm:text-xs font-bold whitespace-nowrap text-right sm:text-center ${item.quantity <= 5 ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
                                                 {item.quantity}
                                             </span>
                                         </td>
@@ -610,7 +610,8 @@ const InventoryManagement: React.FC = () => {
                                     </thead>
                                     <tbody className="divide-y divide-slate-100 bg-white">
                                         {lowStockItems.map(item => {
-                                            const available = item.quantity - item.soldQuantity;
+                                            const available = item.quantity;
+                                            const brought = item.quantity + item.soldQuantity;
                                             return (
                                                 <tr key={item.id} className="hover:bg-red-50/30 transition-colors">
                                                     <td className="px-6 py-4 whitespace-nowrap">
@@ -623,7 +624,7 @@ const InventoryManagement: React.FC = () => {
                                                         {item.type} {item.tonnage ? `· ${item.tonnage}` : ''}
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-right text-slate-500 text-xs">
-                                                        {item.quantity} brought - {item.soldQuantity} sold
+                                                        {brought} brought - {item.soldQuantity} sold
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-center">
                                                         <span className="inline-block px-3 py-1 bg-red-100 text-red-700 font-bold rounded-full border border-red-200 shadow-sm">
