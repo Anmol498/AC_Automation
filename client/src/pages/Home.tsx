@@ -192,36 +192,12 @@ const Home: React.FC = () => {
                 </div>
 
                 {/* Hero Title Section */}
-                <div className="text-center mb-12" ref={sectionRef}>
-                    <h1 className="text-4xl md:text-5xl font-bold mb-4 text-slate-900">
-                        {mainTab === 'split' ? 'Split Air Conditioners' : mainTab === 'pac' ? 'PAC Air Conditioners' : 'VRF Systems'}
-                    </h1>
-                    <p className="text-lg text-slate-600">Range Of Most Powerful Yet Elegant Air Conditioners</p>
-                </div>
-
-                {mainTab === 'vrf' && (
-                    <div className="max-w-4xl mx-auto mb-12 px-4 animate-in fade-in zoom-in-95 duration-500">
-                        <div className="w-full mx-auto overflow-hidden rounded-2xl shadow-xl border border-slate-200 bg-black aspect-video relative group">
-                            <video
-                                className="w-full h-full object-cover"
-                                autoPlay
-                                loop
-                                muted={isVideoMuted}
-                                playsInline
-                                src="/vrf.mp4"
-                            />
-                            <button
-                                onClick={() => setIsVideoMuted(!isVideoMuted)}
-                                className="absolute bottom-4 right-4 bg-slate-900/60 hover:bg-slate-900/80 backdrop-blur-md text-white w-10 h-10 rounded-full flex items-center justify-center transition-all opacity-0 group-hover:opacity-100"
-                                title={isVideoMuted ? "Unmute Video" : "Mute Video"}
-                            >
-                                {isVideoMuted ? (
-                                    <i className="fa-solid fa-volume-xmark"></i>
-                                ) : (
-                                    <i className="fa-solid fa-volume-high"></i>
-                                )}
-                            </button>
-                        </div>
+                {mainTab === 'split' && (
+                    <div className="text-center mb-12" ref={sectionRef}>
+                        <h1 className="text-4xl md:text-5xl font-bold mb-4 text-slate-900">
+                            Split Air Conditioners
+                        </h1>
+                        <p className="text-lg text-slate-600">Range Of Most Powerful Yet Elegant Air Conditioners</p>
                     </div>
                 )}
 
@@ -374,15 +350,24 @@ const Home: React.FC = () => {
                     </>
                 ) : mainTab === 'vrf' ? (
                     <div className="text-center py-24 bg-white rounded-2xl border border-slate-100 shadow-sm mx-auto max-w-3xl">
-                        <h2 className="text-3xl font-black text-slate-800 mb-8 tracking-tight">Get your quotation Now</h2>
-
-                        <button
-                            onClick={() => setShowPhonePopup(true)}
-                            className="inline-flex items-center gap-2 px-10 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-[0_10px_20px_rgba(37,99,235,0.2)] hover:shadow-[0_15px_30px_rgba(37,99,235,0.3)] hover:-translate-y-1 transition-all active:scale-95 mx-auto text-lg"
-                        >
-                            <i className="fa-solid fa-paper-plane mr-1 scale-110"></i>
-                            Enquire now
-                        </button>
+                        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                            <button
+                                onClick={() => setShowPhonePopup(true)}
+                                className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-[0_10px_20px_rgba(37,99,235,0.2)] hover:shadow-[0_15px_30px_rgba(37,99,235,0.3)] hover:-translate-y-1 transition-all active:scale-95 text-lg w-full sm:w-auto"
+                            >
+                                <i className="fa-solid fa-paper-plane mr-1 scale-110"></i>
+                                Get your quotation
+                            </button>
+                            <a
+                                href="/City-Multi.pdf"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white border-2 border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 font-bold rounded-xl shadow-sm hover:shadow-md hover:-translate-y-1 transition-all active:scale-95 text-lg w-full sm:w-auto"
+                            >
+                                <i className="fa-solid fa-file-pdf text-red-500 mr-1 scale-110"></i>
+                                View VRF
+                            </a>
+                        </div>
                     </div>
                 ) : null}
             </main>
