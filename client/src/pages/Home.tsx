@@ -369,12 +369,12 @@ const Home: React.FC = () => {
 
                         <div className="w-full mt-4">
                             <div
-                                className="bg-slate-100 shadow-xl border-y border-slate-200 overflow-hidden relative w-full aspect-[1/1.414] max-h-[85vh]"
-                                style={{ WebkitOverflowScrolling: 'touch' }}
+                                className="bg-slate-100 shadow-xl border-y border-slate-200 w-full h-[60vh] md:h-[85vh]"
+                                style={{ WebkitOverflowScrolling: 'touch', overflowY: 'auto' }}
                             >
                                 <iframe
-                                    src="/City-Multi.pdf#view=FitV"
-                                    className="absolute inset-0 w-full h-full border-0 block"
+                                    src="/City-Multi.pdf"
+                                    className="w-full h-full border-0"
                                     title="VRF City Multi PDF"
                                 />
                             </div>
