@@ -349,24 +349,25 @@ const Home: React.FC = () => {
                         </div>
                     </>
                 ) : mainTab === 'vrf' ? (
-                    <div className="text-center py-24 bg-white rounded-2xl border border-slate-100 shadow-sm mx-auto max-w-3xl">
-                        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                    <div className="text-center py-8 md:py-24 bg-slate-50 rounded-2xl border border-slate-100 shadow-inner mx-auto max-w-5xl mt-8">
+                        <div className="flex flex-col items-center justify-center gap-4 mb-6 md:mb-8 px-4">
                             <button
                                 onClick={() => setShowPhonePopup(true)}
-                                className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-[0_10px_20px_rgba(37,99,235,0.2)] hover:shadow-[0_15px_30px_rgba(37,99,235,0.3)] hover:-translate-y-1 transition-all active:scale-95 text-lg w-full sm:w-auto"
+                                className="inline-flex items-center justify-center gap-2 px-6 md:px-10 py-4 md:py-5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-[0_10px_20px_rgba(37,99,235,0.2)] hover:shadow-[0_15px_30px_rgba(37,99,235,0.3)] hover:-translate-y-1 transition-all active:scale-95 text-base md:text-lg w-full sm:w-auto"
                             >
                                 <i className="fa-solid fa-paper-plane mr-1 scale-110"></i>
                                 Get your quotation
                             </button>
-                            <a
-                                href="/City-Multi.pdf"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white border-2 border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 font-bold rounded-xl shadow-sm hover:shadow-md hover:-translate-y-1 transition-all active:scale-95 text-lg w-full sm:w-auto"
-                            >
-                                <i className="fa-solid fa-file-pdf text-red-500 mr-1 scale-110"></i>
-                                View VRF
-                            </a>
+                        </div>
+
+                        <div className="w-full px-2 md:px-8">
+                            <div className="bg-white p-1 md:p-2 rounded-xl md:rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+                                <iframe
+                                    src="/City-Multi.pdf#view=FitH"
+                                    className="w-full h-[400px] md:h-[700px] rounded-lg md:rounded-xl border-0"
+                                    title="VRF City Multi PDF"
+                                />
+                            </div>
                         </div>
                     </div>
                 ) : null}
