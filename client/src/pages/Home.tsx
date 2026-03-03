@@ -369,14 +369,19 @@ const Home: React.FC = () => {
 
                         <div className="w-full mt-4">
                             <div
-                                className="bg-slate-100 shadow-xl border-y border-slate-200 w-full h-[60vh] md:h-[85vh]"
-                                style={{ WebkitOverflowScrolling: 'touch', overflowY: 'auto' }}
+                                className="bg-slate-100 shadow-xl border-y border-slate-200 w-full h-[60vh] md:h-[85vh] relative overflow-auto"
+                                style={{ WebkitOverflowScrolling: 'touch' }}
                             >
-                                <iframe
-                                    src="/City-Multi.pdf"
-                                    className="w-full h-full border-0"
-                                    title="VRF City Multi PDF"
-                                />
+                                <object
+                                    data="/City-Multi.pdf#view=FitV"
+                                    type="application/pdf"
+                                    className="absolute inset-0 w-full h-full border-0 block"
+                                >
+                                    <div className="flex flex-col items-center justify-center h-full p-4 text-center">
+                                        <p className="text-slate-600 mb-4 text-sm font-medium">Your device might not support viewing inline PDFs.</p>
+                                        <a href="/City-Multi.pdf" target="_blank" rel="noopener noreferrer" className="px-6 py-3 bg-blue-600 text-white rounded-xl shadow-md font-bold text-sm">Download / View Native PDF</a>
+                                    </div>
+                                </object>
                             </div>
                         </div>
                     </div>
