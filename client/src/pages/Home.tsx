@@ -192,10 +192,10 @@ const Home: React.FC = () => {
                 </div>
 
                 {/* Hero Title Section */}
-                {mainTab === 'split' && (
+                {mainTab !== 'split' && (
                     <div className="text-center mb-12" ref={sectionRef}>
                         <h1 className="text-4xl md:text-5xl font-bold mb-4 text-slate-900">
-                            Split Air Conditioners
+                            {mainTab === 'pac' ? 'PAC Air Conditioners' : 'VRF Systems'}
                         </h1>
                         <p className="text-lg text-slate-600">Range Of Most Powerful Yet Elegant Air Conditioners</p>
                     </div>
