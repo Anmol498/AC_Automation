@@ -42,6 +42,7 @@ const InventoryManagement: React.FC = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
     const [addQtyAmount, setAddQtyAmount] = useState<number>(0);
+    const [isEditingFullDetails, setIsEditingFullDetails] = useState(false);
 
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
     const [historyLogs, setHistoryLogs] = useState<HistoryRecord[]>([]);
@@ -107,6 +108,7 @@ const InventoryManagement: React.FC = () => {
         setIsModalOpen(false);
         setEditingItem(null);
         setAddQtyAmount(0);
+        setIsEditingFullDetails(false);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -118,19 +120,23 @@ const InventoryManagement: React.FC = () => {
             const headers = { Authorization: `Bearer ${token}` };
 
             if (editingItem) {
-                // When editing, we ONLY update the quantity by adding the new amount
-                const updatedData = {
-                    modelName: editingItem.modelName,
-                    brand: editingItem.brand,
-                    type: editingItem.type,
-                    tonnage: editingItem.tonnage,
-                    starRating: editingItem.starRating,
-                    quantity: editingItem.quantity + addQtyAmount,
-                    soldQuantity: editingItem.soldQuantity,
-                    ourPrice: editingItem.ourPrice,
-                    salePrice: editingItem.salePrice
-                };
-                await axios.put(`${apiUrl}/${editingItem.id}`, updatedData, { headers });
+                if (isEditingFullDetails) {
+                    await axios.put(`${apiUrl}/${editingItem.id}`, formData, { headers });
+                } else {
+                    // When editing just stock, we ONLY update the quantity by adding the new amount
+                    const updatedData = {
+                        modelName: editingItem.modelName,
+                        brand: editingItem.brand,
+                        type: editingItem.type,
+                        tonnage: editingItem.tonnage,
+                        starRating: editingItem.starRating,
+                        quantity: editingItem.quantity + addQtyAmount,
+                        soldQuantity: editingItem.soldQuantity,
+                        ourPrice: editingItem.ourPrice,
+                        salePrice: editingItem.salePrice
+                    };
+                    await axios.put(`${apiUrl}/${editingItem.id}`, updatedData, { headers });
+                }
             } else {
                 await axios.post(apiUrl, formData, { headers });
             }
@@ -388,10 +394,10 @@ const InventoryManagement: React.FC = () => {
                                             <span className="sm:hidden font-semibold text-slate-500 text-[10px] uppercase text-left w-1/3">Actions</span>
                                             <div className="flex flex-row justify-end gap-1 w-full lg:w-auto ml-auto">
                                                 <button onClick={() => handleSold(item)} title="Mark Sold" className="text-emerald-600 hover:text-emerald-800 p-1.5 rounded-lg hover:bg-emerald-50 transition-colors bg-emerald-50 sm:bg-transparent border border-emerald-200 sm:border-none shadow-sm sm:shadow-none flex items-center justify-center w-8 h-8">
-                                                    <span className="material-icons-outlined text-[18px]">check_circle</span>
+                                                    <span className="material-icons-outlined text-[18px]">remove</span>
                                                 </button>
                                                 <button onClick={() => openModal(item)} title="Update Stock" className="text-blue-600 hover:text-blue-800 p-1.5 rounded-lg hover:bg-blue-50 transition-colors bg-blue-50 sm:bg-transparent border border-blue-200 sm:border-none shadow-sm sm:shadow-none flex items-center justify-center w-8 h-8">
-                                                    <span className="material-icons-outlined text-[18px]">edit</span>
+                                                    <span className="material-icons-outlined text-[18px]">add</span>
                                                 </button>
                                                 <button onClick={() => handleDelete(item.id)} title="Delete" className="text-red-600 hover:text-red-800 p-1.5 rounded-lg hover:bg-red-50 transition-colors bg-red-50 sm:bg-transparent border border-red-200 sm:border-none shadow-sm sm:shadow-none flex items-center justify-center w-8 h-8">
                                                     <span className="material-icons-outlined text-[18px]">delete</span>
@@ -411,15 +417,42 @@ const InventoryManagement: React.FC = () => {
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
                         <div className="p-6 border-b border-slate-100 flex justify-between items-center shrink-0">
-                            <h2 className="text-xl font-bold text-slate-800">{editingItem ? 'Update Stock Options' : 'Add Product'}</h2>
-                            <button onClick={closeModal} className="text-slate-400 hover:text-slate-600 transition-colors rounded-lg p-2 hover:bg-slate-100">
-                                <i className="fa-solid fa-xmark text-lg"></i>
-                            </button>
+                            <h2 className="text-xl font-bold text-slate-800">
+                                {isEditingFullDetails ? 'Edit Product Details' : (editingItem ? 'Update Stock Options' : 'Add Product')}
+                            </h2>
+                            <div className="flex items-center gap-2">
+                                {editingItem && !isEditingFullDetails && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setIsEditingFullDetails(true);
+                                            setFormData({
+                                                modelName: editingItem.modelName,
+                                                brand: editingItem.brand,
+                                                type: editingItem.type,
+                                                tonnage: editingItem.tonnage,
+                                                starRating: editingItem.starRating,
+                                                quantity: editingItem.quantity,
+                                                soldQuantity: editingItem.soldQuantity,
+                                                ourPrice: editingItem.ourPrice,
+                                                salePrice: editingItem.salePrice
+                                            });
+                                        }}
+                                        className="text-slate-500 hover:text-blue-600 font-semibold px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors text-sm border border-slate-200 hover:border-blue-200 shadow-sm flex items-center gap-2"
+                                    >
+                                        <i className="fa-solid fa-pen text-xs"></i>
+                                        Edit Details
+                                    </button>
+                                )}
+                                <button type="button" onClick={closeModal} className="text-slate-400 hover:text-slate-600 transition-colors rounded-lg p-2 hover:bg-slate-100 flex items-center justify-center">
+                                    <i className="fa-solid fa-xmark text-lg"></i>
+                                </button>
+                            </div>
                         </div>
 
                         <div className="p-6 overflow-y-auto">
                             <form id="inventory-form" onSubmit={handleSubmit} className="space-y-4">
-                                {editingItem ? (
+                                {editingItem && !isEditingFullDetails ? (
                                     <div className="space-y-4">
                                         <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 mb-6">
                                             <h3 className="text-lg font-bold text-slate-800 mb-1">{editingItem.modelName}</h3>
