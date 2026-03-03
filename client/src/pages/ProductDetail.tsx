@@ -8,10 +8,12 @@ const ProductDetail: React.FC = () => {
     const [selectedModel, setSelectedModel] = React.useState(0);
     const [selectedImageIndex, setSelectedImageIndex] = React.useState(0);
     const [showPhonePopup, setShowPhonePopup] = React.useState(false);
+    const [isImageModalOpen, setIsImageModalOpen] = React.useState(false);
 
     React.useEffect(() => {
         setSelectedImageIndex(0);
         setShowPhonePopup(false);
+        setIsImageModalOpen(false);
     }, [id]);
 
     let isAuthenticated = false;
@@ -758,14 +760,6 @@ const ProductDetail: React.FC = () => {
                             <span className="material-icons-outlined text-[20px]">arrow_back</span>
                             Back to Catalog
                         </Link>
-                        {isAuthenticated && (
-                            <>
-                                <div className="h-6 w-px bg-slate-200 mx-2" />
-                                <Link to="/staff" className="bg-primary hover:bg-blue-700 text-white px-5 py-2 rounded-full text-sm font-semibold transition-all shadow-lg shadow-blue-900/20">
-                                    Staff Portal
-                                </Link>
-                            </>
-                        )}
                     </div>
                 </div>
             </nav>
@@ -776,23 +770,48 @@ const ProductDetail: React.FC = () => {
                         <div className="absolute -inset-4 bg-primary/5 rounded-3xl blur-2xl group-hover:bg-primary/10 transition-all" />
                         <img
                             alt={`Sleek Modern Split AC Unit - ${currentModel.idu}`}
-                            className="relative z-10 w-full max-h-[300px] md:max-h-none h-auto drop-shadow-2xl rounded-2xl bg-white p-4 object-contain aspect-square md:aspect-auto mix-blend-multiply"
+                            className="relative z-10 w-full max-h-[300px] md:max-h-none h-auto drop-shadow-2xl rounded-2xl bg-white p-4 object-contain aspect-square md:aspect-auto mix-blend-multiply cursor-pointer hover:scale-[1.02] transition-transform duration-300"
                             src={productImages[selectedImageIndex] || productImages[0]}
+                            onClick={() => setIsImageModalOpen(true)}
                         />
                         {productImages.length > 1 && (
-                            <div className="relative z-10 flex gap-3 mt-6 overflow-x-auto pb-4 snap-x hide-scrollbar w-full">
-                                {productImages.map((img, idx) => (
-                                    <button
-                                        key={idx}
-                                        onClick={() => setSelectedImageIndex(idx)}
-                                        className={`snap-center shrink-0 w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-xl bg-white border-2 overflow-hidden transition-all ${selectedImageIndex === idx
-                                            ? 'border-primary ring-4 ring-primary/10 shadow-md'
-                                            : 'border-slate-100 opacity-60 hover:opacity-100 hover:border-slate-300'
-                                            }`}
-                                    >
-                                        <img src={img} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-contain p-2 mix-blend-multiply" />
-                                    </button>
-                                ))}
+                            <div className="relative z-10 flex items-center justify-between gap-3 mt-6 w-full">
+                                <button
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        const container = document.getElementById('thumbnail-scroll-container');
+                                        if (container) container.scrollBy({ left: -200, behavior: 'smooth' });
+                                    }}
+                                    className="shrink-0 w-10 h-10 rounded-full bg-white border border-slate-200 hover:bg-slate-50 hover:text-primary text-slate-500 flex items-center justify-center transition-all shadow-sm hover:shadow hidden sm:flex"
+                                >
+                                    <i className="fa-solid fa-chevron-left text-sm"></i>
+                                </button>
+
+                                <div id="thumbnail-scroll-container" className="flex gap-3 overflow-hidden pb-2 snap-x w-full scroll-smooth px-1 flex-1">
+                                    {productImages.map((img, idx) => (
+                                        <button
+                                            key={idx}
+                                            onClick={() => setSelectedImageIndex(idx)}
+                                            className={`snap-center shrink-0 w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-xl bg-white border-2 overflow-hidden transition-all ${selectedImageIndex === idx
+                                                ? 'border-primary ring-4 ring-primary/10 shadow-md scale-105'
+                                                : 'border-slate-100 opacity-60 hover:opacity-100 hover:border-slate-300'
+                                                }`}
+                                        >
+                                            <img src={img} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-contain p-2 mix-blend-multiply" />
+                                        </button>
+                                    ))}
+                                </div>
+
+                                <button
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        const container = document.getElementById('thumbnail-scroll-container');
+                                        if (container) container.scrollBy({ left: 200, behavior: 'smooth' });
+                                    }}
+                                    className="shrink-0 w-10 h-10 rounded-full bg-white border border-slate-200 hover:bg-slate-50 hover:text-primary text-slate-500 flex items-center justify-center transition-all shadow-sm hover:shadow hidden sm:flex"
+                                >
+                                    <i className="fa-solid fa-chevron-right text-sm"></i>
+                                </button>
                             </div>
                         )}
                     </div>
@@ -1255,6 +1274,51 @@ const ProductDetail: React.FC = () => {
                         >
                             Close
                         </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Full Screen Image Modal */}
+            {isImageModalOpen && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={() => setIsImageModalOpen(false)}>
+                    <button
+                        onClick={() => setIsImageModalOpen(false)}
+                        className="absolute top-6 right-6 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full w-12 h-12 flex items-center justify-center transition-all z-[120]"
+                    >
+                        <i className="fa-solid fa-xmark text-2xl"></i>
+                    </button>
+
+                    <div className="relative flex items-center justify-center w-full max-w-5xl h-full pointer-events-none">
+                        {productImages.length > 1 && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedImageIndex((prev) => (prev === 0 ? productImages.length - 1 : prev - 1));
+                                }}
+                                className="absolute left-4 md:left-12 z-[120] text-white/50 hover:text-white bg-black/50 hover:bg-black/80 rounded-full w-12 h-12 md:w-16 md:h-16 flex items-center justify-center transition-all pointer-events-auto backdrop-blur-sm"
+                            >
+                                <i className="fa-solid fa-chevron-left text-2xl md:text-3xl"></i>
+                            </button>
+                        )}
+
+                        <img
+                            alt={`Enlarged view - ${currentModel.idu}`}
+                            className="max-w-full max-h-[90vh] object-contain drop-shadow-2xl animate-in zoom-in-95 duration-300 bg-white rounded-2xl p-4 sm:p-8 pointer-events-auto"
+                            src={productImages[selectedImageIndex] || productImages[0]}
+                            onClick={e => e.stopPropagation()}
+                        />
+
+                        {productImages.length > 1 && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedImageIndex((prev) => (prev === productImages.length - 1 ? 0 : prev + 1));
+                                }}
+                                className="absolute right-4 md:right-12 z-[120] text-white/50 hover:text-white bg-black/50 hover:bg-black/80 rounded-full w-12 h-12 md:w-16 md:h-16 flex items-center justify-center transition-all pointer-events-auto backdrop-blur-sm"
+                            >
+                                <i className="fa-solid fa-chevron-right text-2xl md:text-3xl"></i>
+                            </button>
+                        )}
                     </div>
                 </div>
             )}
