@@ -56,7 +56,7 @@ const Login: React.FC = () => {
           <div className="w-32 h-32 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl border-2 border-white/20 p-2 backdrop-blur-sm shadow-black/10">
             <img src="/logo.png" alt={`${APP_NAME} Logo`} className="w-full h-full object-contain" />
           </div>
-          <h2 className="text-2xl font-bold tracking-tight">{APP_NAME}</h2>
+          <h2 className="text-xl font-normal tracking-tight uppercase" style={{ fontFamily: "'Open Sans', sans-serif" }}>{APP_NAME}</h2>
           <p className="text-blue-100 mt-2 text-sm font-medium">Service & Installation Portal</p>
         </div>
 

@@ -143,7 +143,7 @@ const Home: React.FC = () => {
             <header className="border-b border-slate-200 py-4 px-6 flex flex-wrap justify-between items-center gap-y-4 bg-white sticky top-0 z-50">
                 <Link to="/" className="flex items-center gap-3 hover:opacity-90 transition-opacity">
                     <img src="/logo.png" alt={`${APP_NAME} Logo`} className="h-10 sm:h-12 w-auto object-contain drop-shadow-sm" />
-                    <span className="font-bold text-xl tracking-tight text-slate-900">{APP_NAME}</span>
+                    <span className="font-normal text-xl sm:text-2xl lg:text-3xl tracking-tight text-slate-900 uppercase" style={{ fontFamily: "'Open Sans', sans-serif" }}>{APP_NAME}</span>
                 </Link>
                 <div>
                     {isAuthenticated ? (

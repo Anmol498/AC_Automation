@@ -753,7 +753,7 @@ const ProductDetail: React.FC = () => {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                     <Link to="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
                         <img src="/logo.png" alt={`${APP_NAME} Logo`} className="h-10 sm:h-12 w-auto object-contain drop-shadow-sm" />
-                        <span className="font-display font-bold text-xl tracking-tight text-slate-900 uppercase">{APP_NAME}</span>
+                        <span className="font-normal text-xl sm:text-2xl tracking-tight text-slate-900 uppercase" style={{ fontFamily: "'Open Sans', sans-serif" }}>{APP_NAME}</span>
                     </Link>
                     <div className="flex items-center gap-4">
                         <Link className="flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-primary transition-colors" to="/">
@@ -1222,7 +1222,7 @@ const ProductDetail: React.FC = () => {
                     <div className="flex flex-col md:flex-row items-center justify-between gap-8">
                         <div className="flex items-center gap-2 grayscale opacity-60">
                             <div className="w-8 h-8 bg-slate-400 rounded-md flex items-center justify-center text-white font-bold text-sm">SE</div>
-                            <span className="font-display font-bold text-sm tracking-tight text-slate-600 uppercase">{APP_NAME}</span>
+                            <span className="font-normal text-xs tracking-tight text-slate-600 uppercase" style={{ fontFamily: "'Open Sans', sans-serif" }}>{APP_NAME}</span>
                         </div>
                         <p className="text-sm text-slate-500">
                             © {new Date().getFullYear()} {APP_NAME}. All rights reserved. Precision cooling solutions.
