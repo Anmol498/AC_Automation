@@ -148,7 +148,9 @@ const corsOptions = {
     "http://localhost:5173",
     "http://localhost:3000",
     "https://ac-automation-one.vercel.app",
-    "https://satguruengineers.vercel.app"
+    "https://satguruengineers.vercel.app",
+    "https://satguruengineers.com",
+    "https://www.satguruengineers.com"
   ],
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
