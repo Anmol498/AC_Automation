@@ -16,6 +16,8 @@ const Layout: React.FC = () => {
   if (user?.role !== UserRole.TECHNICIAN) {
     navItems.splice(1, 0, { path: '/customers', label: 'Customers', icon: 'fa-users' });
     navItems.push({ path: '/inventory', label: 'Inventory', icon: 'fa-boxes-stacked' });
+    navItems.push({ path: '/material', label: 'Material', icon: 'fa-box-open' });
+    navItems.push({ path: '/daily-work', label: 'Daily Work', icon: 'fa-clipboard-list' });
   }
 
   return (
@@ -81,9 +83,9 @@ const Layout: React.FC = () => {
       <main className="flex-1 flex flex-col min-w-0 overflow-y-auto bg-slate-50 pb-[68px] md:pb-0">
         {/* Mobile Header */}
         <header className="h-14 md:h-16 shrink-0 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-4 md:px-6 sticky top-0 z-30 transition-shadow shadow-sm">
-          <Link to="/" className="flex items-center md:hidden gap-3 hover:opacity-90 transition-opacity">
+          <Link to="/" className="flex flex-col sm:flex-row items-center md:hidden sm:gap-3 gap-0.5 hover:opacity-90 transition-opacity">
             <img src="/logo.png" alt={`${APP_NAME} Logo`} className="h-8 sm:h-10 w-auto object-contain drop-shadow-sm shrink-0" />
-            <h1 className="text-base sm:text-lg font-normal text-slate-800 truncate pr-2 uppercase" style={{ fontFamily: "'Open Sans', sans-serif" }}>{APP_NAME}</h1>
+            <h1 className="text-[10px] sm:text-lg font-normal text-slate-800 uppercase text-center sm:text-left leading-tight" style={{ fontFamily: "'Open Sans', sans-serif" }}>{APP_NAME}</h1>
           </Link>
           <div className="hidden md:flex items-center gap-2">
             <span className="text-slate-500">Welcome back, </span>

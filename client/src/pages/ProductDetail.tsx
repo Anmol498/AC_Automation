@@ -750,15 +750,16 @@ const ProductDetail: React.FC = () => {
     return (
         <div className="bg-background-light text-slate-800 min-h-screen transition-colors duration-300 font-sans">
             <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-                    <Link to="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-auto sm:h-16 py-2 sm:py-0 flex items-center justify-between">
+                    <Link to="/" className="flex flex-col sm:flex-row items-center sm:gap-3 gap-1 hover:opacity-90 transition-opacity">
                         <img src="/logo.png" alt={`${APP_NAME} Logo`} className="h-10 sm:h-12 w-auto object-contain drop-shadow-sm" />
-                        <span className="font-normal text-xl sm:text-2xl tracking-tight text-slate-900 uppercase" style={{ fontFamily: "'Open Sans', sans-serif" }}>{APP_NAME}</span>
+                        <span className="font-normal text-xs sm:text-2xl tracking-tight text-slate-900 uppercase text-center sm:text-left leading-tight" style={{ fontFamily: "'Open Sans', sans-serif" }}>{APP_NAME}</span>
                     </Link>
-                    <div className="flex items-center gap-4">
-                        <Link className="flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-primary transition-colors" to="/">
-                            <span className="material-icons-outlined text-[20px]">arrow_back</span>
-                            Back to Catalog
+                    <div className="flex items-center gap-3 sm:gap-4">
+                        <Link className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm font-medium text-slate-600 hover:text-primary transition-colors" to="/">
+                            <span className="material-icons-outlined text-[18px] sm:text-[20px]">arrow_back</span>
+                            <span className="hidden sm:inline">Back to Catalog</span>
+                            <span className="sm:hidden">Back</span>
                         </Link>
                     </div>
                 </div>

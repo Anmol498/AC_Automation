@@ -49,14 +49,14 @@ const makeRawEmail = (to: string, subject: string, html: string) => {
         .replace(/=+$/, '');
 };
 
-export const sendEmail = async (to: string, subject: string, html: string) => {
+export const sendEmail = async (to: string, subject: string, html: string): Promise<boolean> => {
     try {
         if (!process.env.GMAIL_CLIENT_ID || !process.env.GMAIL_REFRESH_TOKEN) {
             console.log("--- MOCK GMAIL LOG (Set GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, GMAIL_REFRESH_TOKEN, EMAIL_USER in .env) ---");
             console.log(`To: ${to}`);
             console.log(`Subject: ${subject}`);
             console.log("------------------------------------------------------------------------------------------------------");
-            return;
+            return true; // Mock mode counts as success
         }
 
         const gmail = await getGmailService();
@@ -71,7 +71,9 @@ export const sendEmail = async (to: string, subject: string, html: string) => {
         });
 
         console.log(`Gmail API email sent successfully to ${to} (Message ID: ${response.data.id})`);
+        return true;
     } catch (error: any) {
         console.error("Email delivery failed:", error.message || error);
+        return false;
     }
 };

@@ -106,3 +106,4 @@ CREATE TABLE IF NOT EXISTS `users` (
 -- This insertion ignores duplicates since the email column is unique
 INSERT IGNORE INTO `users` (`email`, `password_hash`, `role`) 
 VALUES ('hsd@icloud.com', '$2a$10$w0f5uA.zU3H/I95H1O7Z/eyw7x3sJ4Z1sW4eA7h/x8sK3X5e4A8sS', 'superadmin');
+

@@ -140,23 +140,26 @@ const Home: React.FC = () => {
     return (
         <div className="min-h-screen bg-white font-sans text-slate-800">
             {/* Header / Navigation Bar Placeholder */}
-            <header className="border-b border-slate-200 py-4 px-6 flex flex-wrap justify-between items-center gap-y-4 bg-white sticky top-0 z-50">
-                <Link to="/" className="flex items-center gap-3 hover:opacity-90 transition-opacity">
+            <header className="border-b border-slate-200 py-3 px-4 sm:py-4 sm:px-6 flex justify-between items-center bg-white sticky top-0 z-50">
+                <Link to="/" className="flex flex-col sm:flex-row items-center sm:gap-3 gap-1 hover:opacity-90 transition-opacity">
                     <img src="/logo.png" alt={`${APP_NAME} Logo`} className="h-10 sm:h-12 w-auto object-contain drop-shadow-sm" />
-                    <span className="font-normal text-xl sm:text-2xl lg:text-3xl tracking-tight text-slate-900 uppercase" style={{ fontFamily: "'Open Sans', sans-serif" }}>{APP_NAME}</span>
+                    <span className="font-normal text-xs sm:text-2xl lg:text-3xl tracking-tight text-slate-900 uppercase text-center sm:text-left leading-tight" style={{ fontFamily: "'Open Sans', sans-serif" }}>{APP_NAME}</span>
                 </Link>
-                <div>
+                <div className="flex items-center gap-3 sm:gap-6">
+                    <Link to="/contact" className="text-xs sm:text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors">
+                        Contact Us
+                    </Link>
                     {isAuthenticated ? (
-                        <Link to="/dashboard" className="w-10 h-10 flex items-center justify-center bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white rounded-lg transition-all" title="Dashboard">
-                            <i className="fa-solid fa-gauge text-lg"></i>
+                        <Link to="/dashboard" className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white rounded-lg transition-all" title="Dashboard">
+                            <i className="fa-solid fa-gauge text-base sm:text-lg"></i>
                         </Link>
                     ) : (
-                        <Link to="/login" className="w-10 h-10 flex items-center justify-center bg-slate-50 text-slate-500 hover:bg-blue-600 hover:text-white rounded-lg transition-all" title="Staff Login">
-                            <i className="fa-solid fa-user-lock text-lg"></i>
+                        <Link to="/login" className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center bg-slate-50 text-slate-500 hover:bg-blue-600 hover:text-white rounded-lg transition-all" title="Staff Login">
+                            <i className="fa-solid fa-user-lock text-base sm:text-lg"></i>
                         </Link>
                     )}
                 </div>
-            </header >
+            </header>
 
             <main className="max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
                 {/* Main Category Tabs */}

@@ -56,7 +56,7 @@ const SERVICE_PHASES = [
 
 // --- EMAIL CONFIGURATION MOVED TO utils/gmailMailer.js ---
 
-const sendPhaseNotification = async (customerEmail: any, customerName: any, jobType: any, phaseName: any, jobId: any, technician: any, paymentStatus: any, isFinal: any, costs: any = {}) => {
+const sendPhaseNotification = async (customerEmail: any, customerName: any, jobType: any, phaseName: any, jobId: any, technician: any, paymentStatus: any, isFinal: any, costs: any = {}): Promise<boolean> => {
   let paymentBlock = '';
 
   // Check if this is a specific payment phase
@@ -139,7 +139,7 @@ const sendPhaseNotification = async (customerEmail: any, customerName: any, jobT
     `
   };
 
-  await sendEmail(customerEmail, mailOptions.subject, mailOptions.html);
+  return await sendEmail(customerEmail, mailOptions.subject, mailOptions.html);
 };
 
 app.use(express.json());
@@ -174,6 +174,80 @@ app.get("/health", (req, res) => {
     service: "ac-automation-api",
     time: new Date()
   });
+});
+
+
+// --- PUBLIC CONTACT FORM ENDPOINT ---
+app.post("/api/contact", async (req, res) => {
+  const { name, email, phone, subject, message } = req.body;
+
+  // Validate required fields
+  if (!name || !email || !message) {
+    return res.status(400).json({ error: "Name, email, and message are required." });
+  }
+
+  // Basic email format validation
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ error: "Please provide a valid email address." });
+  }
+
+  try {
+    const subjectLine = subject
+      ? `New Contact Inquiry: ${subject}`
+      : `New Contact Inquiry from ${name}`;
+
+    const htmlBody = `
+      <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
+        <div style="background-color: #2563eb; color: white; padding: 24px; text-align: center;">
+          <h1 style="margin: 0; font-size: 20px;">New Contact Form Submission</h1>
+        </div>
+        <div style="padding: 24px; color: #1e293b; line-height: 1.6;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 8px 12px; font-weight: bold; color: #64748b; width: 120px; vertical-align: top;">Name</td>
+              <td style="padding: 8px 12px; font-weight: 600; color: #1e293b;">${name}</td>
+            </tr>
+            <tr style="background-color: #f8fafc;">
+              <td style="padding: 8px 12px; font-weight: bold; color: #64748b; vertical-align: top;">Email</td>
+              <td style="padding: 8px 12px;"><a href="mailto:${email}" style="color: #2563eb; text-decoration: none;">${email}</a></td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 12px; font-weight: bold; color: #64748b; vertical-align: top;">Phone</td>
+              <td style="padding: 8px 12px; color: #1e293b;">${phone || 'Not provided'}</td>
+            </tr>
+            <tr style="background-color: #f8fafc;">
+              <td style="padding: 8px 12px; font-weight: bold; color: #64748b; vertical-align: top;">Subject</td>
+              <td style="padding: 8px 12px; color: #1e293b;">${subject || 'General Inquiry'}</td>
+            </tr>
+          </table>
+          <div style="margin-top: 20px; padding: 16px; background-color: #f8fafc; border-left: 4px solid #2563eb; border-radius: 4px;">
+            <p style="margin: 0 0 8px 0; font-weight: bold; color: #2563eb; font-size: 13px;">MESSAGE</p>
+            <p style="margin: 0; color: #334155; white-space: pre-wrap;">${message}</p>
+          </div>
+          <p style="margin-top: 24px; font-size: 12px; color: #94a3b8;">
+            This message was sent via the Contact Us form on the Satguru Engineers website.
+          </p>
+        </div>
+        <div style="background-color: #f1f5f9; padding: 16px; text-align: center; font-size: 11px; color: #94a3b8;">
+          &copy; ${new Date().getFullYear()} Satguru Engineers.
+        </div>
+      </div>
+    `;
+
+    // Send the email to the business owner
+    const businessEmail = process.env.EMAIL_USER || 'satguruengineers742@gmail.com';
+    const emailSent = await sendEmail(businessEmail, subjectLine, htmlBody);
+
+    if (!emailSent) {
+      return res.status(500).json({ error: "Failed to deliver your message. Please try calling us or emailing directly." });
+    }
+
+    res.json({ success: true, message: "Your message has been sent successfully. We'll get back to you soon!" });
+  } catch (error: any) {
+    console.error("Contact form error:", error.message || error);
+    res.status(500).json({ error: "Failed to send your message. Please try again later." });
+  }
 });
 
 
@@ -285,6 +359,55 @@ async function ensureDatabaseReady() {
         FOREIGN KEY (inventory_id) REFERENCES inventory(id) ON DELETE CASCADE,
         INDEX idx_history_inventory (inventory_id),
         INDEX idx_history_user (user_email)
+      )
+    `);
+
+    // --- MATERIAL TRACKING TABLES ---
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS material_copper_logs (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        job_id INT,
+        date DATE NOT NULL,
+        size VARCHAR(20) NOT NULL,
+        sent_qty DECIMAL(10,2) NOT NULL DEFAULT 0,
+        return_qty DECIMAL(10,2) NOT NULL DEFAULT 0,
+        used_qty DECIMAL(10,2) GENERATED ALWAYS AS (sent_qty - return_qty) STORED,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE
+      )
+    `);
+
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS material_drain_logs (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        job_id INT,
+        date DATE NOT NULL,
+        used_qty DECIMAL(10,2) NOT NULL DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE
+      )
+    `);
+
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS material_remote_logs (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        job_id INT,
+        date DATE NOT NULL,
+        used_qty DECIMAL(10,2) NOT NULL DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE
+      )
+    `);
+
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS material_other_logs (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        job_id INT,
+        date DATE NOT NULL,
+        description VARCHAR(255) NOT NULL,
+        qty DECIMAL(10,2) NOT NULL DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE
       )
     `);
 
@@ -787,9 +910,81 @@ app.delete('/api/jobs/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// --- EMAIL PREVIEW FOR PHASE COMPLETION ---
+app.get('/api/phases/:id/email-preview', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const [[details]]: any = await pool.execute(`
+      SELECT 
+        c.email, 
+        c.name as customerName, 
+        j.id as jobId, 
+        j.job_type as jobType, 
+        j.technician, 
+        j.payment_status as paymentStatus,
+        j.copper_piping_cost as copperPipingCost,
+        j.outdoor_fitting_cost as outdoorFittingCost,
+        j.commissioning_cost as commissioningCost,
+        jp.phase_name as phaseName
+      FROM job_phases jp
+      JOIN jobs j ON jp.job_id = j.id
+      JOIN customers c ON j.customer_id = c.id
+      WHERE jp.id = ?
+    `, [id]);
+
+    if (!details) {
+      return res.status(404).json({ error: 'Phase not found' });
+    }
+
+    // Count phases to determine if this would be the final phase
+    const [[{ job_id }]]: any = await pool.execute('SELECT job_id FROM job_phases WHERE id = ?', [id]);
+    const [[{ total }]]: any = await pool.execute('SELECT COUNT(*) as total FROM job_phases WHERE job_id = ?', [job_id]);
+    const [[{ completed }]]: any = await pool.execute('SELECT COUNT(*) as completed FROM job_phases WHERE job_id = ? AND is_completed = 1', [job_id]);
+    const wouldBeFinal = (total === completed + 1);
+
+    // Determine payment amount if this is a payment phase
+    const phaseLower = details.phaseName.toLowerCase();
+    const isCopperPhase = phaseLower.includes('copper piping (payment)');
+    const isOutdoorPhase = phaseLower.includes('outdoor fittings (payment)');
+    const isCommissioningPhase = phaseLower.includes('commissioning (payment)');
+    const isServiceFinalPhase = details.jobType === 'Service' && phaseLower.includes('final testing & payment');
+    const isPaymentPhase = isCopperPhase || isOutdoorPhase || isCommissioningPhase || isServiceFinalPhase;
+
+    let paymentAmount = 0;
+    if (isCopperPhase) paymentAmount = Number(details.copperPipingCost);
+    else if (isOutdoorPhase) paymentAmount = Number(details.outdoorFittingCost);
+    else if (isCommissioningPhase || isServiceFinalPhase) paymentAmount = Number(details.commissioningCost);
+
+    const subject = wouldBeFinal
+      ? `Final Project Completion: ${details.phaseName}`
+      : `Update: ${details.phaseName} Completed`;
+
+    const defaultMessage = wouldBeFinal
+      ? `We're pleased to inform you that your ${details.jobType} project (Job #${details.jobId}) has been fully completed. All phases have been successfully finished. Thank you for choosing Satguru Engineers!`
+      : `We're writing to let you know that a key milestone in your ${details.jobType} has been successfully completed: "${details.phaseName}". Our team is dedicated to providing high-quality service.`;
+
+    res.json({
+      to: details.email,
+      customerName: details.customerName,
+      subject,
+      message: defaultMessage,
+      phaseName: details.phaseName,
+      jobId: details.jobId,
+      jobType: details.jobType,
+      technician: details.technician,
+      isFinal: wouldBeFinal,
+      isPaymentPhase,
+      paymentAmount,
+      paymentStatus: details.paymentStatus
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.patch('/api/phases/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
-  const { isCompleted } = req.body;
+  const { isCompleted, customSubject, customGreeting, customMessage, skipEmail } = req.body;
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
@@ -824,7 +1019,7 @@ app.patch('/api/phases/:id', authenticateToken, async (req, res) => {
     const [[phaseInfo]]: any = await connection.execute('SELECT phase_name FROM job_phases WHERE job_id = ? AND is_completed = 0 ORDER BY phase_order ASC LIMIT 1', [job_id]);
     const nextPhaseName = phaseInfo ? phaseInfo.phase_name : null;
 
-    if (isCompleted) {
+    if (isCompleted && !skipEmail) {
       const [[details]]: any = await connection.execute(`
         SELECT 
           c.email, 
@@ -844,31 +1039,138 @@ app.patch('/api/phases/:id', authenticateToken, async (req, res) => {
       `, [id]);
 
       if (details) {
-        sendPhaseNotification(
-          details.email,
-          details.customerName,
-          details.jobType,
-          details.phaseName,
-          details.jobId,
-          details.technician,
-          details.paymentStatus,
-          isFinalPhase,
-          {
-            copperPipingCost: details.copperPipingCost,
-            outdoorFittingCost: details.outdoorFittingCost,
-            commissioningCost: details.commissioningCost
-          }
-        );
+        let emailSent = false;
+
+        if (customSubject || customMessage) {
+          // Send custom email with user's edited content
+          const subject = customSubject || `Update: ${details.phaseName} Completed`;
+          const greeting = customGreeting || `Hello ${details.customerName},`;
+          const htmlBody = `
+            <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
+              <div style="background-color: #2563eb; color: white; padding: 24px; text-align: center;">
+                <h1 style="margin: 0; font-size: 20px;">Satguru Engineers Service Update</h1>
+              </div>
+              <div style="padding: 24px; color: #1e293b; line-height: 1.6;">
+                <p>${greeting}</p>
+                <p style="white-space: pre-wrap;">${customMessage}</p>
+                <div style="background-color: #f8fafc; border-left: 4px solid #2563eb; padding: 16px; margin: 20px 0;">
+                  <p style="margin: 0; font-weight: bold; color: #2563eb;">Phase: ${details.phaseName}</p>
+                  <p style="margin: 4px 0 0 0; font-size: 12px; color: #64748b;">Job ID: #${details.jobId} | Technician: ${details.technician}</p>
+                </div>
+                <p style="margin-top: 32px; font-size: 14px; color: #64748b;">Thank you for choosing Satguru Engineers.</p>
+              </div>
+              <div style="background-color: #f1f5f9; padding: 16px; text-align: center; font-size: 11px; color: #94a3b8;">
+                &copy; ${new Date().getFullYear()} Satguru Engineers.
+              </div>
+            </div>
+          `;
+          emailSent = await sendEmail(details.email, subject, htmlBody);
+        } else {
+          // Send default template email
+          emailSent = await sendPhaseNotification(
+            details.email,
+            details.customerName,
+            details.jobType,
+            details.phaseName,
+            details.jobId,
+            details.technician,
+            details.paymentStatus,
+            isFinalPhase,
+            {
+              copperPipingCost: details.copperPipingCost,
+              outdoorFittingCost: details.outdoorFittingCost,
+              commissioningCost: details.commissioningCost
+            }
+          );
+        }
+
+        await connection.commit();
+        return res.json({ success: true, jobStatus: newStatus, currentPhase: nextPhaseName, emailSent });
       }
     }
 
     await connection.commit();
-    res.json({ success: true, jobStatus: newStatus, currentPhase: nextPhaseName });
+    res.json({ success: true, jobStatus: newStatus, currentPhase: nextPhaseName, emailSent: false });
   } catch (err) {
     await connection.rollback();
     res.status(500).json({ error: err.message });
   } finally {
     connection.release();
+  }
+});
+
+// --- RESEND EMAIL FOR A COMPLETED PHASE ---
+app.post('/api/phases/:id/resend-email', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  const { customSubject, customGreeting, customMessage, customPaymentAmount } = req.body;
+
+  try {
+    const [[details]]: any = await pool.execute(`
+      SELECT 
+        c.email, 
+        c.name as customerName, 
+        j.id as jobId, 
+        j.job_type as jobType, 
+        j.technician, 
+        j.payment_status as paymentStatus,
+        jp.phase_name as phaseName,
+        jp.is_completed as isCompleted
+      FROM job_phases jp
+      JOIN jobs j ON jp.job_id = j.id
+      JOIN customers c ON j.customer_id = c.id
+      WHERE jp.id = ?
+    `, [id]);
+
+    if (!details) return res.status(404).json({ error: 'Phase not found' });
+    if (!details.isCompleted) return res.status(400).json({ error: 'Phase is not yet completed' });
+
+    const subject = customSubject || `Update: ${details.phaseName} Completed`;
+    const greeting = customGreeting || `Hello ${details.customerName},`;
+    const message = customMessage || `We're writing to let you know that "${details.phaseName}" has been completed.`;
+
+    // Build payment block if payment amount provided
+    let paymentBlock = '';
+    if (customPaymentAmount && Number(customPaymentAmount) > 0) {
+      paymentBlock = `
+        <div style="margin-top: 20px; padding: 20px; background-color: #fff7ed; border: 2px dashed #f97316; border-radius: 12px; text-align: center;">
+          <h2 style="color: #9a3412; font-size: 16px; margin-bottom: 10px;">Payment Request: ${details.phaseName}</h2>
+          <div style="background-color: #ffffff; border: 1px solid #fed7aa; padding: 15px; border-radius: 8px;">
+            <p style="margin: 0; font-size: 24px; font-weight: bold; color: #c2410c;">
+              Amount Due: ₹${Number(customPaymentAmount).toLocaleString()}
+            </p>
+            <p style="margin: 10px 0 0 0; font-size: 13px; color: #475569;">
+              Current Payment Status: <strong>${details.paymentStatus}</strong>
+            </p>
+          </div>
+        </div>
+      `;
+    }
+
+    const htmlBody = `
+      <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
+        <div style="background-color: #2563eb; color: white; padding: 24px; text-align: center;">
+          <h1 style="margin: 0; font-size: 20px;">Satguru Engineers Service Update</h1>
+        </div>
+        <div style="padding: 24px; color: #1e293b; line-height: 1.6;">
+          <p>${greeting}</p>
+          <p style="white-space: pre-wrap;">${message}</p>
+          <div style="background-color: #f8fafc; border-left: 4px solid #2563eb; padding: 16px; margin: 20px 0;">
+            <p style="margin: 0; font-weight: bold; color: #2563eb;">Phase: ${details.phaseName}</p>
+            <p style="margin: 4px 0 0 0; font-size: 12px; color: #64748b;">Technician: ${details.technician}</p>
+          </div>
+          ${paymentBlock}
+          <p style="margin-top: 32px; font-size: 14px; color: #64748b;">Thank you for choosing Satguru Engineers.</p>
+        </div>
+        <div style="background-color: #f1f5f9; padding: 16px; text-align: center; font-size: 11px; color: #94a3b8;">
+          &copy; ${new Date().getFullYear()} Satguru Engineers.
+        </div>
+      </div>
+    `;
+
+    const emailSent = await sendEmail(details.email, subject, htmlBody);
+    res.json({ success: true, emailSent });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -1002,5 +1304,336 @@ app.delete('/api/inventory/:id', authenticateToken, isAdminOrSuperAdmin, async (
   }
 });
 
+
+// --- MATERIAL LOG ROUTES ---
+
+app.get('/api/material-logs', authenticateToken, async (req, res) => {
+  try {
+    const { type, technician, search } = req.query;
+    let query = `
+      SELECT ml.id, ml.material_type as materialType, ml.date, ml.technician_name as technicianName, ml.created_at as createdAt,
+      (SELECT COALESCE(SUM(sent_qty), 0) FROM material_log_items WHERE material_log_id = ml.id) as totalSent,
+      (SELECT COALESCE(SUM(used_qty), 0) FROM material_log_items WHERE material_log_id = ml.id) as totalUsed,
+      (SELECT COALESCE(SUM(returned_qty), 0) FROM material_log_items WHERE material_log_id = ml.id) as totalReturned
+      FROM material_logs ml
+    `;
+    const params: any[] = [];
+    const conditions = [];
+
+    if (type) {
+      conditions.push('ml.material_type = ?');
+      params.push(type);
+    }
+
+    // Admins see all, techs see their own unless admin requested a specific tech
+    if (req.user.role === 'technician') {
+      conditions.push('LOWER(ml.technician_name) = LOWER(?)');
+      params.push(req.user.email);
+    } else if (technician) {
+      conditions.push('LOWER(ml.technician_name) = LOWER(?)');
+      params.push(technician);
+    }
+
+    if (search) {
+      conditions.push('(ml.technician_name LIKE ?)');
+      params.push(`%${search}%`);
+    }
+
+    if (conditions.length > 0) {
+      query += ' WHERE ' + conditions.join(' AND ');
+    }
+
+    query += ' ORDER BY ml.date DESC, ml.created_at DESC';
+
+    const [logs]: any = await pool.execute(query, params);
+
+    for (let log of logs) {
+      const [items]: any = await pool.execute('SELECT id, item_name as itemName, sent_qty as sentQty, used_qty as usedQty, returned_qty as returnedQty, notes FROM material_log_items WHERE material_log_id = ? ORDER BY id ASC', [log.id]);
+      log.items = items;
+    }
+
+    res.json(logs);
+  } catch (err: any) {
+    console.error("Error fetching material logs:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/material-logs', authenticateToken, async (req, res) => {
+  const { materialType, date, technicianName, items } = req.body;
+  if (!materialType || !date || !technicianName || !items || !Array.isArray(items)) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    const [result]: any = await connection.execute(
+      'INSERT INTO material_logs (material_type, date, technician_name) VALUES (?, ?, ?)',
+      [materialType, date, technicianName]
+    );
+    const logId = result.insertId;
+
+    for (let item of items) {
+      await connection.execute(
+        'INSERT INTO material_log_items (material_log_id, item_name, sent_qty, used_qty, returned_qty, notes) VALUES (?, ?, ?, ?, ?, ?)',
+        [logId, item.itemName, item.sentQty || 0, item.usedQty || 0, item.returnedQty || 0, item.notes || null]
+      );
+    }
+
+    await connection.commit();
+    res.json({ success: true, id: logId });
+  } catch (err: any) {
+    await connection.rollback();
+    console.error("Error creating material log:", err);
+    res.status(500).json({ error: err.message });
+  } finally {
+    connection.release();
+  }
+});
+
+app.put('/api/material-logs/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  const { materialType, date, items } = req.body;
+
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    if (materialType || date) {
+      let updateQ = 'UPDATE material_logs SET ';
+      const updates = [];
+      const params = [];
+      if (materialType) { updates.push('material_type = ?'); params.push(materialType); }
+      if (date) { updates.push('date = ?'); params.push(date); }
+      updateQ += updates.join(', ') + ' WHERE id = ?';
+      params.push(id);
+      await connection.execute(updateQ, params);
+    }
+
+    if (items && Array.isArray(items)) {
+      await connection.execute('DELETE FROM material_log_items WHERE material_log_id = ?', [id]);
+      for (let item of items) {
+        await connection.execute(
+          'INSERT INTO material_log_items (material_log_id, item_name, sent_qty, used_qty, returned_qty, notes) VALUES (?, ?, ?, ?, ?, ?)',
+          [id, item.itemName, item.sentQty || 0, item.usedQty || 0, item.returnedQty || 0, item.notes || null]
+        );
+      }
+    }
+
+    await connection.commit();
+    res.json({ success: true });
+  } catch (err: any) {
+    await connection.rollback();
+    console.error("Error updating material log:", err);
+    res.status(500).json({ error: err.message });
+  } finally {
+    connection.release();
+  }
+});
+
+app.delete('/api/material-logs/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.execute('DELETE FROM material_logs WHERE id = ?', [id]);
+    res.json({ success: true });
+  } catch (err: any) {
+    console.error("Error deleting material log:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- NEW MATERIAL TRACKING ENDPOINTS ---
+
+// Copper Logs
+app.get('/api/material/copper', authenticateToken, async (req, res) => {
+  try {
+    const { job_id } = req.query;
+    if (!job_id) return res.status(400).json({ error: 'job_id is required' });
+    const [rows] = await pool.execute('SELECT * FROM material_copper_logs WHERE job_id = ? ORDER BY date ASC, id ASC', [job_id]);
+    res.json(rows);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/material/copper', authenticateToken, async (req, res) => {
+  try {
+    const { job_id, date, size, sent_qty, return_qty } = req.body;
+    if (!job_id || !date || !size) return res.status(400).json({ error: 'Job ID, Date and Size are required' });
+    const [result]: any = await pool.execute(
+      'INSERT INTO material_copper_logs (job_id, date, size, sent_qty, return_qty) VALUES (?, ?, ?, ?, ?)',
+      [job_id, date, size, sent_qty || 0, return_qty || 0]
+    );
+    res.json({ success: true, id: result.insertId });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/material/copper/:id', authenticateToken, async (req, res) => {
+  try {
+    await pool.execute('DELETE FROM material_copper_logs WHERE id = ?', [req.params.id]);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Drain Logs
+app.get('/api/material/drain', authenticateToken, async (req, res) => {
+  try {
+    const { job_id } = req.query;
+    if (!job_id) return res.status(400).json({ error: 'job_id is required' });
+    const [rows] = await pool.execute('SELECT * FROM material_drain_logs WHERE job_id = ? ORDER BY date ASC, id ASC', [job_id]);
+    res.json(rows);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/material/drain', authenticateToken, async (req, res) => {
+  try {
+    const { job_id, date, used_qty } = req.body;
+    if (!job_id || !date) return res.status(400).json({ error: 'Job ID and Date are required' });
+    const [result]: any = await pool.execute(
+      'INSERT INTO material_drain_logs (job_id, date, used_qty) VALUES (?, ?, ?)',
+      [job_id, date, used_qty || 0]
+    );
+    res.json({ success: true, id: result.insertId });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/material/drain/:id', authenticateToken, async (req, res) => {
+  try {
+    await pool.execute('DELETE FROM material_drain_logs WHERE id = ?', [req.params.id]);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Remote Logs
+app.get('/api/material/remote', authenticateToken, async (req, res) => {
+  try {
+    const { job_id } = req.query;
+    if (!job_id) return res.status(400).json({ error: 'job_id is required' });
+    const [rows] = await pool.execute('SELECT * FROM material_remote_logs WHERE job_id = ? ORDER BY date ASC, id ASC', [job_id]);
+    res.json(rows);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/material/remote', authenticateToken, async (req, res) => {
+  try {
+    const { job_id, date, type, used_qty } = req.body;
+    if (!job_id || !date || !type) return res.status(400).json({ error: 'Job ID, Date and Type are required' });
+    const [result]: any = await pool.execute(
+      'INSERT INTO material_remote_logs (job_id, date, type, used_qty) VALUES (?, ?, ?, ?)',
+      [job_id, date, type, used_qty || 0]
+    );
+    res.json({ success: true, id: result.insertId });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/material/remote/:id', authenticateToken, async (req, res) => {
+  try {
+    await pool.execute('DELETE FROM material_remote_logs WHERE id = ?', [req.params.id]);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Other Logs
+app.get('/api/material/others', authenticateToken, async (req, res) => {
+  try {
+    const { job_id } = req.query;
+    if (!job_id) return res.status(400).json({ error: 'job_id is required' });
+    const [rows] = await pool.execute('SELECT * FROM material_other_logs WHERE job_id = ? ORDER BY date ASC, id ASC', [job_id]);
+    res.json(rows);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/material/others', authenticateToken, async (req, res) => {
+  try {
+    const { job_id, date, description, qty } = req.body;
+    if (!job_id || !date || !description) return res.status(400).json({ error: 'Job ID, Date and Description are required' });
+    const [result]: any = await pool.execute(
+      'INSERT INTO material_other_logs (job_id, date, description, qty) VALUES (?, ?, ?, ?)',
+      [job_id, date, description, qty || 0]
+    );
+    res.json({ success: true, id: result.insertId });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/material/others/:id', authenticateToken, async (req, res) => {
+  try {
+    await pool.execute('DELETE FROM material_other_logs WHERE id = ?', [req.params.id]);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- DAILY WORK LOGS ---
+
+app.get('/api/daily-work', authenticateToken, async (req, res) => {
+  try {
+    const [rows] = await pool.execute('SELECT * FROM daily_work_logs ORDER BY date DESC, id DESC');
+    res.json(rows);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/daily-work', authenticateToken, async (req, res) => {
+  try {
+    const { date, work_description, qty, technician, remarks } = req.body;
+    if (!date) return res.status(400).json({ error: 'Date is required' });
+    const [result]: any = await pool.execute(
+      'INSERT INTO daily_work_logs (job_id, date, work_description, qty, technician, remarks) VALUES (?, ?, ?, ?, ?, ?)',
+      [null, date, work_description || '', qty || '0', technician || '', remarks || '']
+    );
+    res.json({ success: true, id: result.insertId });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/daily-work/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { date, work_description, qty, technician, remarks } = req.body;
+    await pool.execute(
+      'UPDATE daily_work_logs SET date = ?, work_description = ?, qty = ?, technician = ?, remarks = ? WHERE id = ?',
+      [date, work_description || '', qty || '0', technician || '', remarks || '', id]
+    );
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/daily-work/:id', authenticateToken, async (req, res) => {
+  try {
+    await pool.execute('DELETE FROM daily_work_logs WHERE id = ?', [req.params.id]);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.listen(PORT, "0.0.0.0", () => console.log(`Server running on ${PORT}`));
+
 

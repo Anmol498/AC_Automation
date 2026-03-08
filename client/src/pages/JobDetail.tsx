@@ -3,12 +3,13 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Job, Customer, JobPhase, Payment } from '../types';
 import { APP_NAME, SUPPORT_EMAIL, API_BASE_URL } from '../constants';
-import { useAuth } from '../App';
+import { useAuth, useSettings } from '../App';
 import { GoogleGenAI } from '@google/genai';
 
 const JobDetail: React.FC = () => {
   const { id } = useParams();
   const { token, user } = useAuth();
+  const { requireEmailPreview } = useSettings();
   const [job, setJob] = useState<any>(null);
   const [phases, setPhases] = useState<JobPhase[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -17,11 +18,50 @@ const JobDetail: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState<number | null>(null);
   const [isUpdatingPayment, setIsUpdatingPayment] = useState(false);
   const [notification, setNotification] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
+  const [phaseEmailStatus, setPhaseEmailStatus] = useState<Record<number, 'sent' | 'failed' | 'skipped'>>({});
+  const [selectedPhaseId, setSelectedPhaseId] = useState<number | null>(null);
 
   const [isRecordingPayment, setIsRecordingPayment] = useState(false);
   const [newPaymentAmount, setNewPaymentAmount] = useState('');
   const [newPaymentMethod, setNewPaymentMethod] = useState('Transfer');
   const [newPaymentNotes, setNewPaymentNotes] = useState('');
+
+  // Email preview modal state
+  const [emailModal, setEmailModal] = useState<{
+    isOpen: boolean;
+    isLoading: boolean;
+    isRetry: boolean;
+    phaseId: number | null;
+    to: string;
+    customerName: string;
+    subject: string;
+    greeting: string;
+    message: string;
+    phaseName: string;
+    jobId: number | null;
+    technician: string;
+    isFinal: boolean;
+    isPaymentPhase: boolean;
+    paymentAmount: number | string;
+    paymentStatus: string;
+  }>({
+    isOpen: false,
+    isLoading: false,
+    isRetry: false,
+    phaseId: null,
+    to: '',
+    customerName: '',
+    subject: '',
+    greeting: '',
+    message: '',
+    phaseName: '',
+    jobId: null,
+    technician: '',
+    isFinal: false,
+    isPaymentPhase: false,
+    paymentAmount: '',
+    paymentStatus: ''
+  });
 
   const fetchData = useCallback(async () => {
     try {
@@ -110,64 +150,224 @@ const JobDetail: React.FC = () => {
     }
   };
 
-  const handleMarkComplete = async (phaseId: number) => {
+  // Opens the email preview modal, or directly completes if preview is disabled
+  const handleMarkComplete = async (phaseId: number, directSkipEmail = false) => {
     const phase = phases.find(p => p.id === phaseId);
     if (!phase || !job) return;
 
-    setIsProcessing(phaseId);
+    if (!requireEmailPreview) {
+      setIsProcessing(phaseId);
+      setNotification(null);
+      try {
+        const response = await fetch(`${API_BASE_URL}/phases/${phaseId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ isCompleted: true, skipEmail: directSkipEmail }),
+        });
+        const data = await response.json();
+        if (response.ok) {
+          setPhases(prev => prev.map(p =>
+            p.id === phaseId ? { ...p, isCompleted: true, completedAt: new Date().toISOString() } : p
+          ));
+          setJob((prev: any) => ({
+            ...prev,
+            status: data.jobStatus || prev.status,
+            currentPhase: data.currentPhase
+          }));
+          if (directSkipEmail) {
+            setPhaseEmailStatus(prev => ({ ...prev, [phaseId]: 'skipped' }));
+          } else {
+            setPhaseEmailStatus(prev => ({ ...prev, [phaseId]: data.emailSent ? 'sent' : 'failed' }));
+          }
+          setSelectedPhaseId(null);
+        } else {
+          setNotification({ message: data.error || 'Failed to update phase', type: 'error' });
+        }
+      } catch (err) {
+        setNotification({ message: 'Network connection error', type: 'error' });
+      } finally {
+        setIsProcessing(null);
+      }
+      return;
+    }
+
+    setEmailModal(prev => ({ ...prev, isOpen: true, isLoading: true, phaseId, isRetry: false }));
     setNotification(null);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/phases/${phaseId}`, {
+      const res = await fetch(`${API_BASE_URL}/phases/${phaseId}/email-preview`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const preview = await res.json();
+      if (res.ok) {
+        setEmailModal(prev => ({
+          ...prev,
+          isLoading: false,
+          to: preview.to,
+          customerName: preview.customerName,
+          subject: preview.subject,
+          greeting: `Hello ${preview.customerName},`,
+          message: preview.message,
+          phaseName: preview.phaseName,
+          jobId: preview.jobId,
+          technician: preview.technician,
+          isFinal: preview.isFinal,
+          isPaymentPhase: preview.isPaymentPhase,
+          paymentAmount: preview.paymentAmount,
+          paymentStatus: preview.paymentStatus
+        }));
+      } else {
+        setEmailModal(prev => ({ ...prev, isOpen: false, isLoading: false }));
+        setNotification({ message: preview.error || 'Failed to load email preview', type: 'error' });
+      }
+    } catch (err) {
+      setEmailModal(prev => ({ ...prev, isOpen: false, isLoading: false }));
+      setNotification({ message: 'Network error loading preview', type: 'error' });
+    }
+  };
+
+  // Completes the phase and sends the (possibly edited) email
+  const handleConfirmComplete = async (skipEmail = false) => {
+    if (!emailModal.phaseId || !job) return;
+
+    setIsProcessing(emailModal.phaseId);
+    setEmailModal(prev => ({ ...prev, isOpen: false }));
+
+    try {
+      const bodyPayload: any = { isCompleted: true };
+      if (skipEmail) {
+        bodyPayload.skipEmail = true;
+      } else {
+        bodyPayload.customSubject = emailModal.subject;
+        bodyPayload.customGreeting = emailModal.greeting;
+        bodyPayload.customMessage = emailModal.message;
+        if (emailModal.isPaymentPhase && Number(emailModal.paymentAmount) > 0) {
+          bodyPayload.customPaymentAmount = Number(emailModal.paymentAmount);
+        }
+      }
+
+      const response = await fetch(`${API_BASE_URL}/phases/${emailModal.phaseId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ isCompleted: true }),
+        body: JSON.stringify(bodyPayload),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        // AI Enhancement
-        let personalizedNote = "Great progress!";
-        try {
-          if (process.env.API_KEY) {
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-            const aiRes = await ai.models.generateContent({
-              model: 'gemini-3-flash-preview',
-              contents: `Generate a 1-sentence friendly update for "${phase.phaseName}" for ${job.customerName}.`,
-            });
-            personalizedNote = aiRes.text || personalizedNote;
-          }
-        } catch (e) { }
-
-        // Update local state immediately for snappy UI
         setPhases(prev => prev.map(p =>
-          p.id === phaseId ? { ...p, isCompleted: true, completedAt: new Date().toISOString() } : p
+          p.id === emailModal.phaseId ? { ...p, isCompleted: true, completedAt: new Date().toISOString() } : p
         ));
-
-        // Update job status and current phase if returned by backend
         setJob((prev: any) => ({
           ...prev,
           status: data.jobStatus || prev.status,
           currentPhase: data.currentPhase
         }));
 
-        setNotification({
-          message: data.jobStatus === 'Completed'
-            ? `Job fully completed! Automated summary sent to ${job.customerEmail}.`
-            : `Phase completed. Automated notification sent to ${job.customerEmail}.`,
-          type: 'success'
-        });
+        if (skipEmail) {
+          setPhaseEmailStatus(prev => ({ ...prev, [emailModal.phaseId!]: 'skipped' }));
+        } else {
+          setPhaseEmailStatus(prev => ({ ...prev, [emailModal.phaseId!]: data.emailSent ? 'sent' : 'failed' }));
+        }
       } else {
-        setNotification({ message: data.error || "Failed to update phase", type: 'error' });
+        setNotification({ message: data.error || 'Failed to update phase', type: 'error' });
       }
     } catch (err) {
-      setNotification({ message: "Network connection error", type: 'error' });
+      setNotification({ message: 'Network connection error', type: 'error' });
     } finally {
       setIsProcessing(null);
+    }
+  };
+
+  // Retry sending email for a completed phase
+  const handleRetryEmail = async (phaseId: number) => {
+    if (!requireEmailPreview) {
+      setNotification(null);
+      setPhaseEmailStatus(prev => ({ ...prev, [phaseId]: 'failed' })); // keeps it showing failed while we process, though ideally we'd have a 'retrying' state. We will just use the same logic as the modal for simplicity, but skip UI.
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/phases/${phaseId}/resend-email`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({}), // uses default template on backend
+        });
+
+        const data = await response.json();
+        setPhaseEmailStatus(prev => ({ ...prev, [phaseId]: data.emailSent ? 'sent' : 'failed' }));
+      } catch (err) {
+        setPhaseEmailStatus(prev => ({ ...prev, [phaseId]: 'failed' }));
+      }
+      return;
+    }
+
+    setEmailModal(prev => ({ ...prev, isOpen: true, isLoading: true, phaseId, isRetry: true }));
+    setNotification(null);
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/phases/${phaseId}/email-preview`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const preview = await res.json();
+      if (res.ok) {
+        setEmailModal(prev => ({
+          ...prev,
+          isLoading: false,
+          to: preview.to,
+          customerName: preview.customerName,
+          subject: preview.subject,
+          greeting: `Hello ${preview.customerName},`,
+          message: preview.message,
+          phaseName: preview.phaseName,
+          jobId: preview.jobId,
+          technician: preview.technician,
+          isFinal: preview.isFinal,
+          isPaymentPhase: preview.isPaymentPhase,
+          paymentAmount: preview.paymentAmount,
+          paymentStatus: preview.paymentStatus
+        }));
+      } else {
+        setEmailModal(prev => ({ ...prev, isOpen: false, isLoading: false }));
+        setNotification({ message: preview.error || 'Failed to load email preview', type: 'error' });
+      }
+    } catch (err) {
+      setEmailModal(prev => ({ ...prev, isOpen: false, isLoading: false }));
+      setNotification({ message: 'Network error loading preview', type: 'error' });
+    }
+  };
+
+  // Resend email (for already completed phases)
+  const handleResendEmail = async () => {
+    if (!emailModal.phaseId || !job) return;
+
+    setEmailModal(prev => ({ ...prev, isOpen: false }));
+    setPhaseEmailStatus(prev => ({ ...prev, [emailModal.phaseId!]: undefined as any }));
+
+    try {
+      const bodyPayload: any = {
+        customSubject: emailModal.subject,
+        customGreeting: emailModal.greeting,
+        customMessage: emailModal.message,
+      };
+      if (emailModal.isPaymentPhase && Number(emailModal.paymentAmount) > 0) {
+        bodyPayload.customPaymentAmount = Number(emailModal.paymentAmount);
+      }
+
+      const response = await fetch(`${API_BASE_URL}/phases/${emailModal.phaseId}/resend-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(bodyPayload),
+      });
+
+      const data = await response.json();
+      setPhaseEmailStatus(prev => ({ ...prev, [emailModal.phaseId!]: data.emailSent ? 'sent' : 'failed' }));
+    } catch (err) {
+      setPhaseEmailStatus(prev => ({ ...prev, [emailModal.phaseId!]: 'failed' }));
     }
   };
 
@@ -429,34 +629,263 @@ const JobDetail: React.FC = () => {
               <div className="flex-1 min-w-0">
                 <p className={`text-sm font-bold truncate ${phase.isCompleted ? 'text-slate-800' : 'text-slate-500 group-hover:text-slate-700'}`}>{phase.phaseName}</p>
                 {phase.completedAt && (
-                  <div className="flex items-center gap-2 mt-0.5">
+                  <div className="flex items-center mt-0.5">
                     <p className="text-[9px] text-emerald-600 font-black uppercase tracking-wider">
                       <i className="fa-solid fa-clock mr-1"></i>
                       Finished {new Date(phase.completedAt).toLocaleDateString()}
                     </p>
-                    <span className="text-[8px] bg-emerald-100 text-emerald-700 px-1 rounded font-bold uppercase">
-                      <i className="fa-solid fa-envelope mr-0.5"></i> Email Sent
-                    </span>
                   </div>
                 )}
               </div>
               {!phase.isCompleted ? (
-                <button
-                  onClick={() => handleMarkComplete(phase.id)}
-                  disabled={isProcessing === phase.id}
-                  className="px-4 py-1.5 bg-white border border-slate-200 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:border-blue-500 hover:text-blue-600 hover:shadow-md hover:shadow-blue-500/10 rounded-lg transition-all disabled:opacity-50 shrink-0"
-                >
-                  {isProcessing === phase.id ? <i className="fa-solid fa-circle-notch fa-spin"></i> : 'Complete Phase'}
-                </button>
+                requireEmailPreview ? (
+                  <button
+                    onClick={() => handleMarkComplete(phase.id)}
+                    disabled={isProcessing === phase.id}
+                    className="px-4 py-1.5 bg-white border border-slate-200 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:border-blue-500 hover:text-blue-600 hover:shadow-md hover:shadow-blue-500/10 rounded-lg transition-all disabled:opacity-50 shrink-0"
+                  >
+                    {isProcessing === phase.id ? <i className="fa-solid fa-circle-notch fa-spin"></i> : 'Complete Phase'}
+                  </button>
+                ) : selectedPhaseId === phase.id ? (
+                  <div className="flex gap-2 shrink-0 animate-in fade-in slide-in-from-right-2 duration-300">
+                    <button
+                      onClick={() => handleMarkComplete(phase.id, false)}
+                      disabled={isProcessing === phase.id}
+                      className="px-3 py-1.5 bg-emerald-50 border border-emerald-200 text-[10px] font-black uppercase tracking-widest text-emerald-600 hover:bg-emerald-100 hover:border-emerald-300 rounded-lg transition-all disabled:opacity-50 shrink-0"
+                      title="Complete phase and send default email"
+                    >
+                      {isProcessing === phase.id ? <i className="fa-solid fa-circle-notch fa-spin"></i> : <><i className="fa-solid fa-envelope mr-1"></i> Send Mail</>}
+                    </button>
+                    <button
+                      onClick={() => handleMarkComplete(phase.id, true)}
+                      disabled={isProcessing === phase.id}
+                      className="px-3 py-1.5 bg-slate-50 border border-slate-200 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:bg-slate-100 hover:border-slate-300 rounded-lg transition-all disabled:opacity-50 shrink-0"
+                      title="Complete phase without sending email"
+                    >
+                      {isProcessing === phase.id ? <i className="fa-solid fa-circle-notch fa-spin"></i> : <><i className="fa-solid fa-forward mr-1"></i> Skip Mail</>}
+                    </button>
+                    <button
+                      onClick={() => setSelectedPhaseId(null)}
+                      disabled={isProcessing === phase.id}
+                      className="px-2 border border-transparent text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
+                      title="Cancel"
+                    >
+                      <i className="fa-solid fa-xmark text-sm"></i>
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setSelectedPhaseId(phase.id)}
+                    className="px-4 py-1.5 bg-white border border-slate-200 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:border-blue-500 hover:text-blue-600 hover:shadow-md hover:shadow-blue-500/10 rounded-lg transition-all shrink-0"
+                  >
+                    Complete Phase
+                  </button>
+                )
               ) : (
-                <div className="w-8 h-8 flex items-center justify-center text-emerald-500 bg-emerald-100 rounded-full" title="Automated notification sent to customer email">
-                  <i className="fa-solid fa-paper-plane text-xs"></i>
+                <div className="flex items-center gap-2 shrink-0">
+                  {phaseEmailStatus[phase.id] === 'failed' ? (
+                    <>
+                      <span className="text-[9px] bg-red-50 text-red-600 border border-red-200 px-2 py-1 rounded-lg font-bold flex items-center gap-1">
+                        <i className="fa-solid fa-triangle-exclamation"></i> Email Failed
+                      </span>
+                      <button
+                        onClick={() => handleRetryEmail(phase.id)}
+                        className="text-[9px] bg-blue-50 text-blue-600 border border-blue-200 px-2 py-1 rounded-lg font-bold flex items-center gap-1 hover:bg-blue-100 transition-all"
+                      >
+                        <i className="fa-solid fa-rotate-right"></i> Retry
+                      </button>
+                    </>
+                  ) : phaseEmailStatus[phase.id] === 'skipped' ? (
+                    <span className="text-[9px] bg-slate-50 text-slate-500 border border-slate-200 px-2 py-1 rounded-lg font-bold flex items-center gap-1">
+                      <i className="fa-solid fa-forward"></i> Skipped
+                    </span>
+                  ) : (
+                    <div className="w-8 h-8 flex items-center justify-center text-emerald-500 bg-emerald-100 rounded-full" title="Notification sent to customer">
+                      <i className="fa-solid fa-paper-plane text-xs"></i>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           ))}
         </div>
       </div>
+
+      {/* Email Preview Modal */}
+      {emailModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setEmailModal(prev => ({ ...prev, isOpen: false }))}>
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
+            onClick={e => e.stopPropagation()}
+          >
+            {emailModal.isLoading ? (
+              <div className="p-16 flex flex-col items-center justify-center gap-4 text-slate-400">
+                <i className="fa-solid fa-circle-notch fa-spin text-3xl text-blue-500"></i>
+                <p className="text-sm font-medium">Loading email preview…</p>
+              </div>
+            ) : (
+              <>
+                {/* Modal Header */}
+                <div className="flex items-center justify-between p-5 border-b border-slate-200">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center">
+                      <i className="fa-solid fa-envelope-open-text"></i>
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-bold text-slate-900">Email Preview</h2>
+                      <p className="text-xs text-slate-500">Review and edit before sending to {emailModal.customerName}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setEmailModal(prev => ({ ...prev, isOpen: false }))}
+                    className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all"
+                  >
+                    <i className="fa-solid fa-xmark"></i>
+                  </button>
+                </div>
+
+                {/* Side-by-side: Form + Live Preview */}
+                <div className="flex flex-col lg:flex-row flex-1 overflow-y-auto">
+                  {/* Left: Email Form */}
+                  <div className="flex-1 p-5 space-y-4 border-r border-slate-200">
+                    {/* Badges */}
+                    <div className="flex flex-wrap gap-2">
+                      <span className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full bg-blue-50 text-blue-600">
+                        <i className="fa-solid fa-hashtag mr-1"></i> Job #{emailModal.jobId}
+                      </span>
+                      <span className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full bg-slate-100 text-slate-600">
+                        <i className="fa-solid fa-gear mr-1"></i> {emailModal.phaseName}
+                      </span>
+                      {emailModal.isFinal && (
+                        <span className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full bg-emerald-50 text-emerald-600">
+                          <i className="fa-solid fa-flag-checkered mr-1"></i> Final Phase
+                        </span>
+                      )}
+                      {emailModal.isPaymentPhase && (
+                        <span className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full bg-orange-50 text-orange-600">
+                          <i className="fa-solid fa-indian-rupee-sign mr-1"></i> Payment: ₹{emailModal.paymentAmount.toLocaleString()}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* To */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">To</label>
+                      <div className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-sm text-slate-700">
+                        <i className="fa-solid fa-user text-slate-400 text-xs"></i>
+                        {emailModal.customerName} &lt;{emailModal.to}&gt;
+                      </div>
+                    </div>
+
+                    {/* Subject */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Subject</label>
+                      <input
+                        type="text"
+                        value={emailModal.subject}
+                        onChange={e => setEmailModal(prev => ({ ...prev, subject: e.target.value }))}
+                        className="w-full px-4 py-2.5 bg-white rounded-xl border border-slate-200 text-sm text-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+                      />
+                    </div>
+
+                    {/* Greeting */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Greeting</label>
+                      <input
+                        type="text"
+                        value={emailModal.greeting}
+                        onChange={e => setEmailModal(prev => ({ ...prev, greeting: e.target.value }))}
+                        className="w-full px-4 py-2.5 bg-white rounded-xl border border-slate-200 text-sm text-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+                      />
+                    </div>
+
+                    {/* Message Body */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Message</label>
+                      <textarea
+                        value={emailModal.message}
+                        onChange={e => setEmailModal(prev => ({ ...prev, message: e.target.value }))}
+                        rows={6}
+                        className="w-full px-4 py-3 bg-white rounded-xl border border-slate-200 text-sm text-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all resize-none leading-relaxed"
+                      />
+                    </div>
+
+                    {/* Payment Amount (only for payment phases) */}
+                    {emailModal.isPaymentPhase && (
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Payment Amount (₹)</label>
+                        <input
+                          type="number"
+                          value={emailModal.paymentAmount}
+                          onChange={e => setEmailModal(prev => ({ ...prev, paymentAmount: e.target.value }))}
+                          className="w-full px-4 py-2.5 bg-white rounded-xl border border-slate-200 text-sm text-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right: Live Preview */}
+                  <div className="flex-1 p-5 bg-slate-50">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">Live Preview</label>
+                    <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                      <div className="bg-blue-600 text-white px-5 py-3 text-center">
+                        <p className="font-bold text-sm">Satguru Engineers Service Update</p>
+                      </div>
+                      <div className="p-5 text-sm text-slate-700 space-y-3 bg-white">
+                        <p className="whitespace-pre-wrap">{emailModal.greeting}</p>
+                        <p className="whitespace-pre-wrap">{emailModal.message}</p>
+                        <div className="bg-slate-50 border-l-4 border-blue-600 p-3 rounded-r-lg">
+                          <p className="font-bold text-blue-600 text-xs">Phase: {emailModal.phaseName}</p>
+                          <p className="text-[10px] text-slate-500 mt-0.5">Technician: {emailModal.technician}</p>
+                        </div>
+                        {emailModal.isPaymentPhase && Number(emailModal.paymentAmount) > 0 && (
+                          <div className="mt-3 p-3 bg-orange-50 border-2 border-dashed border-orange-400 rounded-lg text-center">
+                            <p className="text-[10px] font-bold text-orange-800 uppercase">Payment Request</p>
+                            <p className="text-lg font-bold text-orange-600 mt-1">₹{Number(emailModal.paymentAmount).toLocaleString()}</p>
+                            <p className="text-[9px] text-slate-500">Payment Status: {emailModal.paymentStatus}</p>
+                          </div>
+                        )}
+                        <p className="text-xs text-slate-400 pt-2">Thank you for choosing Satguru Engineers.</p>
+                      </div>
+                      <div className="bg-slate-50 px-5 py-2.5 text-center">
+                        <p className="text-[10px] text-slate-400">&copy; {new Date().getFullYear()} Satguru Engineers.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Modal Actions */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-5 border-t border-slate-200 bg-slate-50 rounded-b-2xl">
+                  {emailModal.isRetry ? (
+                    <div></div> // Empty div to keep the flex layout balanced
+                  ) : (
+                    <button
+                      onClick={() => handleConfirmComplete(true)}
+                      className="px-4 py-2.5 text-xs font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-200 rounded-xl transition-all order-2 sm:order-1"
+                    >
+                      <i className="fa-solid fa-forward mr-1.5"></i> Complete Without Email
+                    </button>
+                  )}
+                  <div className="flex items-center gap-2 order-1 sm:order-2">
+                    <button
+                      onClick={() => setEmailModal(prev => ({ ...prev, isOpen: false }))}
+                      className="px-5 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-200 rounded-xl transition-all"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => emailModal.isRetry ? handleResendEmail() : handleConfirmComplete(false)}
+                      className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-all shadow-lg hover:shadow-xl flex items-center gap-2"
+                    >
+                      <i className="fa-solid fa-paper-plane"></i> {emailModal.isRetry ? 'Resend Email' : 'Send & Complete Phase'}
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

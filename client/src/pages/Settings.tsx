@@ -6,12 +6,13 @@ import UserManagement from './UserManagement';
 
 const Settings: React.FC = () => {
     const { token, user } = useAuth();
-    const { enableLowStockAlert, lowStockThreshold, setEnableLowStockAlert, setLowStockThreshold } = useSettings();
+    const { enableLowStockAlert, lowStockThreshold, requireEmailPreview, setEnableLowStockAlert, setLowStockThreshold, setRequireEmailPreview } = useSettings();
 
-    // Inventory Settings State
+    // Inventory & App Settings State
     const [tempThreshold, setTempThreshold] = useState(lowStockThreshold);
     const [tempEnable, setTempEnable] = useState(enableLowStockAlert);
-    const [inventoryMessage, setInventoryMessage] = useState({ text: '', type: '' });
+    const [tempEmailPreview, setTempEmailPreview] = useState(requireEmailPreview || false);
+    const [appSettingsMessage, setAppSettingsMessage] = useState({ text: '', type: '' });
 
     // Password Settings State
     const [currentPassword, setCurrentPassword] = useState('');
@@ -20,11 +21,14 @@ const Settings: React.FC = () => {
     const [isSubmittingPassword, setIsSubmittingPassword] = useState(false);
     const [passwordMessage, setPasswordMessage] = useState({ text: '', type: '' });
 
-    const handleSaveInventorySettings = () => {
+    const handleSaveAppSettings = () => {
         setLowStockThreshold(tempThreshold);
         setEnableLowStockAlert(tempEnable);
-        setInventoryMessage({ text: 'Inventory settings saved successfully.', type: 'success' });
-        setTimeout(() => setInventoryMessage({ text: '', type: '' }), 3000);
+        if (user?.role === UserRole.SUPER_ADMIN) {
+            setRequireEmailPreview(tempEmailPreview);
+        }
+        setAppSettingsMessage({ text: 'Application settings saved successfully.', type: 'success' });
+        setTimeout(() => setAppSettingsMessage({ text: '', type: '' }), 3000);
     };
 
     const handleChangePassword = async (e: React.FormEvent) => {
@@ -156,13 +160,13 @@ const Settings: React.FC = () => {
                         <div className="bg-emerald-100 text-emerald-600 w-10 h-10 rounded-full flex items-center justify-center shrink-0">
                             <i className="fa-solid fa-boxes-stacked text-lg"></i>
                         </div>
-                        <h2 className="text-lg font-bold text-slate-800">Inventory Preferences</h2>
+                        <h2 className="text-lg font-bold text-slate-800">App Preferences</h2>
                     </div>
                     <div className="p-6 space-y-6">
-                        {inventoryMessage.text && (
-                            <div className={`p-3 rounded-xl text-sm font-medium ${inventoryMessage.type === 'error' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
-                                <i className={`fa-solid ${inventoryMessage.type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-check'} mr-2`}></i>
-                                {inventoryMessage.text}
+                        {appSettingsMessage.text && (
+                            <div className={`p-3 rounded-xl text-sm font-medium ${appSettingsMessage.type === 'error' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
+                                <i className={`fa-solid ${appSettingsMessage.type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-check'} mr-2`}></i>
+                                {appSettingsMessage.text}
                             </div>
                         )}
 
@@ -196,9 +200,28 @@ const Settings: React.FC = () => {
                             <p className="text-xs text-slate-500 mt-2">Trigger alerts when available stock drops to or below this quantity.</p>
                         </div>
 
+                        {user?.role === UserRole.SUPER_ADMIN && (
+                            <div className="pt-6 border-t border-slate-100">
+                                <label className="flex items-center justify-between cursor-pointer mb-2">
+                                    <span className="text-sm font-bold text-slate-700">Require Email Verification Preview</span>
+                                    <div className="relative">
+                                        <input
+                                            type="checkbox"
+                                            className="sr-only"
+                                            checked={tempEmailPreview}
+                                            onChange={(e) => setTempEmailPreview(e.target.checked)}
+                                        />
+                                        <div className={`block w-10 h-6 rounded-full transition-colors ${tempEmailPreview ? 'bg-emerald-500' : 'bg-slate-300'}`}></div>
+                                        <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${tempEmailPreview ? 'transform translate-x-4' : ''}`}></div>
+                                    </div>
+                                </label>
+                                <p className="text-xs text-slate-500">If enabled, the editable email preview modal will appear before completing a job phase. If disabled, emails will be sent directly without preview via the default template.</p>
+                            </div>
+                        )}
+
                         <div className="pt-4 border-t border-slate-100">
                             <button
-                                onClick={handleSaveInventorySettings}
+                                onClick={handleSaveAppSettings}
                                 className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm shadow-emerald-500/20"
                             >
                                 Save Preferences

@@ -9,9 +9,12 @@ import JobDetail from './pages/JobDetail';
 import UserManagement from './pages/UserManagement';
 import Home from './pages/Home';
 import ProductDetail from './pages/ProductDetail';
+import ContactUs from './pages/ContactUs';
 import Layout from './components/Layout';
 import InventoryManagement from './pages/InventoryManagement';
 import Settings from './pages/Settings';
+import MaterialTracking from './pages/MaterialTracking';
+import DailyWork from './pages/DailyWork';
 
 interface AuthContextType extends AuthState {
   login: (user: User, token: string) => void;
@@ -21,8 +24,10 @@ interface AuthContextType extends AuthState {
 interface SettingsState {
   lowStockThreshold: number;
   enableLowStockAlert: boolean;
+  requireEmailPreview: boolean;
   setLowStockThreshold: (val: number) => void;
   setEnableLowStockAlert: (val: boolean) => void;
+  setRequireEmailPreview: (val: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -56,6 +61,11 @@ const App: React.FC = () => {
     return saved ? saved === 'true' : true;
   });
 
+  const [requireEmailPreview, setRequireEmailPreviewState] = useState<boolean>(() => {
+    const saved = localStorage.getItem('requireEmailPreview');
+    return saved ? saved === 'true' : true;
+  });
+
   const setLowStockThreshold = (val: number) => {
     setLowStockThresholdState(val);
     localStorage.setItem('lowStockThreshold', val.toString());
@@ -64,6 +74,11 @@ const App: React.FC = () => {
   const setEnableLowStockAlert = (val: boolean) => {
     setEnableLowStockAlertState(val);
     localStorage.setItem('enableLowStockAlert', val.toString());
+  };
+
+  const setRequireEmailPreview = (val: boolean) => {
+    setRequireEmailPreviewState(val);
+    localStorage.setItem('requireEmailPreview', val.toString());
   };
 
   const login = (user: User, token: string) => {
@@ -86,11 +101,12 @@ const App: React.FC = () => {
 
   return (
     <AuthContext.Provider value={{ ...auth, login, logout }}>
-      <SettingsContext.Provider value={{ lowStockThreshold, enableLowStockAlert, setLowStockThreshold, setEnableLowStockAlert }}>
+      <SettingsContext.Provider value={{ lowStockThreshold, enableLowStockAlert, requireEmailPreview, setLowStockThreshold, setEnableLowStockAlert, setRequireEmailPreview }}>
         <HashRouter>
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/product/:id" element={<ProductDetail />} />
+            <Route path="/contact" element={<ContactUs />} />
             <Route path="/login" element={!auth.isAuthenticated ? <Login /> : <Navigate to="/dashboard" />} />
 
             <Route element={
@@ -107,6 +123,8 @@ const App: React.FC = () => {
                   <InventoryManagement />
                 </ProtectedRoute>
               } />
+              <Route path="/material" element={<MaterialTracking />} />
+              <Route path="/daily-work" element={<DailyWork />} />
               <Route path="/users" element={
                 <ProtectedRoute roles={[UserRole.SUPER_ADMIN]}>
                   <UserManagement />
