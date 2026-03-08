@@ -1174,7 +1174,7 @@ app.post('/api/phases/:id/resend-email', authenticateToken, async (req, res) => 
   }
 });
 
-const PORT = Number(process.env.PORT) || 5000;
+const PORT = process.env.PORT || 5000;
 
 // --- INVENTORY ROUTES ---
 
@@ -1634,6 +1634,6 @@ app.delete('/api/daily-work/:id', authenticateToken, async (req, res) => {
   }
 });
 
-app.listen(PORT, "0.0.0.0", () => console.log(`Server running on ${PORT}`));
+app.listen(Number(PORT), "0.0.0.0", () => console.log(`Server running on ${PORT}`));
 
 
