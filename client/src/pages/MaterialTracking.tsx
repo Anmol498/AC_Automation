@@ -348,77 +348,89 @@ export default function MaterialTracking() {
                                     </div>
 
                                     <form onSubmit={handleCopperSubmit} className="space-y-4">
-                                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-                                            {copperEntries.map((entry, index) => (
-                                                <div key={entry.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm transition-all hover:border-blue-300 relative group">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleRemoveCopperEntry(entry.id)}
-                                                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-100 text-red-600 rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-200 shadow-sm"
-                                                        title="Remove Entry"
-                                                    >
-                                                        <i className="fa-solid fa-xmark"></i>
-                                                    </button>
-                                                    <div className="mb-3 border-b border-slate-100 pb-3">
-                                                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Pipe Size</label>
-                                                        <div className="relative">
-                                                            {!entry.isCustomSize ? (
-                                                                <>
-                                                                    <select
-                                                                        required
-                                                                        value={entry.size}
-                                                                        onChange={(e) => {
-                                                                            if (e.target.value === 'custom') {
-                                                                                handleCopperEntryChange(entry.id, 'isCustomSize', true);
-                                                                            } else {
-                                                                                handleCopperEntryChange(entry.id, 'size', e.target.value);
-                                                                            }
-                                                                        }}
-                                                                        className={`w-full bg-slate-50 border border-slate-200 rounded-lg pl-3 pr-8 py-2 text-sm font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all appearance-none cursor-pointer ${!entry.size ? 'text-slate-400' : 'text-slate-800'}`}
-                                                                    >
-                                                                        <option value="" disabled hidden>Select Size...</option>
-                                                                        {copperSizes.map(size => (
-                                                                            <option key={size} value={size} className="text-slate-800">{size}</option>
-                                                                        ))}
-                                                                        <option value="custom" className="text-blue-600 font-bold">Other (Custom)...</option>
-                                                                    </select>
-                                                                    <i className="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs"></i>
-                                                                </>
-                                                            ) : (
-                                                                <div className="flex items-center gap-1">
-                                                                    <input
-                                                                        type="text"
-                                                                        required
-                                                                        value={entry.size}
-                                                                        onChange={(e) => handleCopperEntryChange(entry.id, 'size', e.target.value)}
-                                                                        placeholder="Type size..."
-                                                                        autoFocus
-                                                                        className="w-full bg-white border border-blue-300 rounded-lg pl-3 pr-3 py-2 text-sm font-semibold text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
-                                                                    />
-                                                                    <button type="button" onClick={() => handleCopperEntryChange(entry.id, 'isCustomSize', false)} className="p-2 text-slate-400 hover:text-red-500" title="Cancel Custom Size">
-                                                                        <i className="fa-solid fa-xmark text-sm"></i>
-                                                                    </button>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                    <div className={`grid grid-cols-2 gap-3 transition-opacity duration-300 ${!entry.size ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
-                                                        <div>
-                                                            <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Sent</label>
-                                                            <div className="relative">
-                                                                <input type="number" step="0.01" min="0" value={entry.sent} onChange={e => handleCopperEntryChange(entry.id, 'sent', e.target.value)} placeholder="0.00" disabled={!entry.size} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none disabled:bg-slate-100" />
-                                                            </div>
-                                                        </div>
-                                                        <div>
-                                                            <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Return</label>
-                                                            <div className="relative">
-                                                                <input type="number" step="0.01" min="0" value={entry.return} onChange={e => handleCopperEntryChange(entry.id, 'return', e.target.value)} placeholder="0.00" disabled={!entry.size} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none disabled:bg-slate-100" />
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            ))}
-
+                                        <div className="overflow-x-auto border border-slate-200 rounded-xl bg-white shadow-sm">
+                                            <table className="w-full text-left text-sm">
+                                                <thead className="bg-slate-100 text-slate-500 text-[10px] uppercase font-black tracking-wider">
+                                                    <tr>
+                                                        <th className="p-3 pl-5 border-b border-r border-slate-200 min-w-[150px]">Pipe Size</th>
+                                                        <th className="p-3 border-b border-r border-slate-200 min-w-[120px] text-center">Sent</th>
+                                                        <th className="p-3 border-b border-r border-slate-200 min-w-[120px] text-center">Return</th>
+                                                        <th className="p-3 border-b border-slate-200 w-16 text-center"></th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-100 bg-white">
+                                                    {copperEntries.map((entry, index) => (
+                                                        <tr key={entry.id} className="hover:bg-slate-50/50 group transition-colors">
+                                                            <td className="p-1.5 border-r border-slate-100 align-top relative">
+                                                                {!entry.isCustomSize ? (
+                                                                    <div className="relative h-full flex items-center">
+                                                                        <select
+                                                                            required
+                                                                            value={entry.size}
+                                                                            onChange={(e) => {
+                                                                                if (e.target.value === 'custom') {
+                                                                                    handleCopperEntryChange(entry.id, 'isCustomSize', true);
+                                                                                } else {
+                                                                                    handleCopperEntryChange(entry.id, 'size', e.target.value);
+                                                                                }
+                                                                            }}
+                                                                            className={`w-full bg-transparent border-none py-2 pl-3 pr-8 text-sm font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all appearance-none cursor-pointer ${!entry.size ? 'text-slate-400' : 'text-slate-800'}`}
+                                                                        >
+                                                                            <option value="" disabled hidden>Select Size...</option>
+                                                                            {copperSizes.map(size => {
+                                                                                const isSelectedElsewhere = copperEntries.some(e => e.id !== entry.id && e.size === size);
+                                                                                return (
+                                                                                    <option
+                                                                                        key={size}
+                                                                                        value={size}
+                                                                                        disabled={isSelectedElsewhere}
+                                                                                        className={isSelectedElsewhere ? "text-slate-300 bg-slate-50" : "text-slate-800"}
+                                                                                    >
+                                                                                        {size} {isSelectedElsewhere ? '(Selected)' : ''}
+                                                                                    </option>
+                                                                                );
+                                                                            })}
+                                                                            <option value="custom" className="text-blue-600 font-bold">Other (Custom)...</option>
+                                                                        </select>
+                                                                        <i className="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs"></i>
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="flex items-center gap-1 p-1 h-full">
+                                                                        <input
+                                                                            type="text"
+                                                                            required
+                                                                            value={entry.size}
+                                                                            onChange={(e) => handleCopperEntryChange(entry.id, 'size', e.target.value)}
+                                                                            placeholder="Type size..."
+                                                                            autoFocus
+                                                                            className="w-full bg-white border border-blue-300 rounded-lg pl-3 pr-3 py-1.5 text-sm font-semibold text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                                                                        />
+                                                                        <button type="button" onClick={() => handleCopperEntryChange(entry.id, 'isCustomSize', false)} className="p-2 text-slate-400 hover:text-red-500" title="Cancel Custom Size">
+                                                                            <i className="fa-solid fa-xmark text-sm"></i>
+                                                                        </button>
+                                                                    </div>
+                                                                )}
+                                                            </td>
+                                                            <td className={`p-1.5 border-r border-slate-100 align-top transition-opacity duration-300 ${!entry.size ? 'opacity-40' : 'opacity-100'}`}>
+                                                                <input type="number" step="0.01" min="0" value={entry.sent} onChange={e => handleCopperEntryChange(entry.id, 'sent', e.target.value)} placeholder="0.00" disabled={!entry.size} className="w-full bg-transparent border-none px-3 py-2 text-sm font-semibold text-center focus:bg-white focus:ring-2 focus:ring-blue-500/20 rounded-md transition-all outline-none" />
+                                                            </td>
+                                                            <td className={`p-1.5 border-r border-slate-100 align-top transition-opacity duration-300 ${!entry.size ? 'opacity-40' : 'opacity-100'}`}>
+                                                                <input type="number" step="0.01" min="0" value={entry.return} onChange={e => handleCopperEntryChange(entry.id, 'return', e.target.value)} placeholder="0.00" disabled={!entry.size} className="w-full bg-transparent border-none px-3 py-2 text-sm font-semibold text-center focus:bg-white focus:ring-2 focus:ring-blue-500/20 rounded-md transition-all outline-none" />
+                                                            </td>
+                                                            <td className="p-1.5 text-center align-middle">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleRemoveCopperEntry(entry.id)}
+                                                                    className="w-7 h-7 mx-auto rounded-lg bg-slate-100 text-slate-400 hover:bg-red-100 hover:text-red-500 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100"
+                                                                    title="Remove Entry"
+                                                                >
+                                                                    <i className="fa-solid fa-trash-can text-xs"></i>
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
                                         </div>
                                         <div className="flex justify-end pt-4 border-t border-slate-200 mt-6 gap-3">
                                             <button type="submit" className="w-full sm:w-auto px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl transition-all shadow-md shadow-blue-500/20 flex items-center justify-center gap-2">
