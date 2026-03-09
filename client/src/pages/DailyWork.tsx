@@ -11,6 +11,7 @@ interface DailyWorkLog {
     qty: string;
     technician: string;
     remarks: string;
+    address: string;
 }
 
 export default function DailyWork() {
@@ -20,10 +21,10 @@ export default function DailyWork() {
 
     // Inline editing state
     const [editingId, setEditingId] = useState<number | null>(null);
-    const [editForm, setEditForm] = useState({ date: '', work_description: '', qty: '', technician: '', remarks: '' });
+    const [editForm, setEditForm] = useState({ date: '', work_description: '', qty: '', technician: '', remarks: '', address: '' });
 
     // New row form
-    const [newRow, setNewRow] = useState<Partial<DailyWorkLog>>({ date: new Date().toISOString().split('T')[0], work_description: '', qty: '1', technician: '', remarks: '' });
+    const [newRow, setNewRow] = useState<Partial<DailyWorkLog>>({ date: new Date().toISOString().split('T')[0], work_description: '', qty: '1', technician: '', remarks: '', address: '' });
     const [showNewRow, setShowNewRow] = useState(false);
     const [editRowId, setEditRowId] = useState<number | null>(null);
     const [editRowData, setEditRowData] = useState<Partial<DailyWorkLog>>({});
@@ -55,7 +56,7 @@ export default function DailyWork() {
             await axios.post(`${API_BASE_URL}/daily-work`, {
                 ...newRow
             }, { headers: { 'Authorization': `Bearer ${token}` } });
-            setNewRow({ date: new Date().toISOString().split('T')[0], work_description: '', qty: '1', technician: '', remarks: '' });
+            setNewRow({ date: new Date().toISOString().split('T')[0], work_description: '', qty: '1', technician: '', remarks: '', address: '' });
             setShowNewRow(false);
             fetchLogs();
         } catch (err) {
@@ -70,7 +71,8 @@ export default function DailyWork() {
             work_description: log.work_description || '',
             qty: log.qty || '',
             technician: log.technician || '',
-            remarks: log.remarks || ''
+            remarks: log.remarks || '',
+            address: log.address || ''
         });
     };
 
@@ -110,12 +112,13 @@ export default function DailyWork() {
     const exportToCSV = () => {
         if (!filteredLogs.length) return alert('No data to export.');
 
-        const headers = ['Date', 'Work Description', 'Qty', 'Technician', 'Remarks'];
+        const headers = ['Date', 'Work Description', 'Qty', 'Technician', 'Address', 'Remarks'];
         const rows = filteredLogs.map(log => [
             new Date(log.date).toLocaleDateString(),
             `"${(log.work_description || '').replace(/"/g, '""')}"`,
             `"${(log.qty || '0').replace(/"/g, '""')}"`,
             `"${(log.technician || '').replace(/"/g, '""')}"`,
+            `"${(log.address || '').replace(/"/g, '""')}"`,
             `"${(log.remarks || '').replace(/"/g, '""')}"`
         ]);
 
@@ -188,6 +191,7 @@ export default function DailyWork() {
                                 <th className="p-3 border-b border-r border-slate-200 min-w-[280px]">Work Description</th>
                                 <th className="p-3 border-b border-r border-slate-200 min-w-[80px] text-center">Qty</th>
                                 <th className="p-3 border-b border-r border-slate-200 min-w-[140px]">Technician</th>
+                                <th className="p-3 border-b border-r border-slate-200 min-w-[200px]">Address</th>
                                 <th className="p-3 border-b border-r border-slate-200 min-w-[220px]">Remarks</th>
                                 <th className="p-3 border-b border-slate-200 w-24 text-center">Actions</th>
                             </tr>
@@ -237,6 +241,15 @@ export default function DailyWork() {
                                     <td className="p-1.5 border-r border-slate-100">
                                         <input
                                             type="text"
+                                            value={newRow.address}
+                                            onChange={e => setNewRow({ ...newRow, address: e.target.value })}
+                                            placeholder="Address..."
+                                            className="w-full bg-white border border-blue-200 rounded-lg px-2 py-1.5 text-sm font-medium focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                                        />
+                                    </td>
+                                    <td className="p-1.5 border-r border-slate-100">
+                                        <input
+                                            type="text"
                                             value={newRow.remarks}
                                             onChange={e => setNewRow({ ...newRow, remarks: e.target.value })}
                                             placeholder="Remarks..."
@@ -248,7 +261,7 @@ export default function DailyWork() {
                                             <button onClick={handleAddRow} className="w-7 h-7 rounded-lg bg-green-100 text-green-600 hover:bg-green-200 transition-colors flex items-center justify-center" title="Save">
                                                 <i className="fa-solid fa-check text-xs"></i>
                                             </button>
-                                            <button onClick={() => { setShowNewRow(false); setNewRow({ date: new Date().toISOString().split('T')[0], work_description: '', qty: '1', technician: '', remarks: '' }); }} className="w-7 h-7 rounded-lg bg-red-100 text-red-500 hover:bg-red-200 transition-colors flex items-center justify-center" title="Cancel">
+                                            <button onClick={() => { setShowNewRow(false); setNewRow({ date: new Date().toISOString().split('T')[0], work_description: '', qty: '1', technician: '', remarks: '', address: '' }); }} className="w-7 h-7 rounded-lg bg-red-100 text-red-500 hover:bg-red-200 transition-colors flex items-center justify-center" title="Cancel">
                                                 <i className="fa-solid fa-xmark text-xs"></i>
                                             </button>
                                         </div>
@@ -258,7 +271,7 @@ export default function DailyWork() {
 
                             {/* Loading */}
                             {isLoading && (
-                                <tr><td colSpan={7} className="p-8 text-center text-slate-400"><i className="fa-solid fa-spinner fa-spin mr-2"></i>Loading...</td></tr>
+                                <tr><td colSpan={8} className="p-8 text-center text-slate-400"><i className="fa-solid fa-spinner fa-spin mr-2"></i>Loading...</td></tr>
                             )}
 
                             {/* Log Rows */}
@@ -281,6 +294,9 @@ export default function DailyWork() {
                                                 <input type="text" value={editForm.technician} onChange={e => setEditForm({ ...editForm, technician: e.target.value })} className="w-full bg-white border border-amber-300 rounded-lg px-2 py-1.5 text-sm font-medium focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none" />
                                             </td>
                                             <td className="p-1.5 border-r border-slate-100">
+                                                <input type="text" value={editForm.address} onChange={e => setEditForm({ ...editForm, address: e.target.value })} className="w-full bg-white border border-amber-300 rounded-lg px-2 py-1.5 text-sm font-medium focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none" />
+                                            </td>
+                                            <td className="p-1.5 border-r border-slate-100">
                                                 <input type="text" value={editForm.remarks} onChange={e => setEditForm({ ...editForm, remarks: e.target.value })} className="w-full bg-white border border-amber-300 rounded-lg px-2 py-1.5 text-sm font-medium focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none" />
                                             </td>
                                             <td className="p-1.5 text-center">
@@ -300,6 +316,7 @@ export default function DailyWork() {
                                             <td className="p-3 border-r border-slate-100 text-slate-700">{log.work_description || <span className="text-slate-300 italic">—</span>}</td>
                                             <td className="p-3 border-r border-slate-100 text-center font-bold text-slate-800">{log.qty || '0'}</td>
                                             <td className="p-3 border-r border-slate-100 font-medium text-slate-700">{log.technician || <span className="text-slate-300 italic">—</span>}</td>
+                                            <td className="p-3 border-r border-slate-100 text-slate-700">{log.address || <span className="text-slate-300 italic">—</span>}</td>
                                             <td className="p-3 border-r border-slate-100 text-slate-600 italic">{log.remarks || <span className="text-slate-300">—</span>}</td>
                                             <td className="p-3 text-center">
                                                 <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -319,7 +336,7 @@ export default function DailyWork() {
                             {/* Empty State */}
                             {!isLoading && filteredLogs.length === 0 && !showNewRow && (
                                 <tr>
-                                    <td colSpan={7} className="p-12 text-center">
+                                    <td colSpan={8} className="p-12 text-center">
                                         <div className="space-y-3">
                                             <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto">
                                                 <i className="fa-solid fa-search text-2xl text-slate-300"></i>

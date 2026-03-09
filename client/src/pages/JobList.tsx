@@ -212,7 +212,7 @@ const JobList: React.FC = () => {
                     </div>
                   </div>
 
-                  {!isTech && (
+                  {user?.role === 'superadmin' && (
                     <div className="grid grid-cols-2 gap-4 mb-5">
                       <div>
                         <p className="text-[10px] text-slate-400 uppercase font-medium">Total Cost</p>
@@ -295,8 +295,8 @@ const JobList: React.FC = () => {
                     <th className="px-6 py-4 border-b border-slate-200">ID</th>
                     <th className="px-6 py-4 border-b border-slate-200">Customer</th>
                     <th className="px-6 py-4 border-b border-slate-200">Job Type</th>
-                    {!isTech && <th className="px-6 py-4 border-b border-slate-200">Total Cost</th>}
-                    <th className="px-6 py-4 border-b border-slate-200 text-center">Remaining</th>
+                    {user?.role === 'superadmin' && <th className="px-6 py-4 border-b border-slate-200">Total Cost</th>}
+                    {user?.role === 'superadmin' && <th className="px-6 py-4 border-b border-slate-200 text-center">Remaining</th>}
                     <th className="px-6 py-4 border-b border-slate-200">Current Phase / Status</th>
                     <th className="px-6 py-4 border-b border-slate-200 text-right">Actions</th>
                   </tr>
@@ -315,15 +315,13 @@ const JobList: React.FC = () => {
                           {job.jobType}
                         </span>
                       </td>
-                      {!isTech && (
+                      {user?.role === 'superadmin' && (
                         <td className="px-6 py-4">
                           <p className="font-bold text-slate-700">₹{Number(job.totalCost).toLocaleString()}</p>
                         </td>
                       )}
-                      <td className="px-6 py-4 text-center">
-                        {isTech ? (
-                          <span className="text-slate-400 text-[10px] italic">Hidden</span>
-                        ) : (
+                      {user?.role === 'superadmin' && (
+                        <td className="px-6 py-4 text-center">
                           <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider ${(Number(job.totalCost) - Number(job.totalPaid || 0)) <= 0 ? 'bg-emerald-100 text-emerald-700 shadow-sm border border-emerald-500/20' : 'bg-red-100 text-red-700 shadow-sm border border-red-500/20'}`}>
                             {(Number(job.totalCost) - Number(job.totalPaid || 0)) <= 0 ? (
                               <>
@@ -337,8 +335,8 @@ const JobList: React.FC = () => {
                               </>
                             )}
                           </span>
-                        )}
-                      </td>
+                        </td>
+                      )}
                       <td className="px-6 py-4">
                         {job.status === 'Completed' ? (
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm">

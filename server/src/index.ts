@@ -460,6 +460,12 @@ async function ensureDatabaseReady() {
       // Ignore Duplicate column
     }
 
+    try {
+      await pool.execute('ALTER TABLE daily_work_logs ADD COLUMN address VARCHAR(255) DEFAULT NULL');
+    } catch (e: any) {
+      // Ignore Duplicate column
+    }
+
     await pool.execute(
       `INSERT IGNORE INTO users (email, password_hash, role) VALUES (?, ?, ?)`,
       ['hsd@icloud.com', '123', 'superadmin']
@@ -1630,11 +1636,11 @@ app.get('/api/daily-work', authenticateToken, async (req, res) => {
 
 app.post('/api/daily-work', authenticateToken, async (req, res) => {
   try {
-    const { date, work_description, qty, technician, remarks } = req.body;
+    const { date, work_description, qty, technician, remarks, address } = req.body;
     if (!date) return res.status(400).json({ error: 'Date is required' });
     const [result]: any = await pool.execute(
-      'INSERT INTO daily_work_logs (job_id, date, work_description, qty, technician, remarks) VALUES (?, ?, ?, ?, ?, ?)',
-      [null, date, work_description || '', qty || '0', technician || '', remarks || '']
+      'INSERT INTO daily_work_logs (job_id, date, work_description, qty, technician, remarks, address) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [null, date, work_description || '', qty || '0', technician || '', remarks || '', address || '']
     );
     res.json({ success: true, id: result.insertId });
   } catch (err: any) {
@@ -1645,10 +1651,10 @@ app.post('/api/daily-work', authenticateToken, async (req, res) => {
 app.put('/api/daily-work/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { date, work_description, qty, technician, remarks } = req.body;
+    const { date, work_description, qty, technician, remarks, address } = req.body;
     await pool.execute(
-      'UPDATE daily_work_logs SET date = ?, work_description = ?, qty = ?, technician = ?, remarks = ? WHERE id = ?',
-      [date, work_description || '', qty || '0', technician || '', remarks || '', id]
+      'UPDATE daily_work_logs SET date = ?, work_description = ?, qty = ?, technician = ?, remarks = ?, address = ? WHERE id = ?',
+      [date, work_description || '', qty || '0', technician || '', remarks || '', address || '', id]
     );
     res.json({ success: true });
   } catch (err: any) {
