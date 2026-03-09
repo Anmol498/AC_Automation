@@ -155,14 +155,16 @@ const JobDetail: React.FC = () => {
     const phase = phases.find(p => p.id === phaseId);
     if (!phase || !job) return;
 
-    if (!requireEmailPreview) {
+    const forceSkipEmail = directSkipEmail || user?.role === 'technician';
+
+    if (!requireEmailPreview || user?.role === 'technician') {
       setIsProcessing(phaseId);
       setNotification(null);
       try {
         const response = await fetch(`${API_BASE_URL}/phases/${phaseId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ isCompleted: true, skipEmail: directSkipEmail }),
+          body: JSON.stringify({ isCompleted: true, skipEmail: forceSkipEmail }),
         });
         const data = await response.json();
         if (response.ok) {
@@ -174,7 +176,7 @@ const JobDetail: React.FC = () => {
             status: data.jobStatus || prev.status,
             currentPhase: data.currentPhase
           }));
-          if (directSkipEmail) {
+          if (forceSkipEmail) {
             setPhaseEmailStatus(prev => ({ ...prev, [phaseId]: 'skipped' }));
           } else {
             setPhaseEmailStatus(prev => ({ ...prev, [phaseId]: data.emailSent ? 'sent' : 'failed' }));
@@ -500,7 +502,7 @@ const JobDetail: React.FC = () => {
         </div>
 
         {/* Financial Summary */}
-        {user?.role !== 'technician' && (
+        {user?.role === 'superadmin' && (
           <div className="bg-white rounded-2xl border-t-4 border-t-emerald-500 border-x border-b border-slate-200 p-6 shadow-[0_4px_20px_rgb(0,0,0,0.03)] hover:shadow-[0_4px_25px_rgb(0,0,0,0.06)] transition-shadow flex flex-col">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
@@ -544,7 +546,7 @@ const JobDetail: React.FC = () => {
         )}
 
         {/* Record Payment */}
-        {user?.role !== 'technician' && (
+        {user?.role === 'superadmin' && (
           <div className="bg-white rounded-2xl border-t-4 border-t-indigo-500 border-x border-b border-slate-200 p-6 shadow-[0_4px_20px_rgb(0,0,0,0.03)] hover:shadow-[0_4px_25px_rgb(0,0,0,0.06)] transition-shadow flex flex-col">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">

@@ -487,7 +487,7 @@ const JobList: React.FC = () => {
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[9px] font-bold text-slate-500 uppercase">Commissioning</label>
+                    <label className="text-[9px] font-bold text-slate-500 uppercase">Total Payment</label>
                     <input
                       type="number"
                       className="w-full p-2 bg-white border border-slate-200 rounded-lg outline-none text-sm"
