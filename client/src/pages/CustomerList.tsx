@@ -62,6 +62,10 @@ const CustomerList: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.name.trim()) {
+      alert("Please add location key address as name");
+      return;
+    }
     try {
       const url = editingId ? `${API_BASE_URL}/customers/${editingId}` : `${API_BASE_URL}/customers`;
       const method = editingId ? 'PUT' : 'POST';
@@ -287,10 +291,10 @@ const CustomerList: React.FC = () => {
           <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl">
             <h3 className="text-lg font-bold text-slate-800 mb-6">{editingId ? 'Edit Customer' : 'Add New Customer'}</h3>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <input placeholder="Name" className="w-full p-2.5 border border-slate-200 rounded-lg" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required />
-              <input type="email" placeholder="Email" className="w-full p-2.5 border border-slate-200 rounded-lg" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} required />
+              <input placeholder="Name" className="w-full p-2.5 border border-slate-200 rounded-lg" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
+              <input type="email" placeholder="Email" className="w-full p-2.5 border border-slate-200 rounded-lg" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
               <input placeholder="Phone" className="w-full p-2.5 border border-slate-200 rounded-lg" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} />
-              <textarea placeholder="Address" className="w-full p-2.5 border border-slate-200 rounded-lg" rows={3} value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} />
+              <textarea placeholder="Address" className="w-full p-2.5 border border-slate-200 rounded-lg" rows={3} value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} required />
               <div className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
                 <div>
                   <label className="block text-xs font-bold text-slate-600 mb-1 pl-1">Drawing</label>

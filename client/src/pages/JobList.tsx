@@ -486,19 +486,10 @@ const JobList: React.FC = () => {
                       onChange={e => setFormData({ ...formData, outdoorFittingCost: Number(e.target.value) })}
                     />
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-bold text-slate-500 uppercase">Total Payment</label>
-                    <input
-                      type="number"
-                      className="w-full p-2 bg-white border border-slate-200 rounded-lg outline-none text-sm"
-                      value={formData.commissioningCost}
-                      onChange={e => setFormData({ ...formData, commissioningCost: Number(e.target.value) })}
-                    />
-                  </div>
                 </div>
                 <div className="pt-4 mt-2 border-t border-slate-200 flex justify-between items-center">
                   <span className="text-xs font-bold text-slate-500">Estimated Total:</span>
-                  <span className="text-lg font-black text-blue-600">₹{(formData.copperPipingCost + formData.outdoorFittingCost + formData.commissioningCost).toLocaleString()}</span>
+                  <span className="text-lg font-black text-blue-600">₹{(formData.copperPipingCost + formData.outdoorFittingCost).toLocaleString()}</span>
                 </div>
               </div>
 
