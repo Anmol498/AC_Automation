@@ -408,9 +408,11 @@ const JobList: React.FC = () => {
                   onChange={e => setFormData({ ...formData, customerId: e.target.value })}
                   required
                 >
-                  <option value="">Select a customer...</option>
+                  <option value="">Select site/customer...</option>
                   {customers.map(c => (
-                    <option key={c.id} value={c.id}>{c.name} ({c.email})</option>
+                    <option key={c.id} value={c.id}>
+                      {c.name ? `${c.name} - ${c.address}` : c.address}
+                    </option>
                   ))}
                 </select>
               </div>
