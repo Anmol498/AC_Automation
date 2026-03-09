@@ -429,6 +429,37 @@ async function ensureDatabaseReady() {
       }
     }
 
+    try {
+      await pool.execute(`
+        CREATE TABLE IF NOT EXISTS daily_work_logs (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          job_id INT DEFAULT NULL,
+          date DATE NOT NULL,
+          work_description TEXT,
+          qty VARCHAR(50) DEFAULT '0',
+          technician VARCHAR(100) DEFAULT NULL,
+          remarks TEXT DEFAULT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_job (job_id)
+        )
+      `);
+      console.log('daily_work_logs table checked/created');
+    } catch (e: any) {
+      console.error('Error checking daily_work_logs:', e.message);
+    }
+
+    try {
+      await pool.execute('ALTER TABLE daily_work_logs ADD COLUMN technician VARCHAR(100) DEFAULT NULL');
+    } catch (e: any) {
+      // Ignore Duplicate column
+    }
+
+    try {
+      await pool.execute('ALTER TABLE daily_work_logs ADD COLUMN remarks TEXT DEFAULT NULL');
+    } catch (e: any) {
+      // Ignore Duplicate column
+    }
+
     await pool.execute(
       `INSERT IGNORE INTO users (email, password_hash, role) VALUES (?, ?, ?)`,
       ['hsd@icloud.com', '123', 'superadmin']
