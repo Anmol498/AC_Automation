@@ -74,8 +74,7 @@ export default function MaterialTracking() {
         }
     };
 
-    // ----- Copper Form -----
-    const copperSizes = ['1/4', '3/8', '1/2', '5/8', '3/4', '7/8', '1 3/8'];
+    const copperSizes = ['1/4', '3/8', '1/2', '5/8', '3/4', '7/8', '1 1/8', '1 3/8'];
 
     type CopperEntryItem = { id: string; size: string; isCustomSize: boolean; sent: string; return: string };
 
@@ -464,7 +463,7 @@ export default function MaterialTracking() {
                                                         >
                                                             <td className="p-4 font-bold text-slate-700 whitespace-nowrap">
                                                                 <i className={`fa-solid fa-chevron-${expandedCopperSizes[group.size] ? 'up' : 'down'} mr-3 text-slate-400 text-xs transition-transform`}></i>
-                                                                Overview ({group.logs.length})
+                                                                {new Date(group.logs[0].date).toLocaleDateString()} ({group.logs.length})
                                                             </td>
                                                             <td className="p-4 font-bold text-slate-900"><span className="bg-slate-100 px-2 py-1 rounded text-xs shadow-sm border border-slate-200">{group.size}</span></td>
                                                             <td className="p-4 text-right font-bold text-slate-600">{group.totalSent.toFixed(2)}</td>
