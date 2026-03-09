@@ -63,8 +63,8 @@ const CustomerList: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim()) {
-      alert("Please add location key address as name");
-      return;
+      const goBack = window.confirm("Name is left blank. Please add location key address as name.\n\nClick 'OK' to go back and add it, or 'Cancel' to SKIP and save anyway.");
+      if (goBack) return;
     }
     try {
       const url = editingId ? `${API_BASE_URL}/customers/${editingId}` : `${API_BASE_URL}/customers`;
