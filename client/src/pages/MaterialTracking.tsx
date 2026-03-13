@@ -6,7 +6,7 @@ import { useAuth } from '../App';
 type Tab = 'copper' | 'drain' | 'remote' | 'others';
 
 export default function MaterialTracking() {
-    const { token } = useAuth();
+    const { token, user } = useAuth();
     const [jobs, setJobs] = useState<any[]>([]);
     const [selectedJobId, setSelectedJobId] = useState<string>('');
     const [activeTab, setActiveTab] = useState<Tab>('copper');
@@ -484,7 +484,7 @@ export default function MaterialTracking() {
                                                                 <td className="p-4 text-right font-bold text-orange-500/80">{log.used}</td>
                                                                 <td className="p-4 text-right font-bold text-blue-600/80 bg-blue-50/20">{log.cumulativeTotal}</td>
                                                                 <td className="p-4 text-center">
-                                                                    <button onClick={(e) => { e.stopPropagation(); deleteLog(log.id); }} className="w-8 h-8 rounded-full bg-slate-50 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all flex items-center justify-center mx-auto"><i className="fa-solid fa-trash-can"></i></button>
+                                                                    {user?.role === 'superadmin' && <button onClick={(e) => { e.stopPropagation(); deleteLog(log.id); }} className="w-8 h-8 rounded-full bg-slate-50 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all flex items-center justify-center mx-auto"><i className="fa-solid fa-trash-can"></i></button>}
                                                                 </td>
                                                             </tr>
                                                         ))}
@@ -538,7 +538,7 @@ export default function MaterialTracking() {
                                                         <td className="p-4 text-right font-bold text-orange-600">{log.used_qty}</td>
                                                         <td className="p-4 text-right font-black text-blue-700 text-base bg-blue-50/50">{log.cumulativeTotal}</td>
                                                         <td className="p-4 text-center">
-                                                            <button onClick={() => deleteLog(log.id)} className="w-8 h-8 rounded-full bg-slate-50 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all flex items-center justify-center mx-auto"><i className="fa-solid fa-trash-can"></i></button>
+                                                            {user?.role === 'superadmin' && <button onClick={() => deleteLog(log.id)} className="w-8 h-8 rounded-full bg-slate-50 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all flex items-center justify-center mx-auto"><i className="fa-solid fa-trash-can"></i></button>}
                                                         </td>
                                                     </tr>
                                                 ))}
@@ -603,7 +603,7 @@ export default function MaterialTracking() {
                                                         <td className="p-4 text-right font-bold text-orange-600">{log.used_qty}</td>
                                                         <td className="p-4 text-right font-black text-blue-700 text-base bg-blue-50/50">{log.cumulativeTotal}</td>
                                                         <td className="p-4 text-center">
-                                                            <button onClick={() => deleteLog(log.id)} className="w-8 h-8 rounded-full bg-slate-50 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all flex items-center justify-center mx-auto"><i className="fa-solid fa-trash-can"></i></button>
+                                                            {user?.role === 'superadmin' && <button onClick={() => deleteLog(log.id)} className="w-8 h-8 rounded-full bg-slate-50 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all flex items-center justify-center mx-auto"><i className="fa-solid fa-trash-can"></i></button>}
                                                         </td>
                                                     </tr>
                                                 ))}
@@ -661,7 +661,7 @@ export default function MaterialTracking() {
                                                         <td className="p-4 text-right font-bold text-orange-600">{log.qty}</td>
                                                         <td className="p-4 text-right font-black text-blue-700 text-base bg-blue-50/50">{log.cumulativeTotal}</td>
                                                         <td className="p-4 text-center">
-                                                            <button onClick={() => deleteLog(log.id)} className="w-8 h-8 rounded-full bg-slate-50 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all flex items-center justify-center mx-auto"><i className="fa-solid fa-trash-can"></i></button>
+                                                            {user?.role === 'superadmin' && <button onClick={() => deleteLog(log.id)} className="w-8 h-8 rounded-full bg-slate-50 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all flex items-center justify-center mx-auto"><i className="fa-solid fa-trash-can"></i></button>}
                                                         </td>
                                                     </tr>
                                                 ))}

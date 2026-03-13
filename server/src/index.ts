@@ -1509,7 +1509,7 @@ app.post('/api/material/copper', authenticateToken, async (req, res) => {
   }
 });
 
-app.delete('/api/material/copper/:id', authenticateToken, async (req, res) => {
+app.delete('/api/material/copper/:id', authenticateToken, isSuperAdmin, async (req, res) => {
   try {
     await pool.execute('DELETE FROM material_copper_logs WHERE id = ?', [req.params.id]);
     res.json({ success: true });
@@ -1544,7 +1544,7 @@ app.post('/api/material/drain', authenticateToken, async (req, res) => {
   }
 });
 
-app.delete('/api/material/drain/:id', authenticateToken, async (req, res) => {
+app.delete('/api/material/drain/:id', authenticateToken, isSuperAdmin, async (req, res) => {
   try {
     await pool.execute('DELETE FROM material_drain_logs WHERE id = ?', [req.params.id]);
     res.json({ success: true });
@@ -1579,7 +1579,7 @@ app.post('/api/material/remote', authenticateToken, async (req, res) => {
   }
 });
 
-app.delete('/api/material/remote/:id', authenticateToken, async (req, res) => {
+app.delete('/api/material/remote/:id', authenticateToken, isSuperAdmin, async (req, res) => {
   try {
     await pool.execute('DELETE FROM material_remote_logs WHERE id = ?', [req.params.id]);
     res.json({ success: true });
@@ -1614,7 +1614,7 @@ app.post('/api/material/others', authenticateToken, async (req, res) => {
   }
 });
 
-app.delete('/api/material/others/:id', authenticateToken, async (req, res) => {
+app.delete('/api/material/others/:id', authenticateToken, isSuperAdmin, async (req, res) => {
   try {
     await pool.execute('DELETE FROM material_other_logs WHERE id = ?', [req.params.id]);
     res.json({ success: true });
@@ -1665,6 +1665,91 @@ app.put('/api/daily-work/:id', authenticateToken, async (req, res) => {
 app.delete('/api/daily-work/:id', authenticateToken, async (req, res) => {
   try {
     await pool.execute('DELETE FROM daily_work_logs WHERE id = ?', [req.params.id]);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- TECHNICIAN WORK LOGS (reuses daily_work_logs table, filtered by user) ---
+
+app.get('/api/technician-work', authenticateToken, async (req, res) => {
+  try {
+    const role = req.user.role?.toLowerCase();
+    if (role === 'technician') {
+      const [rows] = await pool.execute(
+        'SELECT * FROM daily_work_logs WHERE LOWER(technician) = LOWER(?) ORDER BY date DESC, id DESC',
+        [req.user.email]
+      );
+      return res.json(rows);
+    } else if (role === 'superadmin') {
+      const [rows] = await pool.execute('SELECT * FROM daily_work_logs ORDER BY date DESC, id DESC');
+      return res.json(rows);
+    }
+    return res.status(403).json({ error: 'Access denied' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/technician-work', authenticateToken, async (req, res) => {
+  try {
+    const role = req.user.role?.toLowerCase();
+    if (role !== 'technician') return res.status(403).json({ error: 'Only technicians can add work entries' });
+
+    const { date, work_description, qty, remarks, address } = req.body;
+    if (!date) return res.status(400).json({ error: 'Date is required' });
+
+    const [result]: any = await pool.execute(
+      'INSERT INTO daily_work_logs (job_id, date, work_description, qty, technician, remarks, address) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [null, date, work_description || '', qty || '0', req.user.email, remarks || '', address || '']
+    );
+    res.json({ success: true, id: result.insertId });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/technician-work/:id', authenticateToken, async (req, res) => {
+  try {
+    const role = req.user.role?.toLowerCase();
+    if (role !== 'technician') return res.status(403).json({ error: 'Only technicians can edit their work entries' });
+
+    const { id } = req.params;
+    const { date, work_description, qty, remarks, address } = req.body;
+
+    // Verify ownership
+    const [existing]: any = await pool.execute('SELECT technician FROM daily_work_logs WHERE id = ?', [id]);
+    if (existing.length === 0) return res.status(404).json({ error: 'Entry not found' });
+    if (existing[0].technician?.toLowerCase() !== req.user.email?.toLowerCase()) {
+      return res.status(403).json({ error: 'You can only edit your own entries' });
+    }
+
+    await pool.execute(
+      'UPDATE daily_work_logs SET date = ?, work_description = ?, qty = ?, remarks = ?, address = ? WHERE id = ?',
+      [date, work_description || '', qty || '0', remarks || '', address || '', id]
+    );
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/technician-work/:id', authenticateToken, async (req, res) => {
+  try {
+    const role = req.user.role?.toLowerCase();
+    if (role !== 'technician') return res.status(403).json({ error: 'Only technicians can delete their work entries' });
+
+    const { id } = req.params;
+
+    // Verify ownership
+    const [existing]: any = await pool.execute('SELECT technician FROM daily_work_logs WHERE id = ?', [id]);
+    if (existing.length === 0) return res.status(404).json({ error: 'Entry not found' });
+    if (existing[0].technician?.toLowerCase() !== req.user.email?.toLowerCase()) {
+      return res.status(403).json({ error: 'You can only delete your own entries' });
+    }
+
+    await pool.execute('DELETE FROM daily_work_logs WHERE id = ?', [id]);
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });

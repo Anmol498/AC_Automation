@@ -20,6 +20,11 @@ const Layout: React.FC = () => {
     navItems.push({ path: '/daily-work', label: 'Daily Work', icon: 'fa-clipboard-list' });
   }
 
+  // Technician gets "My Work" nav item
+  if (user?.role === UserRole.TECHNICIAN) {
+    navItems.push({ path: '/my-work', label: 'My Work', icon: 'fa-clipboard-list' });
+  }
+
   return (
     <div className="h-screen flex flex-col md:flex-row bg-slate-50 overflow-hidden">
       {/* Sidebar (Desktop) */}
@@ -66,7 +71,7 @@ const Layout: React.FC = () => {
             </div>
             <div className="overflow-hidden">
               <p className="text-sm font-medium text-white truncate" title={user?.email}>{user?.email}</p>
-              <p className="text-xs text-slate-400 capitalize font-medium">{user?.role}</p>
+              <p className="text-xs text-slate-400 capitalize font-medium">{user?.role}{user?.role === UserRole.TECHNICIAN && ` • ID: ${user?.id}`}</p>
             </div>
           </div>
           <button
@@ -96,6 +101,7 @@ const Layout: React.FC = () => {
               user?.role === UserRole.TECHNICIAN ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-blue-100 text-blue-700 border border-blue-200'
               }`}>
               {user?.role}
+              {user?.role === UserRole.TECHNICIAN && ` • ID: ${user?.id}`}
             </span>
             <button
               onClick={logout}

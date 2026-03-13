@@ -15,6 +15,7 @@ import InventoryManagement from './pages/InventoryManagement';
 import Settings from './pages/Settings';
 import MaterialTracking from './pages/MaterialTracking';
 import DailyWork from './pages/DailyWork';
+import TechnicianWork from './pages/TechnicianWork';
 
 interface AuthContextType extends AuthState {
   login: (user: User, token: string) => void;
@@ -125,6 +126,11 @@ const App: React.FC = () => {
               } />
               <Route path="/material" element={<MaterialTracking />} />
               <Route path="/daily-work" element={<DailyWork />} />
+              <Route path="/my-work" element={
+                <ProtectedRoute roles={[UserRole.TECHNICIAN]}>
+                  <TechnicianWork />
+                </ProtectedRoute>
+              } />
               <Route path="/users" element={
                 <ProtectedRoute roles={[UserRole.SUPER_ADMIN]}>
                   <UserManagement />
