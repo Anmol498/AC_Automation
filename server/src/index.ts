@@ -482,10 +482,10 @@ ensureDatabaseReady();
 const authenticateToken = (req: any, res: any, next: any) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
-  if (!token) return res.sendStatus(401);
+  if (!token) return res.status(401).json({ error: 'Unauthorized' });
 
   jwt.verify(token, process.env.JWT_SECRET || 'coolbreeze_secret_key_123', (err: any, user: any) => {
-    if (err) return res.sendStatus(403);
+    if (err) return res.status(403).json({ error: 'Forbidden' });
     req.user = user;
     next();
   });
