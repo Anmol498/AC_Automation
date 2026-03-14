@@ -117,8 +117,8 @@ const ContactUs: React.FC = () => {
                             <div>
                                 <h3 className="text-lg font-bold text-slate-900 mb-1">Email Us</h3>
                                 <p className="text-slate-500 mb-3 text-sm">Drop us a line anytime</p>
-                                <a href="mailto:info@satguruengineers.com" className="text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors break-all">
-                                    info@satguruengineers.com
+                                <a href="mailto:contactsatguruengineer@gmail.com" className="text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors break-all">
+                                    contactsatguruengineer@gmail.com
                                 </a>
                             </div>
                         </div>

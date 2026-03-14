@@ -130,7 +130,8 @@ const sendPhaseNotification = async (customerEmail: any, customerName: any, jobT
           ${paymentBlock}
 
           <p style="margin-top: 32px;">Our team is dedicated to providing high-quality service. If you have any questions, feel free to reply to this email.</p>
-          <p style="margin-top: 32px; font-size: 14px; color: #64748b;">Thank you for choosing Satguru Engineers.</p>
+          <p style="margin-top: 16px; font-size: 14px; font-weight: 500; color: #1e293b;">Please let us know if anything is pending regarding the same</p>
+          <p style="margin-top: 16px; font-size: 14px; color: #64748b;">Thank you for choosing Satguru Engineers.</p>
         </div>
         <div style="background-color: #f1f5f9; padding: 16px; text-align: center; font-size: 11px; color: #94a3b8;">
           &copy; ${new Date().getFullYear()} Satguru Engineers.
@@ -225,7 +226,8 @@ app.post("/api/contact", async (req, res) => {
             <p style="margin: 0 0 8px 0; font-weight: bold; color: #2563eb; font-size: 13px;">MESSAGE</p>
             <p style="margin: 0; color: #334155; white-space: pre-wrap;">${message}</p>
           </div>
-          <p style="margin-top: 24px; font-size: 12px; color: #94a3b8;">
+          <p style="margin-top: 24px; font-size: 14px; font-weight: 500; color: #1e293b;">Please let us know if anything is pending regarding the same</p>
+          <p style="margin-top: 16px; font-size: 12px; color: #94a3b8;">
             This message was sent via the Contact Us form on the Satguru Engineers website.
           </p>
         </div>
@@ -465,6 +467,18 @@ async function ensureDatabaseReady() {
     } catch (e: any) {
       // Ignore Duplicate column
     }
+
+    // --- INVENTORY COPPER TRACKING TABLE ---
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS inventory_copper_logs (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        date DATE NOT NULL,
+        size VARCHAR(20) NOT NULL,
+        sent_qty DECIMAL(10,2) NOT NULL DEFAULT 0,
+        return_qty DECIMAL(10,2) NOT NULL DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
 
     await pool.execute(
       `INSERT IGNORE INTO users (email, password_hash, role) VALUES (?, ?, ?)`,
@@ -1094,7 +1108,8 @@ app.patch('/api/phases/:id', authenticateToken, async (req, res) => {
                   <p style="margin: 0; font-weight: bold; color: #2563eb;">Phase: ${details.phaseName}</p>
                   <p style="margin: 4px 0 0 0; font-size: 12px; color: #64748b;">Job ID: #${details.jobId} | Technician: ${details.technician}</p>
                 </div>
-                <p style="margin-top: 32px; font-size: 14px; color: #64748b;">Thank you for choosing Satguru Engineers.</p>
+                <p style="margin-top: 32px; font-size: 14px; font-weight: 500; color: #1e293b;">Please let us know if anything is pending regarding the same</p>
+                <p style="margin-top: 16px; font-size: 14px; color: #64748b;">Thank you for choosing Satguru Engineers.</p>
               </div>
               <div style="background-color: #f1f5f9; padding: 16px; text-align: center; font-size: 11px; color: #94a3b8;">
                 &copy; ${new Date().getFullYear()} Satguru Engineers.
@@ -1196,7 +1211,8 @@ app.post('/api/phases/:id/resend-email', authenticateToken, async (req, res) => 
             <p style="margin: 4px 0 0 0; font-size: 12px; color: #64748b;">Technician: ${details.technician}</p>
           </div>
           ${paymentBlock}
-          <p style="margin-top: 32px; font-size: 14px; color: #64748b;">Thank you for choosing Satguru Engineers.</p>
+          <p style="margin-top: 32px; font-size: 14px; font-weight: 500; color: #1e293b;">Please let us know if anything is pending regarding the same</p>
+          <p style="margin-top: 16px; font-size: 14px; color: #64748b;">Thank you for choosing Satguru Engineers.</p>
         </div>
         <div style="background-color: #f1f5f9; padding: 16px; text-align: center; font-size: 11px; color: #94a3b8;">
           &copy; ${new Date().getFullYear()} Satguru Engineers.
@@ -1337,6 +1353,40 @@ app.delete('/api/inventory/:id', authenticateToken, isAdminOrSuperAdmin, async (
     await pool.execute('DELETE FROM inventory WHERE id = ?', [req.params.id]);
     res.json({ success: true });
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- INVENTORY COPPER LOG ROUTES ---
+
+app.get('/api/inventory/copper', authenticateToken, isAdminOrSuperAdmin, async (req, res) => {
+  try {
+    const [rows] = await pool.execute('SELECT * FROM inventory_copper_logs ORDER BY date ASC, id ASC');
+    res.json(rows);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/inventory/copper', authenticateToken, isAdminOrSuperAdmin, async (req, res) => {
+  try {
+    const { date, size, sent_qty, return_qty } = req.body;
+    if (!date || !size) return res.status(400).json({ error: 'Date and Size are required' });
+    const [result]: any = await pool.execute(
+      'INSERT INTO inventory_copper_logs (date, size, sent_qty, return_qty) VALUES (?, ?, ?, ?)',
+      [date, size, sent_qty || 0, return_qty || 0]
+    );
+    res.json({ success: true, id: result.insertId });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/inventory/copper/:id', authenticateToken, isAdminOrSuperAdmin, async (req, res) => {
+  try {
+    await pool.execute('DELETE FROM inventory_copper_logs WHERE id = ?', [req.params.id]);
+    res.json({ success: true });
+  } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
 });

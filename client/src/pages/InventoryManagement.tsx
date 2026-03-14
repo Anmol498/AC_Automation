@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth, useSettings } from '../App';
+import { API_BASE_URL } from '../constants';
 
 interface InventoryItem {
     id: number;
@@ -35,7 +36,7 @@ const InventoryManagement: React.FC = () => {
     const [items, setItems] = useState<InventoryItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState('');
-    const [activeTab, setActiveTab] = useState<'Mitsubishi' | 'Akabishi'>('Mitsubishi');
+    const [activeTab, setActiveTab] = useState<'Mitsubishi' | 'Akabishi' | 'Copper'>('Mitsubishi');
     const [lastSoldItem, setLastSoldItem] = useState<{ id: number, quantity: number, soldQuantity: number } | null>(null);
     const [isLowStockModalOpen, setIsLowStockModalOpen] = useState(false);
 
@@ -58,6 +59,102 @@ const InventoryManagement: React.FC = () => {
         ourPrice: 0,
         salePrice: 0
     });
+
+    // ---- Copper Inventory State ----
+    const copperSizes = ['1/4', '3/8', '1/2', '5/8', '3/4', '7/8', '1 1/8', '1 3/8'];
+    type CopperEntryItem = { id: string; size: string; isCustomSize: boolean; sent: string; return: string };
+    const defaultCopperEntries = copperSizes.map((size, index) => ({ id: `default-${index}`, size, isCustomSize: false, sent: '', return: '' }));
+
+    const [copperDate, setCopperDate] = useState(new Date().toISOString().split('T')[0]);
+    const [copperEntries, setCopperEntries] = useState<CopperEntryItem[]>(defaultCopperEntries);
+    const [copperLogs, setCopperLogs] = useState<any[]>([]);
+    const [isCopperLoading, setIsCopperLoading] = useState(false);
+    const [expandedCopperSizes, setExpandedCopperSizes] = useState<Record<string, boolean>>({});
+    const toggleCopperSize = (size: string) => setExpandedCopperSizes(prev => ({ ...prev, [size]: !prev[size] }));
+
+    const fetchCopperLogs = async () => {
+        setIsCopperLoading(true);
+        try {
+            const apiUrl = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/inventory/copper` : `${API_BASE_URL}/inventory/copper`;
+            const res = await axios.get(apiUrl, { headers: { Authorization: `Bearer ${token}` } });
+            setCopperLogs(res.data);
+        } catch (err) { console.error('Error fetching copper logs:', err); }
+        finally { setIsCopperLoading(false); }
+    };
+
+    useEffect(() => { if (activeTab === 'Copper') fetchCopperLogs(); }, [activeTab]);
+
+    const handleAddCopperEntry = () => {
+        setCopperEntries(prev => [...prev, { id: Date.now().toString() + Math.random(), size: '', isCustomSize: false, sent: '', return: '' }]);
+    };
+    const handleRemoveCopperEntry = (idToRemove: string) => {
+        setCopperEntries(prev => prev.filter(e => e.id !== idToRemove));
+    };
+    const handleCopperEntryChange = (id: string, field: 'size' | 'isCustomSize' | 'sent' | 'return', value: any) => {
+        setCopperEntries(prev => prev.map(entry => {
+            if (entry.id === id) {
+                const newEntry = { ...entry, [field]: value };
+                if (field === 'isCustomSize' && value === true) newEntry.size = '';
+                else if (field === 'isCustomSize' && value === false) newEntry.size = '';
+                return newEntry;
+            }
+            return entry;
+        }));
+    };
+
+    const handleCopperSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            const apiUrl = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/inventory/copper` : `${API_BASE_URL}/inventory/copper`;
+            const promises = copperEntries.map(entry => {
+                if (entry.sent || entry.return) {
+                    return axios.post(apiUrl, { date: copperDate, size: entry.size, sent_qty: entry.sent || 0, return_qty: entry.return || 0 }, { headers: { Authorization: `Bearer ${token}` } });
+                }
+                return Promise.resolve();
+            });
+            await Promise.all(promises);
+            setCopperEntries(defaultCopperEntries);
+            fetchCopperLogs();
+        } catch (err) { alert('Failed to save copper log'); }
+    };
+
+    const deleteCopperLog = async (id: number) => {
+        if (!window.confirm('Delete this copper log entry?')) return;
+        try {
+            const apiUrl = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/inventory/copper/${id}` : `${API_BASE_URL}/inventory/copper/${id}`;
+            await axios.delete(apiUrl, { headers: { Authorization: `Bearer ${token}` } });
+            fetchCopperLogs();
+        } catch (err) { alert('Failed to delete log entry.'); }
+    };
+
+    const buildCopperDisplayLogs = () => {
+        const sorted = [...copperLogs].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime() || a.id - b.id);
+        const totalsBySize: Record<string, number> = {};
+        return sorted.map(log => {
+            const left = Number(log.return_qty) - Number(log.sent_qty);
+            totalsBySize[log.size] = (totalsBySize[log.size] || 0) + left;
+            return { ...log, left, cumulativeTotal: totalsBySize[log.size] };
+        }).reverse();
+    };
+
+    const buildGroupedCopperLogs = () => {
+        const logs = buildCopperDisplayLogs();
+        const grouped: Record<string, any[]> = {};
+        copperSizes.forEach(s => grouped[s] = []);
+        logs.forEach(l => {
+            if (!grouped[l.size]) grouped[l.size] = [];
+            grouped[l.size].push(l);
+        });
+        return Object.keys(grouped).map(size => {
+            if (grouped[size].length === 0) return null;
+            const sizeLogs = grouped[size];
+            const overallTotal = sizeLogs[0].cumulativeTotal;
+            const totalSent = sizeLogs.reduce((sum: number, l: any) => sum + Number(l.sent_qty), 0);
+            const totalReturn = sizeLogs.reduce((sum: number, l: any) => sum + Number(l.return_qty), 0);
+            const totalLeft = sizeLogs.reduce((sum: number, l: any) => sum + Number(l.left), 0);
+            return { size, overallTotal, totalSent, totalReturn, totalLeft, logs: sizeLogs };
+        }).filter(Boolean);
+    };
 
     const fetchInventory = async () => {
         try {
@@ -327,9 +424,16 @@ const InventoryManagement: React.FC = () => {
                     >
                         Akabishi
                     </button>
+                    <button
+                        className={`flex-1 py-4 text-sm font-semibold text-center transition-colors ${activeTab === 'Copper' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
+                        onClick={() => setActiveTab('Copper')}
+                    >
+                        Copper
+                    </button>
                 </div>
 
-                {/* Table */}
+                {/* AC Brand Table (Mitsubishi / Akabishi) */}
+                {(activeTab === 'Mitsubishi' || activeTab === 'Akabishi') && (
                 <div className="w-full">
                     <table className="w-full text-left text-sm block sm:table table-fixed">
                         <thead className="hidden sm:table-header-group bg-slate-50 text-slate-600 uppercase text-[10px] sm:text-xs font-semibold border-b border-slate-200">
@@ -410,6 +514,150 @@ const InventoryManagement: React.FC = () => {
                         </tbody>
                     </table>
                 </div>
+                )}
+
+                {/* Copper Tab Content */}
+                {activeTab === 'Copper' && (
+                    <div className="p-4 sm:p-6 space-y-8">
+                        {isCopperLoading && <div className="py-10 text-center text-slate-400"><i className="fa-solid fa-spinner fa-spin text-2xl"></i></div>}
+                        {!isCopperLoading && (
+                        <>
+                        <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200">
+                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-4">
+                                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Log Copper Usage</h3>
+                                <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2 bg-white px-3 py-1 border border-slate-200 rounded-lg shadow-sm">
+                                        <i className="fa-solid fa-calendar text-slate-400 text-xs"></i>
+                                        <input type="date" required value={copperDate} onChange={e => setCopperDate(e.target.value)} className="bg-transparent border-none text-sm font-semibold focus:ring-0 text-slate-700 outline-none w-[125px]" />
+                                    </div>
+                                    <button type="button" onClick={handleAddCopperEntry} className="bg-white border border-slate-200 text-blue-600 w-8 h-8 rounded-lg shadow-sm flex items-center justify-center hover:bg-blue-50 transition-colors" title="Add Custom Size Entry">
+                                        <i className="fa-solid fa-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <form onSubmit={handleCopperSubmit} className="space-y-4">
+                                <div className="overflow-x-auto border border-slate-200 rounded-xl bg-white shadow-sm">
+                                    <table className="w-full text-left text-sm">
+                                        <thead className="bg-slate-100 text-slate-500 text-[10px] uppercase font-black tracking-wider">
+                                            <tr>
+                                                <th className="p-3 pl-5 border-b border-r border-slate-200 min-w-[150px]">Pipe Size</th>
+                                                <th className="p-3 border-b border-r border-slate-200 min-w-[120px] text-center">Sent</th>
+                                                <th className="p-3 border-b border-r border-slate-200 min-w-[120px] text-center">Return</th>
+                                                <th className="p-3 border-b border-slate-200 w-16 text-center"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100 bg-white">
+                                            {copperEntries.map((entry) => (
+                                                <tr key={entry.id} className="hover:bg-slate-50/50 group transition-colors">
+                                                    <td className="p-1.5 border-r border-slate-100 align-top relative">
+                                                        {!entry.isCustomSize ? (
+                                                            <div className="relative h-full flex items-center">
+                                                                <select required value={entry.size} onChange={(e) => { if (e.target.value === 'custom') { handleCopperEntryChange(entry.id, 'isCustomSize', true); } else { handleCopperEntryChange(entry.id, 'size', e.target.value); }}}
+                                                                    className={`w-full bg-transparent border-none py-2 pl-3 pr-8 text-sm font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all appearance-none cursor-pointer ${!entry.size ? 'text-slate-400' : 'text-slate-800'}`}>
+                                                                    <option value="" disabled hidden>Select Size...</option>
+                                                                    {copperSizes.map(size => {
+                                                                        const isSelectedElsewhere = copperEntries.some(e => e.id !== entry.id && e.size === size);
+                                                                        return (<option key={size} value={size} disabled={isSelectedElsewhere} className={isSelectedElsewhere ? 'text-slate-300 bg-slate-50' : 'text-slate-800'}>{size} {isSelectedElsewhere ? '(Selected)' : ''}</option>);
+                                                                    })}
+                                                                    <option value="custom" className="text-blue-600 font-bold">Other (Custom)...</option>
+                                                                </select>
+                                                                <i className="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs"></i>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="flex items-center gap-1 p-1 h-full">
+                                                                <input type="text" required value={entry.size} onChange={(e) => handleCopperEntryChange(entry.id, 'size', e.target.value)} placeholder="Type size..." autoFocus
+                                                                    className="w-full bg-white border border-blue-300 rounded-lg pl-3 pr-3 py-1.5 text-sm font-semibold text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all" />
+                                                                <button type="button" onClick={() => handleCopperEntryChange(entry.id, 'isCustomSize', false)} className="p-2 text-slate-400 hover:text-red-500" title="Cancel Custom Size">
+                                                                    <i className="fa-solid fa-xmark text-sm"></i>
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                    <td className={`p-1.5 border-r border-slate-100 align-top transition-opacity duration-300 ${!entry.size ? 'opacity-40' : 'opacity-100'}`}>
+                                                        <input type="number" step="0.01" min="0" value={entry.sent} onChange={e => handleCopperEntryChange(entry.id, 'sent', e.target.value)} placeholder="0.00" disabled={!entry.size} className="w-full bg-transparent border-none px-3 py-2 text-sm font-semibold text-center focus:bg-white focus:ring-2 focus:ring-blue-500/20 rounded-md transition-all outline-none" />
+                                                    </td>
+                                                    <td className={`p-1.5 border-r border-slate-100 align-top transition-opacity duration-300 ${!entry.size ? 'opacity-40' : 'opacity-100'}`}>
+                                                        <input type="number" step="0.01" min="0" value={entry.return} onChange={e => handleCopperEntryChange(entry.id, 'return', e.target.value)} placeholder="0.00" disabled={!entry.size} className="w-full bg-transparent border-none px-3 py-2 text-sm font-semibold text-center focus:bg-white focus:ring-2 focus:ring-blue-500/20 rounded-md transition-all outline-none" />
+                                                    </td>
+                                                    <td className="p-1.5 text-center align-middle">
+                                                        <button type="button" onClick={() => handleRemoveCopperEntry(entry.id)} className="w-7 h-7 mx-auto rounded-lg bg-slate-100 text-slate-400 hover:bg-red-100 hover:text-red-500 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100" title="Remove Entry">
+                                                            <i className="fa-solid fa-trash-can text-xs"></i>
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div className="flex justify-end pt-4 border-t border-slate-200 mt-6 gap-3">
+                                    <button type="submit" className="w-full sm:w-auto px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl transition-all shadow-md shadow-blue-500/20 flex items-center justify-center gap-2">
+                                        <i className="fa-solid fa-save"></i> Save Copper Logs
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        {/* Copper History */}
+                        <div className="space-y-3">
+                            <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest">History</h3>
+                            <div className="overflow-x-auto rounded-xl border border-slate-200 shadow-sm">
+                                <table className="w-full text-left text-sm">
+                                    <thead className="bg-slate-100 text-slate-500 text-xs uppercase font-bold tracking-wider">
+                                        <tr>
+                                            <th className="p-4 border-b border-slate-200 text-slate-600">Date</th>
+                                            <th className="p-4 border-b border-slate-200 text-slate-600">Size</th>
+                                            <th className="p-4 border-b border-slate-200 text-right text-slate-600">Sent</th>
+                                            <th className="p-4 border-b border-slate-200 text-right text-slate-600">Return</th>
+                                            <th className="p-4 border-b border-slate-200 text-right text-emerald-600">Left</th>
+                                            <th className="p-4 border-b border-slate-200 text-right text-blue-600">Cumulative Total</th>
+                                            <th className="p-4 border-b border-slate-200 w-10"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 bg-white">
+                                        {buildGroupedCopperLogs().map((group: any) => (
+                                            <React.Fragment key={group.size}>
+                                                <tr className="hover:bg-slate-50/50 transition-colors cursor-pointer bg-slate-50/30" onClick={() => toggleCopperSize(group.size)}>
+                                                    <td className="p-4 font-bold text-slate-700 whitespace-nowrap">
+                                                        <i className={`fa-solid fa-chevron-${expandedCopperSizes[group.size] ? 'up' : 'down'} mr-3 text-slate-400 text-xs transition-transform`}></i>
+                                                        {new Date(group.logs[0].date).toLocaleDateString()} ({group.logs.length})
+                                                    </td>
+                                                    <td className="p-4 font-bold text-slate-900"><span className="bg-slate-100 px-2 py-1 rounded text-xs shadow-sm border border-slate-200">{group.size}</span></td>
+                                                    <td className="p-4 text-right font-bold text-slate-600">{group.totalSent.toFixed(2)}</td>
+                                                    <td className="p-4 text-right font-bold text-slate-600">{group.totalReturn.toFixed(2)}</td>
+                                                    <td className="p-4 text-right font-black text-emerald-600">{group.totalLeft.toFixed(2)}</td>
+                                                    <td className="p-4 text-right font-black text-blue-700 text-base bg-blue-50/50">{group.overallTotal}</td>
+                                                    <td className="p-4 text-center"></td>
+                                                </tr>
+                                                {expandedCopperSizes[group.size] && group.logs.map((log: any) => (
+                                                    <tr key={log.id} className="hover:bg-slate-50/50 transition-colors bg-white">
+                                                        <td className="p-4 pl-12 font-medium text-slate-500 whitespace-nowrap">
+                                                            <i className="fa-solid fa-turn-up fa-rotate-90 mr-2 text-slate-300"></i>
+                                                            {new Date(log.date).toLocaleDateString()}
+                                                        </td>
+                                                        <td className="p-4 text-slate-400 text-xs italic">Entry</td>
+                                                        <td className="p-4 text-right font-medium text-slate-500">{log.sent_qty}</td>
+                                                        <td className="p-4 text-right font-medium text-slate-500">{log.return_qty}</td>
+                                                        <td className="p-4 text-right font-bold text-emerald-500/80">{log.left}</td>
+                                                        <td className="p-4 text-right font-bold text-blue-600/80 bg-blue-50/20">{log.cumulativeTotal}</td>
+                                                        <td className="p-4 text-center">
+                                                            <button onClick={(e) => { e.stopPropagation(); deleteCopperLog(log.id); }} className="w-8 h-8 rounded-full bg-slate-50 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all flex items-center justify-center mx-auto"><i className="fa-solid fa-trash-can"></i></button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </React.Fragment>
+                                        ))}
+                                        {copperLogs.length === 0 && (
+                                            <tr><td colSpan={7} className="p-8 text-center text-slate-400 italic font-medium">No copper logs recorded yet.</td></tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        </>
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* Modal */}

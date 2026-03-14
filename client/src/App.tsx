@@ -16,6 +16,7 @@ import Settings from './pages/Settings';
 import MaterialTracking from './pages/MaterialTracking';
 import DailyWork from './pages/DailyWork';
 import TechnicianWork from './pages/TechnicianWork';
+import ScrollToTop from './components/ScrollToTop';
 
 interface AuthContextType extends AuthState {
   login: (user: User, token: string) => void;
@@ -103,9 +104,12 @@ const App: React.FC = () => {
   return (
     <AuthContext.Provider value={{ ...auth, login, logout }}>
       <SettingsContext.Provider value={{ lowStockThreshold, enableLowStockAlert, requireEmailPreview, setLowStockThreshold, setEnableLowStockAlert, setRequireEmailPreview }}>
-        <HashRouter>
-          <Routes>
-            <Route path="/" element={<Home />} />
+        <div className="app-container">
+          <HashRouter>
+            <ScrollToTop />
+            <div className="main-content page-content">
+              <Routes>
+                <Route path="/" element={<Home />} />
             <Route path="/product/:id" element={<ProductDetail />} />
             <Route path="/contact" element={<ContactUs />} />
             <Route path="/login" element={!auth.isAuthenticated ? <Login /> : <Navigate to="/dashboard" />} />
@@ -141,7 +145,9 @@ const App: React.FC = () => {
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-        </HashRouter>
+            </div>
+          </HashRouter>
+        </div>
       </SettingsContext.Provider>
     </AuthContext.Provider>
   );
