@@ -620,9 +620,9 @@ app.get('/api/customers', authenticateToken, async (req, res) => {
     let params = [];
 
     if (search) {
-      query += ' WHERE name LIKE ? OR email LIKE ? OR phone LIKE ?';
+      query += ' WHERE name LIKE ? OR email LIKE ? OR phone LIKE ? OR address LIKE ?';
       const searchTerm = `%${search}%`;
-      params.push(searchTerm, searchTerm, searchTerm);
+      params.push(searchTerm, searchTerm, searchTerm, searchTerm);
     }
 
     query += ' ORDER BY created_at DESC';
@@ -759,9 +759,9 @@ app.get('/api/jobs', authenticateToken, async (req, res) => {
     }
 
     if (search) {
-      whereClauses.push('(c.name LIKE ? OR j.technician LIKE ? OR j.job_type LIKE ?)');
+      whereClauses.push('(c.name LIKE ? OR j.technician LIKE ? OR j.job_type LIKE ? OR c.address LIKE ?)');
       const searchVal = `%${search}%`;
-      params.push(searchVal, searchVal, searchVal);
+      params.push(searchVal, searchVal, searchVal, searchVal);
     }
 
     if (whereClauses.length > 0) {

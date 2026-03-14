@@ -103,12 +103,14 @@ export default function TechnicianWork() {
         }
     };
 
-    const filteredLogs = isSuperAdmin
-        ? logs.filter(log =>
-            (log.technician || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (log.work_description || '').toLowerCase().includes(searchTerm.toLowerCase())
-        )
-        : logs;
+    const filteredLogs = logs.filter(log => {
+        const term = searchTerm.toLowerCase();
+        return (
+            (isSuperAdmin && (log.technician || '').toLowerCase().includes(term)) ||
+            (log.work_description || '').toLowerCase().includes(term) ||
+            (log.address || '').toLowerCase().includes(term)
+        );
+    });
 
     const exportToCSV = () => {
         if (!filteredLogs.length) return alert('No data to export.');
@@ -161,7 +163,7 @@ export default function TechnicianWork() {
                             <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
                             <input
                                 type="text"
-                                placeholder={isSuperAdmin ? "Search technicians or work..." : "Search work..."}
+                                placeholder={isSuperAdmin ? "Search tech, work or address..." : "Search work or address..."}
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="w-full pl-8 pr-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-400"

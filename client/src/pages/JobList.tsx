@@ -155,7 +155,7 @@ const JobList: React.FC = () => {
             <i className="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors"></i>
             <input
               type="text"
-              placeholder="Search client, tech, or type..."
+              placeholder="Search client, tech, address or type..."
               className="pl-11 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all w-full md:w-64 text-sm font-medium shadow-sm"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
