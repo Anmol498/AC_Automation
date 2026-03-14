@@ -1358,10 +1358,11 @@ app.delete('/api/inventory/:id', authenticateToken, isAdminOrSuperAdmin, async (
 });
 
 // --- INVENTORY COPPER LOG ROUTES ---
+// These share data with /material copper by using the same material_copper_logs table
 
 app.get('/api/inventory/copper', authenticateToken, isAdminOrSuperAdmin, async (req, res) => {
   try {
-    const [rows] = await pool.execute('SELECT * FROM inventory_copper_logs ORDER BY date ASC, id ASC');
+    const [rows] = await pool.execute('SELECT * FROM material_copper_logs ORDER BY date ASC, id ASC');
     res.json(rows);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -1373,8 +1374,8 @@ app.post('/api/inventory/copper', authenticateToken, isAdminOrSuperAdmin, async 
     const { date, size, sent_qty, return_qty } = req.body;
     if (!date || !size) return res.status(400).json({ error: 'Date and Size are required' });
     const [result]: any = await pool.execute(
-      'INSERT INTO inventory_copper_logs (date, size, sent_qty, return_qty) VALUES (?, ?, ?, ?)',
-      [date, size, sent_qty || 0, return_qty || 0]
+      'INSERT INTO material_copper_logs (job_id, date, size, sent_qty, return_qty) VALUES (?, ?, ?, ?, ?)',
+      [null, date, size, sent_qty || 0, return_qty || 0]
     );
     res.json({ success: true, id: result.insertId });
   } catch (err: any) {
@@ -1384,7 +1385,7 @@ app.post('/api/inventory/copper', authenticateToken, isAdminOrSuperAdmin, async 
 
 app.delete('/api/inventory/copper/:id', authenticateToken, isAdminOrSuperAdmin, async (req, res) => {
   try {
-    await pool.execute('DELETE FROM inventory_copper_logs WHERE id = ?', [req.params.id]);
+    await pool.execute('DELETE FROM material_copper_logs WHERE id = ?', [req.params.id]);
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
