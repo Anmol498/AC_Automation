@@ -192,33 +192,75 @@ const UserManagement: React.FC<UserManagementProps> = ({ inSettingsView = false 
       )}
 
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl">
-            <h3 className="text-lg font-bold text-slate-800 mb-6">Register New User</h3>
-            <form onSubmit={handleAdd} className="space-y-4">
-              <div>
-                <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">Email</label>
-                <input type="email" placeholder="user@satguruengineers.com" className="w-full p-2.5 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} required />
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-white/20 animate-in fade-in zoom-in duration-300">
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <div className="flex items-center gap-3">
+                <div className="bg-blue-100 text-blue-600 w-10 h-10 rounded-xl flex items-center justify-center shrink-0">
+                  <i className="fa-solid fa-user-plus text-lg"></i>
+                </div>
+                <h3 className="text-xl font-black text-slate-800 tracking-tight">Register Team Member</h3>
               </div>
+              <button 
+                onClick={() => setIsModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 transition-colors rounded-lg p-2 hover:bg-slate-200"
+              >
+                <i className="fa-solid fa-xmark text-lg"></i>
+              </button>
+            </div>
+            
+            <form onSubmit={handleAdd} className="p-6 space-y-5">
               <div>
-                <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">Password</label>
-                <input type="password" placeholder="••••••••" className="w-full p-2.5 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} required />
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block ml-1">Email Address</label>
+                <input 
+                  type="email" 
+                  placeholder="name@satguruengineers.com" 
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all font-medium" 
+                  value={formData.email} 
+                  onChange={e => setFormData({ ...formData, email: e.target.value })} 
+                  required 
+                />
               </div>
+              
               <div>
-                <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">Role</label>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block ml-1">Account Password</label>
+                <input 
+                  type="password" 
+                  placeholder="••••••••••••" 
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all font-medium" 
+                  value={formData.password} 
+                  onChange={e => setFormData({ ...formData, password: e.target.value })} 
+                  required 
+                />
+              </div>
+              
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block ml-1">Access Level</label>
                 <select
-                  className="w-full p-2.5 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all font-bold appearance-none cursor-pointer"
                   value={formData.role}
                   onChange={e => setFormData({ ...formData, role: e.target.value as UserRole })}
                 >
-                  <option value={UserRole.ADMIN}>Standard Admin</option>
-                  <option value={UserRole.SUPER_ADMIN}>Super Admin</option>
-                  <option value={UserRole.TECHNICIAN}>Technician</option>
+                  <option value={UserRole.ADMIN}>Standard Administrator</option>
+                  <option value={UserRole.SUPER_ADMIN}>Super Administrator</option>
+                  <option value={UserRole.TECHNICIAN}>Technician / Staff</option>
                 </select>
               </div>
+              
               <div className="flex gap-3 pt-4">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 p-3 bg-slate-100 font-bold rounded-xl">Cancel</button>
-                <button type="submit" className="flex-1 p-3 bg-slate-900 text-white font-bold rounded-xl">Create User</button>
+                <button 
+                  type="button" 
+                  onClick={() => setIsModalOpen(false)} 
+                  className="flex-1 py-3.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-2xl transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="flex-[1.5] py-3.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl shadow-lg shadow-blue-500/20 transition-all active:scale-[0.98]"
+                >
+                  Confirm Registration
+                </button>
               </div>
             </form>
           </div>
