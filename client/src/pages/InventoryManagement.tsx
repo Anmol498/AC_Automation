@@ -33,7 +33,7 @@ interface HistoryRecord {
 }
 
 const InventoryManagement: React.FC = () => {
-    const { token } = useAuth();
+    const { token, user } = useAuth();
     const { lowStockThreshold, enableLowStockAlert } = useSettings();
     const [items, setItems] = useState<InventoryItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -523,9 +523,11 @@ const InventoryManagement: React.FC = () => {
                                                 <button onClick={() => openModal(item)} title="Update Stock" className="text-blue-600 hover:text-blue-800 p-1.5 rounded-lg hover:bg-blue-50 transition-colors bg-blue-50 sm:bg-transparent border border-blue-200 sm:border-none shadow-sm sm:shadow-none flex items-center justify-center w-8 h-8">
                                                     <span className="material-icons-outlined text-[18px]">add</span>
                                                 </button>
-                                                <button onClick={() => handleDelete(item.id)} title="Delete" className="text-red-600 hover:text-red-800 p-1.5 rounded-lg hover:bg-red-50 transition-colors bg-red-50 sm:bg-transparent border border-red-200 sm:border-none shadow-sm sm:shadow-none flex items-center justify-center w-8 h-8">
-                                                    <span className="material-icons-outlined text-[18px]">delete</span>
-                                                </button>
+                                                {user?.role === 'superadmin' && (
+                                                    <button onClick={() => handleDelete(item.id)} title="Delete" className="text-red-600 hover:text-red-800 p-1.5 rounded-lg hover:bg-red-50 transition-colors bg-red-50 sm:bg-transparent border border-red-200 sm:border-none shadow-sm sm:shadow-none flex items-center justify-center w-8 h-8">
+                                                        <span className="material-icons-outlined text-[18px]">delete</span>
+                                                    </button>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>
@@ -667,7 +669,9 @@ const InventoryManagement: React.FC = () => {
                                                         <td className="p-4 text-right font-bold text-emerald-500/80">{log.left}</td>
                                                         <td className="p-4 text-right font-bold text-blue-600/80 bg-blue-50/20">{log.cumulativeTotal}</td>
                                                         <td className="p-4 text-center">
-                                                            <button onClick={(e) => { e.stopPropagation(); deleteCopperLog(log.id); }} className="w-8 h-8 rounded-full bg-slate-50 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all flex items-center justify-center mx-auto"><i className="fa-solid fa-trash-can"></i></button>
+                                                            {user?.role === 'superadmin' && (
+                                                                <button onClick={(e) => { e.stopPropagation(); deleteCopperLog(log.id); }} className="w-8 h-8 rounded-full bg-slate-50 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all flex items-center justify-center mx-auto"><i className="fa-solid fa-trash-can"></i></button>
+                                                            )}
                                                         </td>
                                                     </tr>
                                                 ))}
