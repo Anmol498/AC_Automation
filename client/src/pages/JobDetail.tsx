@@ -847,6 +847,7 @@ const JobDetail: React.FC = () => {
                             <p className="text-[9px] text-slate-500">Payment Status: {emailModal.paymentStatus}</p>
                           </div>
                         )}
+                        <p style={{ marginTop: '32px', fontSize: '14px', fontWeight: 500, color: '#1e293b' }}>Please let us know if anything is pending regarding the same</p>
                         <p className="text-xs text-slate-400 pt-2">Thank you for choosing Satguru Engineers.</p>
                       </div>
                       <div className="bg-slate-50 px-5 py-2.5 text-center">
