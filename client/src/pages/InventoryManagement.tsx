@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth, useSettings } from '../App';
 import { API_BASE_URL } from '../constants';
+import Pagination from '../components/Pagination';
+
 
 interface InventoryItem {
     id: number;
@@ -39,6 +41,11 @@ const InventoryManagement: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'Mitsubishi' | 'Akabishi' | 'Copper'>('Mitsubishi');
     const [lastSoldItem, setLastSoldItem] = useState<{ id: number, quantity: number, soldQuantity: number } | null>(null);
     const [isLowStockModalOpen, setIsLowStockModalOpen] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [historyPage, setHistoryPage] = useState(1);
+    const [copperPage, setCopperPage] = useState(1);
+    const itemsPerPage = 10;
+
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
@@ -82,7 +89,11 @@ const InventoryManagement: React.FC = () => {
         finally { setIsCopperLoading(false); }
     };
 
-    useEffect(() => { if (activeTab === 'Copper') fetchCopperLogs(); }, [activeTab]);
+    useEffect(() => {
+        if (activeTab === 'Copper') fetchCopperLogs();
+        setCurrentPage(1);
+    }, [activeTab]);
+
 
     const handleAddCopperEntry = () => {
         setCopperEntries(prev => [...prev, { id: Date.now().toString() + Math.random(), size: '', isCustomSize: false, sent: '', return: '' }]);
@@ -255,7 +266,9 @@ const InventoryManagement: React.FC = () => {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setHistoryLogs(res.data);
+            setHistoryPage(1);
             setIsHistoryModalOpen(true);
+
         } catch (err: any) {
             alert(err.response?.data?.error || 'Failed to fetch history');
         }
@@ -353,6 +366,13 @@ const InventoryManagement: React.FC = () => {
     };
 
     const filteredItems = items.filter(item => item.brand === activeTab);
+    const paginatedItems = filteredItems.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+    const totalItemsPages = Math.ceil(filteredItems.length / itemsPerPage);
+
+    const groupedCopperLogs = buildGroupedCopperLogs();
+    const paginatedCopperLogs = groupedCopperLogs.slice((copperPage - 1) * itemsPerPage, copperPage * itemsPerPage);
+    const totalCopperPages = Math.ceil(groupedCopperLogs.length / itemsPerPage);
+
     const lowStockItems = enableLowStockAlert ? items.filter(i => i.quantity <= lowStockThreshold) : [];
     const totalLowStockCount = lowStockItems.length;
 
@@ -457,7 +477,7 @@ const InventoryManagement: React.FC = () => {
                                     </td>
                                 </tr>
                             ) : (
-                                filteredItems.map(item => (
+                                paginatedItems.map(item => (
                                     <tr key={item.id} className="block sm:table-row bg-white border border-slate-200 sm:border-none rounded-xl sm:rounded-none mb-4 sm:mb-0 shadow-sm sm:shadow-none hover:bg-slate-50/50 transition-colors text-xs sm:text-sm">
                                         <td className="flex sm:table-cell justify-between items-center px-4 sm:px-3 py-3 border-b border-slate-50 sm:border-none font-medium text-slate-900 whitespace-nowrap text-right sm:text-left">
                                             <span className="sm:hidden font-semibold text-slate-500 text-[10px] uppercase text-left w-1/3">Model Name</span>
@@ -513,7 +533,13 @@ const InventoryManagement: React.FC = () => {
                             )}
                         </tbody>
                     </table>
+                    <Pagination
+                        currentPage={currentPage}
+                        totalPages={totalItemsPages}
+                        onPageChange={setCurrentPage}
+                    />
                 </div>
+
                 )}
 
                 {/* Copper Tab Content */}
@@ -615,7 +641,7 @@ const InventoryManagement: React.FC = () => {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100 bg-white">
-                                        {buildGroupedCopperLogs().map((group: any) => (
+                                        {paginatedCopperLogs.map((group: any) => (
                                             <React.Fragment key={group.size}>
                                                 <tr className="hover:bg-slate-50/50 transition-colors cursor-pointer bg-slate-50/30" onClick={() => toggleCopperSize(group.size)}>
                                                     <td className="p-4 font-bold text-slate-700 whitespace-nowrap">
@@ -653,7 +679,13 @@ const InventoryManagement: React.FC = () => {
                                     </tbody>
                                 </table>
                             </div>
+                            <Pagination
+                                currentPage={copperPage}
+                                totalPages={totalCopperPages}
+                                onPageChange={setCopperPage}
+                            />
                         </div>
+
                         </>
                         )}
                     </div>
@@ -967,7 +999,7 @@ const InventoryManagement: React.FC = () => {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100 bg-white">
-                                        {historyLogs.map(log => (
+                                        {historyLogs.slice((historyPage - 1) * itemsPerPage, historyPage * itemsPerPage).map(log => (
                                             <tr key={log.id} className="hover:bg-slate-50 transition-colors">
                                                 <td className="px-6 py-4 whitespace-nowrap text-slate-600">
                                                     <div className="font-semibold text-slate-800">{new Date(log.createdAt).toLocaleDateString('en-GB')}</div>

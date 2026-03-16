@@ -1,8 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { Customer } from '../types';
 import { useAuth } from '../App';
 import { API_BASE_URL } from '../constants';
+import Pagination from '../components/Pagination';
 
 const CustomerList: React.FC = () => {
   const { token } = useAuth();
@@ -14,6 +14,8 @@ const CustomerList: React.FC = () => {
   const [drawingFile, setDrawingFile] = useState<File | null>(null);
   const [quotationFile, setQuotationFile] = useState<File | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const fetchCustomers = (search = '') => {
     setLoading(true);
@@ -38,6 +40,13 @@ const CustomerList: React.FC = () => {
 
     return () => clearTimeout(delayDebounceFn);
   }, [searchQuery, token]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
+  const totalPages = Math.ceil(customers.length / itemsPerPage);
+  const paginatedCustomers = customers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const openAddModal = () => {
     setEditingId(null);
@@ -148,15 +157,14 @@ const CustomerList: React.FC = () => {
       {loading ? (
         <div className="text-center p-10"><i className="fa-solid fa-spinner fa-spin text-blue-600 text-2xl"></i></div>
       ) : (
-        <>
+        <div className="space-y-6">
           {/* Mobile Card View (< md) */}
           <div className="md:hidden space-y-4">
-            {customers.map((c, index) => (
+            {paginatedCustomers.map((c, index) => (
               <div key={c.id} className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 flex flex-col">
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex items-center gap-3">
-                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${index % 2 === 0 ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-500'
-                      }`}>
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${index % 2 === 0 ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-500'}`}>
                       <i className="fa-solid fa-user text-xl"></i>
                     </div>
                     <div>
@@ -170,7 +178,6 @@ const CustomerList: React.FC = () => {
                     </button>
                   </div>
                 </div>
-
                 <div className="space-y-2.5 mb-5">
                   <div className="flex items-center gap-3 text-sm text-slate-600">
                     <i className="fa-solid fa-envelope text-slate-400 w-4 text-center"></i>
@@ -189,7 +196,6 @@ const CustomerList: React.FC = () => {
                     </div>
                   )}
                 </div>
-
                 <div className="flex items-center justify-between pt-4 border-t border-slate-50 mt-auto">
                   <div className="flex flex-wrap gap-2">
                     {c.drawingUrl ? (
@@ -199,7 +205,6 @@ const CustomerList: React.FC = () => {
                     ) : (
                       <span className="px-2.5 py-1.5 bg-slate-50 text-[10px] rounded-lg text-slate-400 font-bold border border-slate-100 uppercase">No Drawing</span>
                     )}
-
                     {c.quotationUrl ? (
                       <a href={`${API_BASE_URL}${c.quotationUrl}`} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-[10px] font-bold text-blue-600 uppercase bg-blue-50 px-2.5 py-1.5 rounded-lg border border-blue-100/50">
                         <i className="fa-solid fa-file-pdf"></i> Quotation
@@ -208,7 +213,6 @@ const CustomerList: React.FC = () => {
                       <span className="px-2.5 py-1.5 bg-slate-50 text-[10px] rounded-lg text-slate-400 font-bold border border-slate-100 uppercase">No Quote</span>
                     )}
                   </div>
-
                   {c.phone && (
                     <a href={`tel:${c.phone}`} className="bg-blue-50/50 hover:bg-blue-100 text-blue-600 px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors border border-blue-100/50 ml-2">
                       <i className="fa-solid fa-phone"></i>
@@ -218,72 +222,72 @@ const CustomerList: React.FC = () => {
                 </div>
               </div>
             ))}
-            {customers.length === 0 && (
-              <div className="p-10 text-center text-slate-400 bg-white rounded-2xl border border-slate-200">
-                <i className="fa-solid fa-users text-3xl mb-3 text-slate-300"></i>
-                <p className="text-sm font-medium">No customers found.</p>
-              </div>
-            )}
+            <div className="mt-4">
+              <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+            </div>
           </div>
 
           {/* Desktop Table View (>= md) */}
-          <div className="hidden md:block bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead className="bg-slate-50 text-[10px] font-bold uppercase text-slate-500 tracking-wider">
-                  <tr>
-                    <th className="px-6 py-4">Name</th>
-                    <th className="px-6 py-4">Contact</th>
-                    <th className="px-6 py-4">Address</th>
-                    <th className="px-6 py-4">Files</th>
-                    <th className="px-6 py-4">Created</th>
-                    <th className="px-6 py-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {customers.map(c => (
-                    <tr key={c.id} className="text-sm hover:bg-slate-50 transition-colors">
-                      <td className="px-6 py-4 font-semibold text-slate-800">{c.name}</td>
-                      <td className="px-6 py-4">
-                        <p className="text-slate-600">{c.email}</p>
-                        <p className="text-[10px] text-slate-400">{c.phone}</p>
-                      </td>
-                      <td className="px-6 py-4 text-slate-600 text-xs w-48 truncate" title={c.address}>{c.address || <span className="text-slate-400 italic">No Address</span>}</td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-col gap-1">
-                          {c.drawingUrl ? (
-                            <a href={`${API_BASE_URL}${c.drawingUrl}`} target="_blank" rel="noreferrer" className="text-[10px] font-bold text-emerald-600 hover:underline inline-flex items-center gap-1">
-                              <i className="fa-solid fa-file-image"></i> Drawing
-                            </a>
-                          ) : <span className="text-[10px] text-slate-300 italic">No drawing</span>}
-                          {c.quotationUrl ? (
-                            <a href={`${API_BASE_URL}${c.quotationUrl}`} target="_blank" rel="noreferrer" className="text-[10px] font-bold text-blue-600 hover:underline inline-flex items-center gap-1">
-                              <i className="fa-solid fa-file-pdf"></i> Quotation
-                            </a>
-                          ) : <span className="text-[10px] text-slate-300 italic">No quotation</span>}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-slate-400">{new Date(c.createdAt).toLocaleDateString()}</td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex justify-end gap-3">
-                          <button onClick={() => openEditModal(c)} className="text-blue-400 hover:text-blue-600" title="Edit Customer">
-                            <i className="fa-solid fa-pen"></i>
-                          </button>
-                          <button onClick={() => handleDelete(c.id)} className="text-red-400 hover:text-red-600" title="Delete Customer">
-                            <i className="fa-solid fa-trash-can"></i>
-                          </button>
-                        </div>
-                      </td>
+          <div className="hidden md:flex flex-col gap-4">
+            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead className="bg-slate-50 text-[10px] font-bold uppercase text-slate-500 tracking-wider">
+                    <tr>
+                      <th className="px-6 py-4">Name</th>
+                      <th className="px-6 py-4">Contact</th>
+                      <th className="px-6 py-4">Address</th>
+                      <th className="px-6 py-4">Files</th>
+                      <th className="px-6 py-4">Created</th>
+                      <th className="px-6 py-4 text-right">Actions</th>
                     </tr>
-                  ))}
-                  {customers.length === 0 && (
-                    <tr><td colSpan={6} className="p-10 text-center text-slate-400 italic">No customers found.</td></tr>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {paginatedCustomers.map(c => (
+                      <tr key={c.id} className="text-sm hover:bg-slate-50 transition-colors">
+                        <td className="px-6 py-4 font-semibold text-slate-800">{c.name}</td>
+                        <td className="px-6 py-4">
+                          <p className="text-slate-600">{c.email}</p>
+                          <p className="text-[10px] text-slate-400">{c.phone}</p>
+                        </td>
+                        <td className="px-6 py-4 text-slate-600 text-xs w-48 truncate" title={c.address}>{c.address || <span className="text-slate-400 italic">No Address</span>}</td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-col gap-1">
+                            {c.drawingUrl ? (
+                              <a href={`${API_BASE_URL}${c.drawingUrl}`} target="_blank" rel="noreferrer" className="text-[10px] font-bold text-emerald-600 hover:underline inline-flex items-center gap-1">
+                                <i className="fa-solid fa-file-image"></i> Drawing
+                              </a>
+                            ) : <span className="text-[10px] text-slate-300 italic">No drawing</span>}
+                            {c.quotationUrl ? (
+                              <a href={`${API_BASE_URL}${c.quotationUrl}`} target="_blank" rel="noreferrer" className="text-[10px] font-bold text-blue-600 hover:underline inline-flex items-center gap-1">
+                                <i className="fa-solid fa-file-pdf"></i> Quotation
+                              </a>
+                            ) : <span className="text-[10px] text-slate-300 italic">No quotation</span>}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-slate-400">{new Date(c.createdAt).toLocaleDateString()}</td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex justify-end gap-3">
+                            <button onClick={() => openEditModal(c)} className="text-blue-400 hover:text-blue-600" title="Edit Customer">
+                              <i className="fa-solid fa-pen"></i>
+                            </button>
+                            <button onClick={() => handleDelete(c.id)} className="text-red-400 hover:text-red-600" title="Delete Customer">
+                              <i className="fa-solid fa-trash-can"></i>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {customers.length === 0 && (
+                      <tr><td colSpan={6} className="p-10 text-center text-slate-400 italic">No customers found.</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
+            <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
           </div>
-        </>
+        </div>
       )}
 
       {isModalOpen && (

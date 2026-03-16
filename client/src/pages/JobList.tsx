@@ -5,6 +5,8 @@ import * as XLSX from 'xlsx';
 import { Job, Customer } from '../types';
 import { useAuth } from '../App';
 import { API_BASE_URL } from '../constants';
+import Pagination from '../components/Pagination';
+
 
 const JobList: React.FC = () => {
   const { token, user } = useAuth();
@@ -14,6 +16,9 @@ const JobList: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
   const isTech = user?.role === 'technician';
   const [formData, setFormData] = useState({
     customerId: '',
@@ -50,6 +55,14 @@ const JobList: React.FC = () => {
 
     return () => clearTimeout(delayDebounceFn);
   }, [searchQuery, token]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
+  const totalPages = Math.ceil(jobs.length / itemsPerPage);
+  const paginatedJobs = jobs.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/customers`, { headers: { 'Authorization': `Bearer ${token}` } })
@@ -189,7 +202,7 @@ const JobList: React.FC = () => {
         <>
           {/* Mobile Card View (< md) */}
           <div className="md:hidden space-y-4">
-            {jobs.map((job) => {
+            {paginatedJobs.map((job) => {
               const dueBalance = Math.max(0, Number(job.totalCost) - Number(job.totalPaid || 0));
               const isPaid = dueBalance <= 0;
               const isCompleted = job.status === 'Completed';
@@ -276,6 +289,13 @@ const JobList: React.FC = () => {
                 </div>
               );
             })}
+            <div className="mt-4">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
+            </div>
             {jobs.length === 0 && (
               <div className="p-12 text-center bg-white rounded-2xl border border-slate-200">
                 <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-300 text-2xl mb-3">
@@ -302,7 +322,7 @@ const JobList: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {jobs.map((job) => (
+                  {paginatedJobs.map((job) => (
                     <tr key={job.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4 font-mono text-xs font-bold text-slate-400">#{job.id}</td>
                       <td className="px-6 py-4">
@@ -383,7 +403,13 @@ const JobList: React.FC = () => {
                 </tbody>
               </table>
             </div>
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
           </div>
+
         </>
       )}
 

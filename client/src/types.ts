@@ -18,3 +18,53 @@ export interface AuthState {
     token: string | null;
     isAuthenticated: boolean;
 }
+
+export interface Customer {
+    id: number;
+    name: string;
+    email: string;
+    phone?: string;
+    address?: string;
+    drawingUrl?: string;
+    quotationUrl?: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface Job {
+    id: number;
+    customerId: number;
+    customerName: string;
+    customerEmail: string;
+    customerPhone: string;
+    technician: string;
+    jobType: string;
+    currentPhase: string;
+    status: 'Scheduled' | 'In Progress' | 'Completed' | 'Pending';
+    paymentStatus: 'Pending' | 'Partially Paid' | 'Paid';
+    startDate: string;
+    totalCost: number;
+    totalPaid: number;
+    createdAt: string;
+    updatedAt: string;
+    copperPipingCost?: number;
+    outdoorFittingCost?: number;
+    commissioningCost?: number;
+}
+
+export interface JobPhase {
+    id: number;
+    jobId: number;
+    phaseName: string;
+    isCompleted: boolean;
+    completedAt?: string;
+}
+
+export interface Payment {
+    id: number;
+    jobId: number;
+    amount: number;
+    method: string;
+    notes?: string;
+    createdAt: string;
+}

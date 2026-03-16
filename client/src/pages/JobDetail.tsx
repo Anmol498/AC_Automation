@@ -3,6 +3,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Job, Customer, JobPhase, Payment } from '../types';
 import { APP_NAME, SUPPORT_EMAIL, API_BASE_URL } from '../constants';
+import Pagination from '../components/Pagination';
+
 import { useAuth, useSettings } from '../App';
 import { GoogleGenAI } from '@google/genai';
 
@@ -20,6 +22,9 @@ const JobDetail: React.FC = () => {
   const [notification, setNotification] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
   const [phaseEmailStatus, setPhaseEmailStatus] = useState<Record<number, 'sent' | 'failed' | 'skipped'>>({});
   const [selectedPhaseId, setSelectedPhaseId] = useState<number | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
 
   const [isRecordingPayment, setIsRecordingPayment] = useState(false);
   const [newPaymentAmount, setNewPaymentAmount] = useState('');
@@ -389,6 +394,8 @@ const JobDetail: React.FC = () => {
 
   const completedCount = phases.filter(p => p.isCompleted).length;
   const progressPercent = phases.length > 0 ? Math.round((completedCount / phases.length) * 100) : 0;
+  const totalPages = Math.ceil(phases.length / itemsPerPage);
+  const paginatedPhases = phases.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
@@ -620,13 +627,13 @@ const JobDetail: React.FC = () => {
           </button>
         </div>
         <div className="divide-y divide-slate-100">
-          {phases.map((phase, idx) => (
+          {paginatedPhases.map((phase, idx) => (
             <div key={phase.id} className={`p-4 flex items-center gap-4 transition-all ${phase.isCompleted ? 'bg-emerald-50/20' : 'hover:bg-slate-50 group'}`}>
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black transition-all shrink-0 ${phase.isCompleted
                 ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
                 : 'bg-slate-100 text-slate-400 group-hover:bg-slate-200'
                 }`}>
-                {phase.isCompleted ? <i className="fa-solid fa-check text-base"></i> : idx + 1}
+                {phase.isCompleted ? <i className="fa-solid fa-check text-base"></i> : (currentPage - 1) * itemsPerPage + idx + 1}
               </div>
               <div className="flex-1 min-w-0">
                 <p className={`text-sm font-bold truncate ${phase.isCompleted ? 'text-slate-800' : 'text-slate-500 group-hover:text-slate-700'}`}>{phase.phaseName}</p>
@@ -711,6 +718,11 @@ const JobDetail: React.FC = () => {
             </div>
           ))}
         </div>
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+        />
       </div>
 
       {/* Email Preview Modal */}

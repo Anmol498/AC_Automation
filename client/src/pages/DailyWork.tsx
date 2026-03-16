@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_BASE_URL } from '../constants';
 import { useAuth } from '../App';
+import Pagination from '../components/Pagination';
+
 
 interface DailyWorkLog {
     id: number;
@@ -18,6 +20,9 @@ export default function DailyWork() {
     const { token } = useAuth();
     const [logs, setLogs] = useState<DailyWorkLog[]>([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
+
 
     // Inline editing state
     const [editingId, setEditingId] = useState<number | null>(null);
@@ -111,6 +116,14 @@ export default function DailyWork() {
         (log.address || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm]);
+
+    const totalPages = Math.ceil(filteredLogs.length / itemsPerPage);
+    const paginatedLogs = filteredLogs.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+
     const exportToCSV = () => {
         if (!filteredLogs.length) return alert('No data to export.');
 
@@ -189,12 +202,12 @@ export default function DailyWork() {
                         <thead className="bg-slate-100 text-slate-500 text-[10px] uppercase font-black tracking-wider">
                             <tr>
                                 <th className="p-3 pl-5 border-b border-r border-slate-200 w-10 text-center">#</th>
-                                <th className="p-3 border-b border-r border-slate-200 min-w-[130px]">Date</th>
-                                <th className="p-3 border-b border-r border-slate-200 min-w-[280px]">Work Description</th>
-                                <th className="p-3 border-b border-r border-slate-200 min-w-[80px] text-center">Qty</th>
-                                <th className="p-3 border-b border-r border-slate-200 min-w-[140px]">Technician</th>
-                                <th className="p-3 border-b border-r border-slate-200 min-w-[200px]">Address</th>
-                                <th className="p-3 border-b border-r border-slate-200 min-w-[220px]">Remarks</th>
+                                <th className="p-3 border-b border-r border-slate-200 w-[120px]">Date</th>
+                                <th className="p-3 border-b border-r border-slate-200 min-w-[200px]">Work Description</th>
+                                <th className="p-3 border-b border-r border-slate-200 w-16 text-center">Qty</th>
+                                <th className="p-3 border-b border-r border-slate-200 w-[140px]">Technician</th>
+                                <th className="p-3 border-b border-r border-slate-200 min-w-[180px]">Address</th>
+                                <th className="p-3 border-b border-r border-slate-200 min-w-[180px]">Remarks</th>
                                 <th className="p-3 border-b border-slate-200 w-24 text-center">Actions</th>
                             </tr>
                         </thead>
@@ -277,9 +290,9 @@ export default function DailyWork() {
                             )}
 
                             {/* Log Rows */}
-                            {!isLoading && filteredLogs.map((log, index) => (
+                            {!isLoading && paginatedLogs.map((log, index) => (
                                 <tr key={log.id} className={`group transition-colors ${editingId === log.id ? 'bg-amber-50/50' : 'hover:bg-slate-50/50'}`}>
-                                    <td className="p-3 pl-5 border-r border-slate-100 text-center text-slate-400 font-bold text-xs">{index + 1}</td>
+                                    <td className="p-3 pl-5 border-r border-slate-100 text-center text-slate-400 font-bold text-xs">{(currentPage - 1) * itemsPerPage + index + 1}</td>
 
                                     {editingId === log.id ? (
                                         <>
@@ -315,11 +328,11 @@ export default function DailyWork() {
                                     ) : (
                                         <>
                                             <td className="p-3 border-r border-slate-100 font-medium text-slate-700 whitespace-nowrap">{new Date(log.date).toLocaleDateString()}</td>
-                                            <td className="p-3 border-r border-slate-100 text-slate-700">{log.work_description || <span className="text-slate-300 italic">—</span>}</td>
+                                            <td className="p-3 border-r border-slate-100 text-slate-700 whitespace-normal break-words">{log.work_description || <span className="text-slate-300 italic">—</span>}</td>
                                             <td className="p-3 border-r border-slate-100 text-center font-bold text-slate-800">{log.qty || '0'}</td>
-                                            <td className="p-3 border-r border-slate-100 font-medium text-slate-700">{log.technician || <span className="text-slate-300 italic">—</span>}</td>
-                                            <td className="p-3 border-r border-slate-100 text-slate-700">{log.address || <span className="text-slate-300 italic">—</span>}</td>
-                                            <td className="p-3 border-r border-slate-100 text-slate-600 italic">{log.remarks || <span className="text-slate-300">—</span>}</td>
+                                            <td className="p-3 border-r border-slate-100 font-medium text-slate-700 whitespace-nowrap">{log.technician || <span className="text-slate-300 italic">—</span>}</td>
+                                            <td className="p-3 border-r border-slate-100 text-slate-700 whitespace-normal break-words">{log.address || <span className="text-slate-300 italic">—</span>}</td>
+                                            <td className="p-3 border-r border-slate-100 text-slate-600 italic whitespace-normal break-words">{log.remarks || <span className="text-slate-300">—</span>}</td>
                                             <td className="p-3 text-center">
                                                 <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                     <button onClick={() => handleStartEdit(log)} className="w-7 h-7 rounded-lg bg-slate-100 text-slate-500 hover:bg-blue-100 hover:text-blue-600 transition-colors flex items-center justify-center" title="Edit">
@@ -351,6 +364,11 @@ export default function DailyWork() {
                         </tbody>
                     </table>
                 </div>
+                <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                />
             </div>
         </div>
     );
