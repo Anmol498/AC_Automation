@@ -313,7 +313,7 @@ const CustomerList: React.FC = () => {
                 </div>
               </div>
               <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 p-3 bg-slate-100 font-bold rounded-xl">Cancel</button>
+                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-2xl transition-all">Cancel</button>
                 <button type="submit" className="flex-1 p-3 bg-blue-600 text-white font-bold rounded-xl shadow-lg shadow-blue-500/20">{editingId ? 'Save Changes' : 'Save'}</button>
               </div>
             </form>
