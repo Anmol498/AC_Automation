@@ -50,6 +50,7 @@ export interface Job {
     copperPipingCost?: number;
     outdoorFittingCost?: number;
     commissioningCost?: number;
+    equipmentCost?: number;
 }
 
 export interface JobPhase {
@@ -58,13 +59,16 @@ export interface JobPhase {
     phaseName: string;
     isCompleted: boolean;
     completedAt?: string;
+    emailStatus?: 'sent' | 'failed' | 'skipped';
 }
 
 export interface Payment {
     id: number;
     jobId: number;
     amount: number;
-    method: string;
+    category?: 'Low-Side' | 'Equipment';
+    paymentMethod: string;
     notes?: string;
+    recorded_by: string;
     createdAt: string;
 }

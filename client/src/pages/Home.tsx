@@ -1,445 +1,481 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { APP_NAME } from '../constants';
-import { useAuth } from '../App';
+import { useAuth, useSettings } from '../context/AppContext';
+
+type Product = {
+    id: string;
+    name: string;
+    category: 'split' | 'pac';
+    series: 'inverter' | 'non-inverter' | 'winter-summer';
+    description: string;
+    imageUrl: string;
+};
+
+const products: Product[] = [
+    {
+        id: 'msz-hp',
+        name: 'MSZ-HP',
+        category: 'split',
+        series: 'winter-summer',
+        description: 'Compact, high performance indoor and outdoor units and advanced inverter technologies provide superior energy savings and comfort in all rooms.',
+        imageUrl: '/msz-hp.jpg'
+    },
+    {
+        id: 'msy-grt',
+        name: 'MSY-GRT',
+        category: 'split',
+        series: 'inverter',
+        description: 'GR-T Series are empowered with Tropical Inverter Technology to bring optimal comfort. The New Luxurious and Stylish Designs are developed to suit the air conditioning needs of tropical regions. The operational range of MSY GR(T) Series is up to 52 degree Celsius (Outdoor Temperature) with an optimized heat exchanger and the PCBs for improved cooling performance.',
+        imageUrl: '/msy-grt.jpg'
+    },
+    {
+        id: 'msy-gr',
+        name: 'MSY-GR',
+        category: 'split',
+        series: 'inverter',
+        description: "GR Series features advanced Inverter Technology that utilize MITSUBISHI ELECTRIC's cutting edge technology which ensures faster cooling with high energy efficiency catering to the needs of Indian climatic conditions.",
+        imageUrl: '/msy-gr.jpg'
+    },
+    {
+        id: 'msy-rjs',
+        name: 'Kirigamine (MSY-RJS)',
+        category: 'split',
+        series: 'inverter',
+        description: 'Kirigamine Highlands is an eminent scenic spot with a splendid view of Suwa City in Nagano, Mt. Fuji, the Yatsugatake mountain range and alpine flora of each season. With a strong updraft around it, the upland is also known as the birthplace of gliding in Japan. In spring 2017, "Kirigamine," in honor of the brand\'s 50th anniversary, was awarded a letter of gratitude from Suwa City for its contribution towards enhancing tourism & making Suwa City a popular tourist destination in Japan.',
+        imageUrl: '/msy-rjs.png'
+    },
+    {
+        id: 'ms-agz',
+        name: 'MS-AGZ',
+        category: 'split',
+        series: 'non-inverter',
+        description: "Bring refreshing comfort to your home with Mitsubishi Electric's fixed-speed AC, designed for optimal cooling and quiet performance.",
+        imageUrl: '/MS-AGZ.png'
+    },
+    {
+        id: 'ms-gk',
+        name: 'MS-GK',
+        category: 'split',
+        series: 'non-inverter',
+        description: "Mitsubishi Electric's unwavering commitment to research and development is helping us create the next generation of groundbreaking technologies.",
+        imageUrl: '/MS-GK.png'
+    },
+    {
+        id: 'pey-series',
+        name: 'PEY Series',
+        category: 'pac',
+        series: 'inverter',
+        description: 'New Inverter Technology has made it possible for units to operate at outdoor-air temperatures as high as 52 C. Tropical Specification series units are perfect for cooling homes and offices in tropical regions.',
+        imageUrl: '/pey.jpg'
+    },
+    {
+        id: 'pe-m-series',
+        name: 'PE-M Series',
+        category: 'pac',
+        series: 'non-inverter',
+        description: 'The thin, ceiling-concealed indoor units are perfect answer for the air-conditioning requirements of buildings with minimum ceiling installation space and wide-ranging external static pressure.',
+        imageUrl: '/pe-m.jpg'
+    },
+    {
+        id: 'sez-pead-series',
+        name: 'SEZ/PEAD Series',
+        category: 'pac',
+        series: 'winter-summer',
+        description: 'Ultra thin Ceiling Concealed indoor units of this series are the perfect answer for the air conditioning needs of modern buildings with minimum ceiling installation space requirements.',
+        imageUrl: '/sez.jpeg'
+    },
+    {
+        id: 'pla-rp-series',
+        name: 'PLA-RP Series',
+        category: 'pac',
+        series: 'winter-summer',
+        description: 'A complete line-up including deluxe units that offer added energy savings. Wide air-outlet and 3D i-see Sensor enhance airflow distribution control.',
+        imageUrl: '/pla-rp.jpg'
+    },
+    {
+        id: 'ply-sp-ea',
+        name: 'PLY-SP EA',
+        category: 'pac',
+        series: 'inverter',
+        description: "Mitsubishi Electric Inverter series are the perfect answer to today's cooling needs. Wide-angle outlets distribute air flow to all corners of the room.",
+        imageUrl: '/ply-sp.jpg'
+    },
+    {
+        id: 'pl-m-series',
+        name: 'PL-M Series',
+        category: 'pac',
+        series: 'non-inverter',
+        description: 'Advanced Non Inverter Ceiling Cassette matching the needs of modern commercial and residential applications.',
+        imageUrl: '/pl-m.jpg'
+    }
+];
+
+const getSeriesLabel = (product: Product) => {
+    const id = product.id.toLowerCase();
+    if (id.includes('grt')) return 'GRT SERIES';
+    if (id.includes('gr')) return 'GR SERIES';
+    if (id.includes('rjs')) return 'KIRIGAMINE';
+    if (id.includes('hp')) return 'HP SERIES';
+    if (id.includes('agz')) return 'AGZ SERIES';
+    if (id.includes('gk')) return 'GK SERIES';
+    if (id.includes('pey')) return 'PEY SERIES';
+    if (id.includes('pe-m')) return 'PE-M SERIES';
+    if (id.includes('sez') || id.includes('pead')) return 'SEZ/PEAD SERIES';
+    if (id.includes('pla-rp')) return 'PLA-RP SERIES';
+    if (id.includes('ply-sp')) return 'PLY-SP SERIES';
+    if (id.includes('pl-m')) return 'PL-M SERIES';
+    return 'MITSUBISHI ELECTRIC';
+};
+
+const mainTabs = [
+    { id: 'split', label: 'Split AC' },
+    { id: 'pac', label: 'PAC' },
+    { id: 'vrf', label: 'VRF Systems' }
+] as const;
+
+const seriesTabs = [
+    { id: 'inverter', label: 'Inverter' },
+    { id: 'non-inverter', label: 'Non Inverter' },
+    { id: 'winter-summer', label: 'Hot & Cold' }
+] as const;
+
+const segmentedButtonClass = (active: boolean, isDark: boolean) =>
+    [
+        'min-w-[108px] rounded-[12px] px-6 py-3 text-center text-sm font-extrabold transition-all duration-200',
+        active
+            ? isDark
+                ? 'bg-[#292a2e] text-white shadow-[0_1px_0_rgba(255,255,255,0.05)]'
+                : 'bg-white text-[#151619] shadow-[0_2px_12px_rgba(15,23,42,0.08)]'
+            : isDark
+                ? 'text-[#a8acb8] hover:text-white'
+                : 'text-[#6d7484] hover:text-[#151619]'
+    ].join(' ');
 
 const Home: React.FC = () => {
-    const { isAuthenticated } = useAuth();
-    const [mainTab, setMainTab] = React.useState('split');
-    const [activeTab, setActiveTab] = React.useState('inverter');
-    const [activePacSeries, setActivePacSeries] = React.useState('inverter');
+    const { isAuthenticated, setLoginModalOpen } = useAuth();
+    const { companyPhone } = useSettings();
+    const topbarBlue = '#246BFF';
+    const [mainTab, setMainTab] = React.useState<'split' | 'pac' | 'vrf'>('split');
+    const [activeSplitSeries, setActiveSplitSeries] = React.useState<Product['series']>('inverter');
+    const [activePacSeries, setActivePacSeries] = React.useState<Product['series']>('inverter');
     const [showPhonePopup, setShowPhonePopup] = React.useState(false);
     const [isVideoMuted, setIsVideoMuted] = React.useState(true);
+    const [isDark, setIsDark] = React.useState(() => {
+        const saved = localStorage.getItem('dashboard-theme');
+        return saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    });
     const sectionRef = React.useRef<HTMLDivElement>(null);
 
-    const scrollToSection = () => {
-        if (sectionRef.current) {
-            const yOffset = -20; // Slight offset to not hug the very top
-            const element = sectionRef.current;
-            const y = element.getBoundingClientRect().top + window.scrollY + yOffset;
-            window.scrollTo({ top: y, behavior: 'smooth' });
+    React.useEffect(() => {
+        if (isDark) {
+            document.documentElement.classList.add('dark');
+            document.body.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+            document.body.classList.remove('dark');
+        }
+        localStorage.setItem('dashboard-theme', isDark ? 'dark' : 'light');
+    }, [isDark]);
+
+    React.useEffect(() => {
+        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        const handleChange = (e: MediaQueryListEvent) => {
+            if (!localStorage.getItem('dashboard-theme')) {
+                setIsDark(e.matches);
+            }
+        };
+        mediaQuery.addEventListener('change', handleChange);
+        return () => mediaQuery.removeEventListener('change', handleChange);
+    }, []);
+
+    React.useEffect(() => {
+        return () => {
+            document.documentElement.classList.remove('dark');
+            document.body.classList.remove('dark');
+        };
+    }, []);
+
+    const activeSeries = mainTab === 'pac' ? activePacSeries : activeSplitSeries;
+    const visibleProducts = products.filter(product => product.category === mainTab && product.series === activeSeries);
+
+    const scrollToCatalog = () => {
+        sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+
+    const updateSeries = (series: Product['series']) => {
+        if (mainTab === 'pac') {
+            setActivePacSeries(series);
+        } else {
+            setActiveSplitSeries(series);
         }
     };
 
-    // Hardcoded products for catalog based on the screenshot
-    const products = [
-        // --- SPLIT ACs --- //
-        {
-            id: 'msz-hp',
-            name: 'MSZ-HP',
-            category: 'split',
-            series: 'winter-summer',
-            description: '"Compact, High Performance indoor and outdoor units and advanced inverter technologies provide superior energy savings and comfort in all rooms."',
-            imageUrl: '/msz-hp.jpg'
-        },
-        {
-            id: 'msy-grt',
-            name: 'MSY-GRT',
-            category: 'split',
-            series: 'inverter',
-            description: 'GR-T Series are empowered with Tropical Inverter Technology to bring optimal comfort. The New Luxurious and Stylish Designs are developed to suit the air conditioning needs of tropical regions. The operational range of MSY GR(T) Series is up to 52 degree Celsius (Outdoor Temperature) with an optimized heat exchanger and the PCBs for improved cooling performance.',
-            imageUrl: '/msy-grt.jpg'
-        },
-        {
-            id: 'msy-gr',
-            name: 'MSY-GR',
-            category: 'split',
-            series: 'inverter',
-            description: 'GR Series features advanced Inverter Technology that utilize MITSUBISHI ELECTRIC\'s cutting edge technology which ensures faster cooling with high energy efficiency catering to the needs of Indian climatic conditions.',
-            imageUrl: '/msy-gr.jpg'
-        },
-        {
-            id: 'msy-rjs',
-            name: 'Kirigamine (MSY-RJS)',
-            category: 'split',
-            series: 'inverter',
-            description: 'Kirigamine Highlands is an eminent scenic spot with a splendid view of Suwa City in Nagano, Mt. Fuji, the Yatsugatake mountain range and alpine flora of each season. With a strong updraft around it, the upland is also known as the birthplace of gliding in Japan. In spring 2017, "Kirigamine," in honor of the brand\'s 50th anniversary, was awarded a letter of gratitude from Suwa City for its contribution towards enhancing tourism & making Suwa City a popular tourist destination in Japan.',
-            imageUrl: '/msy-rjs.png'
-        },
-        {
-            id: 'ms-agz',
-            name: 'MS-AGZ',
-            category: 'split',
-            series: 'non-inverter',
-            description: 'Bring refreshing comfort to your home with Mitsubishi Electric\'s fixed-speed AC, designed for optimal cooling and quiet performance.',
-            imageUrl: '/MS-AGZ.png'
-        },
-        {
-            id: 'ms-gk',
-            name: 'MS-GK',
-            category: 'split',
-            series: 'non-inverter',
-            description: 'Mitsubishi Electric\'s unwavering commitment to research and development is helping us create the next generation of groundbreaking technologies.',
-            imageUrl: '/MS-GK.png'
-        },
-
-        // --- PAC: CEILING CONCEALED --- //
-        {
-            id: 'pey-series',
-            name: 'PEY Series',
-            category: 'pac',
-            pacType: 'ceiling-concealed',
-            series: 'inverter',
-            description: 'New Inverter Technology has made it possible for units to operate at outdoor-air temperatures as high as 52 C. Tropical Specification series units are perfect for cooling homes and offices in tropical regions.',
-            imageUrl: '/pey.jpg'
-        },
-        {
-            id: 'pe-m-series',
-            name: 'PE-M Series',
-            category: 'pac',
-            pacType: 'ceiling-concealed',
-            series: 'non-inverter',
-            description: 'The thin, ceiling-concealed indoor units are perfect answer for the air-conditioning requirements of buildings with minimum ceiling installation space and wide-ranging external static pressure. Available three-stage external static pressure conversions are capable of being set to a maximum of 70Pa.',
-            imageUrl: '/pe-m.jpg'
-        },
-
-        // --- PAC: CEILING CONCEALED --- //
-        {
-            id: 'sez-pead-series',
-            name: 'SEZ/PEAD Series',
-            category: 'pac',
-            pacType: 'ceiling-concealed',
-            series: 'winter-summer',
-            description: 'Ultra thin Ceiling Concealed indoor units of this series are the perfect answer for the air conditioning needs of modern buildings with minimum ceiling installation space requirements and wide-ranging external static pressure. Energy-saving efficiency has been improved, reducing electricity consumption and contributing to a further reduction in operating costs.',
-            imageUrl: '/sez.jpeg'
-        },
-
-        // --- PAC: CEILING CASSETTE --- //
-        {
-            id: 'pla-rp-series',
-            name: 'PLA-RP Series',
-            category: 'pac',
-            pacType: 'ceiling-cassette',
-            series: 'winter-summer',
-            description: 'A complete line-up including deluxe units that offer added energy savings. The incorporation of wide air-outlet and the 3D i-see Sensor enhances airflow distribution control, achieving an enhanced level of comfort throughout the room. The synergy of higher energy efficiency and more comfortable room environment results in the optimum user satisfaction',
-            imageUrl: '/pla-rp.jpg'
-        },
-        {
-            id: 'ply-sp-ea',
-            name: 'PLY-SP EA',
-            category: 'pac',
-            pacType: 'ceiling-cassette',
-            series: 'inverter',
-            description: 'Mitsubishi Electric Inverter series are the perfect answer to today\'s cooling needs. Its Wide-angle outlets distribute air flow to all corners of the room, ensuring the room is sufficiently cooled. Horizontal airflow and a fan speed reduced by 20 percent compared to conventional models also contribute to increased comfort for occupants.',
-            imageUrl: '/ply-sp.jpg'
-        },
-        {
-            id: 'pl-m-series',
-            name: 'PL-M Series',
-            category: 'pac',
-            pacType: 'ceiling-cassette',
-            series: 'non-inverter',
-            description: 'Advanced Non Inverter Ceiling Cassette matching the needs of modern commercial and residential applications.',
-            imageUrl: '/pl-m.jpg'
-        }
-    ];
-
-    const filteredSplitProducts = products.filter(p => p.category === 'split' && p.series === activeTab);
-    const filteredPacProducts = products.filter(p => p.category === 'pac' && p.series === activePacSeries);
-
     return (
-        <div className="min-h-screen bg-white font-sans text-slate-800">
-            {/* Header / Navigation Bar Placeholder */}
-            <header className="border-b border-slate-200 py-3 px-4 sm:py-4 sm:px-6 flex justify-between items-center bg-white sticky top-0 z-50">
-                <Link to="/" className="flex flex-col sm:flex-row items-center sm:gap-3 gap-1 hover:opacity-90 transition-opacity">
-                    <img src="/logo.png" alt={`${APP_NAME} Logo`} className="h-10 sm:h-12 w-auto object-contain drop-shadow-sm" />
-                    <span className="font-normal text-xs sm:text-2xl lg:text-3xl tracking-tight text-slate-900 uppercase text-center sm:text-left leading-tight" style={{ fontFamily: "'Open Sans', sans-serif" }}>{APP_NAME}</span>
-                </Link>
-                <div className="flex items-center gap-3 sm:gap-6">
-                    <Link to="/contact" className="text-xs sm:text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors">
-                        Contact Us
+        <div className={`min-h-screen font-sans transition-colors duration-300 ${isDark ? 'bg-[#151619] text-white' : 'bg-[#f5f7fb] text-[#111827]'}`}>
+            <header className={`h-[76px] border-b px-6 transition-colors duration-300 sm:px-8 ${isDark ? 'border-[#202125] bg-[#101112]' : 'border-[#e4e8f0] bg-white'}`}>
+                <div className="mx-auto flex h-full max-w-[1440px] items-center justify-between">
+                    <Link to="/" className="flex items-center gap-5">
+                        <img src="/logo.png" alt={`${APP_NAME} Logo`} className="h-8 w-auto object-contain opacity-75" />
+                        <span className={`text-[22px] font-black uppercase leading-none tracking-[-0.02em] sm:text-[30px] ${isDark ? 'text-white' : 'text-[#111827]'}`}>
+                            {APP_NAME}
+                        </span>
                     </Link>
-                    {isAuthenticated ? (
-                        <Link to="/dashboard" className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white rounded-lg transition-all" title="Dashboard">
-                            <i className="fa-solid fa-gauge text-base sm:text-lg"></i>
+
+                    <div className="flex items-center gap-3 sm:gap-4">
+                        <button
+                            type="button"
+                            onClick={() => setIsDark(prev => !prev)}
+                            className={`flex h-10 w-10 items-center justify-center rounded-2xl border shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition ${isDark ? 'border-[#24262b] bg-[#1e2025] text-[#f8fafc] hover:bg-[#252830]' : 'border-[#d8deea] bg-[#eef3fb] text-[#126bff] hover:bg-[#e2eaf7]'}`}
+                            title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+                            aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+                        >
+                            <i className={`fa-solid ${isDark ? 'fa-sun' : 'fa-moon'} text-base`}></i>
+                        </button>
+                        <Link
+                            to="/contact"
+                            className={`flex h-10 items-center gap-2 rounded-full border px-5 text-sm font-extrabold transition ${isDark ? 'border-[#24262b] bg-[#18191b] text-[#126bff] hover:bg-[#202226]' : 'border-[#D7E3FF] bg-white hover:border-[#C7D8FF] hover:bg-[#EEF4FF]'}`}
+                            style={!isDark ? { color: topbarBlue } : undefined}
+                        >
+                            <i className="fa-solid fa-envelope text-sm"></i>
+                            <span className="hidden sm:inline">Contact Us</span>
                         </Link>
-                    ) : (
-                        <Link to="/login" className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center bg-slate-50 text-slate-500 hover:bg-blue-600 hover:text-white rounded-lg transition-all" title="Staff Login">
-                            <i className="fa-solid fa-user-lock text-base sm:text-lg"></i>
-                        </Link>
-                    )}
+                        {isAuthenticated ? (
+                            <Link
+                                to="/dashboard"
+                                className={`flex h-10 items-center gap-2 rounded-full border px-5 text-sm font-extrabold transition ${isDark ? 'border-[#24262b] bg-[#18191b] text-[#126bff] hover:bg-[#202226]' : 'border-[#D7E3FF] bg-white hover:border-[#C7D8FF] hover:bg-[#EEF4FF]'}`}
+                                style={!isDark ? { color: topbarBlue } : undefined}
+                            >
+                                <i className="fa-solid fa-square-poll-horizontal text-sm"></i>
+                                <span>Dashboard</span>
+                            </Link>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={() => setLoginModalOpen(true)}
+                                className={`flex h-10 items-center gap-2 rounded-full border px-5 text-sm font-extrabold transition ${isDark ? 'border-[#24262b] bg-[#18191b] text-[#126bff] hover:bg-[#202226]' : 'border-[#D7E3FF] bg-white hover:border-[#C7D8FF] hover:bg-[#EEF4FF]'}`}
+                                style={!isDark ? { color: topbarBlue } : undefined}
+                            >
+                                <i className="fa-solid fa-right-to-bracket text-sm"></i>
+                                <span>Login</span>
+                            </button>
+                        )}
+                    </div>
                 </div>
             </header>
 
-            <main className="max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
-                {/* Main Category Tabs */}
-                <div className="flex justify-center max-w-4xl mx-auto mb-10 px-4">
-                    <div className="flex flex-row flex-nowrap bg-slate-100 rounded-lg p-1 w-full shadow-inner relative z-10 overflow-x-auto select-none gap-2 md:gap-0 snap-x hide-scrollbar">
+            <section className={`border-b px-6 py-[94px] transition-colors duration-300 sm:px-8 ${isDark ? 'border-[#20232a]' : 'border-[#20232a]'} bg-[linear-gradient(180deg,#091328_0%,#11162c_100%)]`}>
+                <div className="mx-auto grid max-w-[1250px] items-center gap-14 lg:grid-cols-[1fr_580px]">
+                    <div className="max-w-[610px]">
+                        <div className={`mb-9 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-extrabold ${isDark ? 'border-[#11427d] bg-[#0a2a55] text-[#4aa0ff]' : 'border-[#9ec7ff] bg-white/10 text-white'}`}>
+                            <i className="fa-solid fa-circle-check text-[10px]"></i>
+                            Premium AC Solutions & Sales
+                        </div>
+                        <h1 className={`max-w-[650px] text-[46px] font-black leading-[1.03] tracking-[-0.04em] sm:text-[62px] lg:text-[72px] ${isDark ? 'text-white' : 'text-white'}`}>
+                            Engineered for
+                            <br />
+                            <span className="bg-[linear-gradient(90deg,#58aaff_0%,#0fb7f4_46%,#7772ff_100%)] bg-clip-text text-transparent">
+                                Perfect Comfort
+                            </span>
+                        </h1>
+                        <p className={`mt-8 max-w-[580px] text-lg font-semibold leading-8 ${isDark ? 'text-[#c6cfdf]' : 'text-[#dbe9ff]'}`}>
+                            Satguru Engineers -- specialists in installation, service, and distribution of state-of-the-art Mitsubishi Electric cooling systems.
+                        </p>
+                        <div className="mt-8 flex flex-wrap gap-4">
+                            <button
+                                type="button"
+                                onClick={scrollToCatalog}
+                                className="h-12 rounded-xl bg-[#126bff] px-8 text-xs font-black uppercase tracking-[0.06em] text-white shadow-[0_12px_26px_rgba(18,107,255,0.28)] transition hover:bg-[#0f5ee5]"
+                            >
+                                View Product Catalog
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setShowPhonePopup(true)}
+                                className={`h-12 rounded-xl border px-8 text-xs font-black uppercase tracking-[0.06em] transition ${isDark ? 'border-[#3b4356] bg-[#1f2638] text-white hover:border-[#64708b]' : 'border-white/25 bg-white/12 text-white hover:border-white/35 hover:bg-white/16'}`}
+                            >
+                                Contact Our Experts
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="group relative overflow-hidden rounded-[18px] bg-[#071526] shadow-[0_30px_60px_rgba(0,0,0,0.25)]">
+                        <video
+                            src="/intro.mp4"
+                            autoPlay
+                            loop
+                            muted={isVideoMuted}
+                            playsInline
+                            className="aspect-[16/9] h-full w-full object-cover opacity-90"
+                        />
                         <button
-                            onClick={() => {
-                                setMainTab('split');
-                                scrollToSection();
-                            }}
-                            className={`flex-1 min-w-[30%] md:w-auto text-center py-2 md:py-3 px-2 md:px-4 rounded-md text-sm md:text-base font-medium transition-all duration-300 ${mainTab === 'split' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
-                            Split
-                        </button>
-                        <button
-                            onClick={() => {
-                                setMainTab('pac');
-                                scrollToSection();
-                            }}
-                            className={`flex-1 min-w-[30%] md:w-auto text-center py-2 md:py-3 px-2 md:px-4 rounded-md text-sm md:text-base font-medium transition-all duration-300 ${mainTab === 'pac' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
-                            PAC
-                        </button>
-                        <button
-                            onClick={() => {
-                                setMainTab('vrf');
-                                scrollToSection();
-                            }}
-                            className={`flex-1 min-w-[30%] md:w-auto text-center py-2 md:py-3 px-2 md:px-4 rounded-md text-sm md:text-base font-medium transition-all duration-300 ${mainTab === 'vrf' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
-                            VRF
+                            type="button"
+                            onClick={() => setIsVideoMuted(prev => !prev)}
+                            className="absolute bottom-4 right-4 flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white opacity-0 backdrop-blur transition hover:bg-black/70 group-hover:opacity-100"
+                            title={isVideoMuted ? 'Unmute video' : 'Mute video'}
+                        >
+                            <i className={`fa-solid ${isVideoMuted ? 'fa-volume-xmark' : 'fa-volume-high'} text-xs`}></i>
                         </button>
                     </div>
                 </div>
+            </section>
 
-                {/* Hero Title Section */}
-                {mainTab !== 'split' && (
-                    <div className="text-center mb-12" ref={sectionRef}>
-                        <h1 className="text-4xl md:text-5xl font-bold mb-4 text-slate-900">
-                            {mainTab === 'pac' ? 'PAC Air Conditioners' : 'VRF Systems'}
-                        </h1>
-                        <p className="text-lg text-slate-600">Range Of Most Powerful Yet Elegant Air Conditioners</p>
-                    </div>
-                )}
-
-                {mainTab === 'split' ? (
-                    <>
-                        {/* Intro Video (Only for Split) */}
-                        <div className="max-w-4xl mx-auto mb-12 px-4">
-                            <div className="relative rounded-2xl overflow-hidden shadow-xl aspect-video bg-slate-200 group">
-                                <video
-                                    src="/intro.mp4"
-                                    autoPlay
-                                    loop
-                                    muted={isVideoMuted}
-                                    playsInline
-                                    className="w-full h-full object-cover"
-                                />
+            <main ref={sectionRef} className={`px-6 pb-[108px] pt-[61px] transition-colors duration-300 sm:px-8 ${isDark ? 'bg-[#151619]' : 'bg-[#f5f7fb]'}`}>
+                <div className="mx-auto max-w-[1200px]">
+                    <div className="mb-10 flex justify-center">
+                        <div className={`flex max-w-full items-center gap-2 overflow-x-auto rounded-[16px] border p-1.5 ${isDark ? 'border-[#232429] bg-[#0d0e10] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.45)]' : 'border-[#d9e0ec] bg-[#edf2f8] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.7)]'}`}>
+                            {mainTabs.map(tab => (
                                 <button
-                                    onClick={() => setIsVideoMuted(!isVideoMuted)}
-                                    className="absolute bottom-4 right-4 bg-slate-900/60 hover:bg-slate-900/80 backdrop-blur-md text-white w-10 h-10 rounded-full flex items-center justify-center transition-all opacity-0 group-hover:opacity-100"
-                                    title={isVideoMuted ? "Unmute Video" : "Mute Video"}
+                                    key={tab.id}
+                                    type="button"
+                                    onClick={() => setMainTab(tab.id)}
+                                    className={segmentedButtonClass(mainTab === tab.id, isDark)}
                                 >
-                                    {isVideoMuted ? (
-                                        <i className="fa-solid fa-volume-xmark"></i>
-                                    ) : (
-                                        <i className="fa-solid fa-volume-high"></i>
-                                    )}
+                                    {tab.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="mb-[46px] text-center">
+                        <h2 className={`text-[38px] font-black leading-tight tracking-[-0.04em] sm:text-[48px] ${isDark ? 'text-white' : 'text-[#111827]'}`}>
+                            {mainTab === 'split' ? 'Split Air Conditioners' : mainTab === 'pac' ? 'PAC Air Conditioners' : 'VRF Systems'}
+                        </h2>
+                        <p className={`mt-5 text-lg font-semibold ${isDark ? 'text-[#a9adb8]' : 'text-[#667085]'}`}>
+                            Range Of Most Powerful Yet Elegant Air Conditioners
+                        </p>
+                    </div>
+
+                    {mainTab === 'vrf' ? (
+                        <div className={`mx-auto max-w-4xl rounded-[8px] border p-8 text-center shadow-[0_34px_50px_rgba(0,0,0,0.12)] ${isDark ? 'border-[#24262b] bg-[#1f2024]' : 'border-[#dfe6f2] bg-white'}`}>
+                            <div className="mb-6 flex flex-col justify-center gap-4 sm:flex-row">
+                                <a
+                                    href="/City-Multi.pdf"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-[#126bff] px-6 text-sm font-black text-[#126bff] transition hover:bg-[#126bff] hover:text-white"
+                                >
+                                    <i className="fa-solid fa-file-pdf"></i>
+                                    View VRF
+                                </a>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPhonePopup(true)}
+                                    className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-[#126bff] px-6 text-sm font-black text-white transition hover:bg-[#0f5ee5]"
+                                >
+                                    <i className="fa-solid fa-paper-plane"></i>
+                                    Get your Quotation
                                 </button>
                             </div>
+                            <object data="/City-Multi.pdf#view=FitV" type="application/pdf" className={`h-[70vh] w-full rounded border ${isDark ? 'border-[#333640] bg-[#111214]' : 'border-[#d5deec] bg-[#f6f8fb]'}`}>
+                                <a href="/City-Multi.pdf" target="_blank" rel="noopener noreferrer" className="text-[#126bff]">
+                                    Download / View Native PDF
+                                </a>
+                            </object>
                         </div>
-
-                        {/* Tabs */}
-                        <div className="flex justify-center max-w-4xl mx-auto mb-16 px-4">
-                            <div className="flex flex-row flex-nowrap bg-slate-100 rounded-lg p-1 w-full shadow-inner relative z-10 overflow-x-auto select-none gap-2 md:gap-0 snap-x hide-scrollbar">
-                                <button
-                                    onClick={() => setActiveTab('inverter')}
-                                    className={`flex-1 min-w-[30%] md:w-auto text-center py-3 px-1 md:px-4 rounded-md text-xs sm:text-sm md:text-base font-medium transition-all duration-300 ${activeTab === 'inverter' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
-                                    Inverter
-                                </button>
-                                <button
-                                    onClick={() => setActiveTab('non-inverter')}
-                                    className={`flex-1 min-w-[30%] md:w-auto text-center py-3 px-1 md:px-4 rounded-md text-xs sm:text-sm md:text-base font-medium transition-all duration-300 ${activeTab === 'non-inverter' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
-                                    Non Inverter
-                                </button>
-                                <button
-                                    onClick={() => setActiveTab('winter-summer')}
-                                    className={`flex-1 min-w-[30%] md:w-auto text-center py-3 px-1 md:px-4 rounded-md text-xs sm:text-sm md:text-base font-medium transition-all duration-300 ${activeTab === 'winter-summer' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
-                                    Hot & Cold
-                                </button>
+                    ) : (
+                        <>
+                            <div className="mb-16 flex justify-center">
+                                <div className={`flex max-w-full items-center gap-2 overflow-x-auto rounded-[16px] border p-1.5 ${isDark ? 'border-[#232429] bg-[#0d0e10] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.45)]' : 'border-[#d9e0ec] bg-[#edf2f8] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.7)]'}`}>
+                                    {seriesTabs.map(tab => (
+                                        <button
+                                            key={tab.id}
+                                            type="button"
+                                            onClick={() => updateSeries(tab.id)}
+                                            className={segmentedButtonClass(activeSeries === tab.id, isDark)}
+                                        >
+                                            {tab.label}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
-                        </div>
 
-                        {/* Background Banner for Products */}
-                        <div className="relative">
-                            <div className="absolute inset-0 bg-slate-100 top-20 bottom-0 rounded-xl z-0"></div>
-
-                            {/* Products Grid */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10 max-w-5xl mx-auto p-8">
-                                {filteredSplitProducts.map((product) => (
-                                    <Link to={`/product/${product.id}`} key={product.id} className="bg-white rounded-xl shadow-lg border border-slate-100 overflow-hidden group hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col h-full cursor-pointer block">
-                                        {/* Energy Rating Badge Placeholder (top right) */}
-                                        <div className="p-8 flex justify-center items-center relative aspect-video bg-white">
-                                            <div className="absolute top-4 right-4 w-12 h-12 bg-cover bg-center" style={{ backgroundImage: "url('https://mitsubishielectric.in/assets/images/star-rating/3-star.png')" }}></div>
-                                            <img
-                                                src={product.imageUrl}
-                                                alt={product.name}
-                                                className="max-h-32 object-contain group-hover:scale-105 transition-transform duration-500 will-change-transform"
-                                                onError={(e) => {
-                                                    (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x200?text=AC+Unit+Image';
-                                                }}
-                                            />
-                                        </div>
-                                        <div className="p-8 border-t border-slate-100 flex-grow flex flex-col">
-                                            <h3 className="text-2xl font-bold text-slate-900 mb-3 group-hover:text-blue-600 transition-colors">{product.name}</h3>
-                                            <p className="text-slate-600 text-sm leading-relaxed mb-6 flex-grow">{product.description}</p>
-                                            <span className="text-red-600 font-medium text-sm self-start group-hover:text-red-700 flex items-center gap-2 mt-auto">
-                                                View Specifications
-                                                <i className="fa-solid fa-arrow-right-long group-hover:translate-x-1 transition-transform"></i>
-                                            </span>
-                                        </div>
-                                    </Link>
-                                ))}
-                            </div>
-                        </div>
-                    </>
-                ) : mainTab === 'pac' ? (
-                    <>
-                        {/* PAC Series Tabs */}
-                        <div className="flex justify-center max-w-4xl mx-auto mb-16 px-4">
-                            <div className="flex flex-row flex-nowrap bg-slate-100 rounded-lg p-1 w-full shadow-inner relative z-10 overflow-x-auto select-none gap-2 md:gap-0 snap-x hide-scrollbar">
-                                <button
-                                    onClick={() => setActivePacSeries('inverter')}
-                                    className={`flex-1 min-w-[30%] md:w-auto text-center py-3 px-1 md:px-4 rounded-md text-xs sm:text-sm md:text-base font-medium transition-all duration-300 ${activePacSeries === 'inverter' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
-                                    Inverter
-                                </button>
-                                <button
-                                    onClick={() => setActivePacSeries('non-inverter')}
-                                    className={`flex-1 min-w-[30%] md:w-auto text-center py-3 px-1 md:px-4 rounded-md text-xs sm:text-sm md:text-base font-medium transition-all duration-300 ${activePacSeries === 'non-inverter' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
-                                    Non Inverter
-                                </button>
-                                <button
-                                    onClick={() => setActivePacSeries('winter-summer')}
-                                    className={`flex-1 min-w-[30%] md:w-auto text-center py-3 px-1 md:px-4 rounded-md text-xs sm:text-sm md:text-base font-medium transition-all duration-300 ${activePacSeries === 'winter-summer' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'}`}>
-                                    Hot & Cold
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Background Banner for Products */}
-                        <div className="relative">
-                            <div className="absolute inset-0 bg-slate-100 top-20 bottom-0 rounded-xl z-0"></div>
-
-                            {/* Products Grid */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10 max-w-5xl mx-auto p-8">
-                                {filteredPacProducts.length > 0 ? (
-                                    filteredPacProducts.map((product) => (
-                                        <Link to={`/product/${product.id}`} key={product.id} className="bg-white rounded-xl shadow-lg border border-slate-100 overflow-hidden group hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col h-full cursor-pointer block">
-                                            {/* Energy Rating Badge Placeholder (top right) */}
-                                            <div className="p-8 flex justify-center items-center relative aspect-video bg-white">
-                                                <div className="absolute top-4 right-4 w-12 h-12 bg-cover bg-center" style={{ backgroundImage: "url('https://mitsubishielectric.in/assets/images/star-rating/3-star.png')" }}></div>
+                            <div className="relative">
+                                <div className={`absolute inset-x-[-68px] bottom-[-32px] top-[57px] rounded-[18px] ${isDark ? 'bg-[#101113]' : 'bg-[#e9eef7]'}`}></div>
+                                <div className="relative z-10 grid gap-6 md:grid-cols-3">
+                                    {visibleProducts.map(product => (
+                                        <Link
+                                            to={`/product/${product.id}`}
+                                            key={product.id}
+                                            className={`group flex min-h-[584px] flex-col overflow-hidden rounded-[14px] border shadow-[0_24px_32px_rgba(0,0,0,0.16)] transition duration-300 hover:-translate-y-1 ${isDark ? 'border-[#22242a] bg-[#222327] hover:border-[#2f3441]' : 'border-[#dfe5ee] bg-white hover:border-[#b9c6da]'}`}
+                                        >
+                                            <div className={`flex h-[182px] items-center justify-center px-8 py-8 ${isDark ? 'bg-[#17181b]' : 'bg-[#f8fafc]'}`}>
                                                 <img
                                                     src={product.imageUrl}
                                                     alt={product.name}
-                                                    className="max-h-32 object-contain group-hover:scale-105 transition-transform duration-500 will-change-transform"
-                                                    onError={(e) => {
-                                                        (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x200?text=AC+Unit+Image';
-                                                    }}
+                                                    className="h-[98px] w-full object-contain transition duration-500 group-hover:scale-[1.03]"
                                                 />
                                             </div>
-                                            <div className="p-8 border-t border-slate-100 flex-grow flex flex-col">
-                                                <h3 className="text-2xl font-bold text-slate-900 mb-3 group-hover:text-blue-600 transition-colors">{product.name}</h3>
-                                                <p className="text-slate-600 text-sm leading-relaxed mb-6 flex-grow">{product.description}</p>
-                                                <span className="text-blue-600 font-medium text-sm self-start group-hover:text-blue-700 flex items-center gap-2 mt-auto">
-                                                    View Specifications
-                                                    <i className="fa-solid fa-arrow-right-long group-hover:translate-x-1 transition-transform"></i>
+                                            <div className="flex flex-1 flex-col px-6 py-7 text-left">
+                                                <span className="text-xs font-black uppercase tracking-[0.06em] text-[#1972ff]">
+                                                    {getSeriesLabel(product)}
+                                                </span>
+                                                <h3 className={`mt-2 text-2xl font-black leading-tight tracking-[-0.03em] ${isDark ? 'text-white' : 'text-[#111827]'}`}>
+                                                    {product.name}
+                                                </h3>
+                                                <p className={`mt-4 flex-1 text-[15px] font-semibold leading-6 ${isDark ? 'text-[#a4a7b2]' : 'text-[#667085]'}`}>
+                                                    {product.description}
+                                                </p>
+                                                <span className="mt-8 inline-flex items-center gap-2 text-sm font-black text-[#1972ff]">
+                                                    View specs
+                                                    <i className="fa-solid fa-arrow-right text-xs transition group-hover:translate-x-1"></i>
                                                 </span>
                                             </div>
                                         </Link>
-                                    ))
-                                ) : (
-                                    <div className="col-span-1 md:col-span-2 text-center py-16 bg-white rounded-2xl border border-slate-100 shadow-sm mt-8">
-                                        <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                                            <i className="fa-solid fa-box-open text-2xl text-slate-400"></i>
-                                        </div>
-                                        <h3 className="text-xl font-bold text-slate-800 mb-2">No Products Available</h3>
-                                        <p className="text-slate-500">We currently don't have any products listed in this specific category.</p>
-                                    </div>
-                                )}
+                                    ))}
+                                </div>
                             </div>
-                        </div>
-                    </>
-                ) : mainTab === 'vrf' ? (
-                    <div className="text-center py-8 md:py-24 bg-slate-50 rounded-2xl border border-slate-100 shadow-inner mx-auto max-w-5xl mt-8">
-                        <div className="flex flex-col md:flex-row items-center justify-center gap-4 mb-6 md:mb-8 px-4">
-                            <a
-                                href="/City-Multi.pdf"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex md:hidden items-center justify-center gap-2 px-6 md:px-10 py-4 md:py-5 bg-white text-blue-600 border-2 border-blue-600 hover:bg-blue-50 font-bold rounded-xl shadow-[0_10px_20px_rgba(37,99,235,0.1)] hover:shadow-[0_15px_30px_rgba(37,99,235,0.2)] hover:-translate-y-1 transition-all active:scale-95 text-base md:text-lg w-full md:w-auto"
-                            >
-                                <i className="fa-solid fa-file-pdf mr-1 scale-110"></i>
-                                View VRF
-                            </a>
-                            <button
-                                onClick={() => setShowPhonePopup(true)}
-                                className="inline-flex items-center justify-center gap-2 px-6 md:px-10 py-4 md:py-5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-[0_10px_20px_rgba(37,99,235,0.2)] hover:shadow-[0_15px_30px_rgba(37,99,235,0.3)] hover:-translate-y-1 transition-all active:scale-95 text-base md:text-lg w-full md:w-auto"
-                            >
-                                <i className="fa-solid fa-paper-plane mr-1 scale-110"></i>
-                                Get your Quotation
-                            </button>
-                        </div>
-
-                        <div className="w-full mt-4">
-                            <div
-                                className="bg-slate-100 shadow-xl border-y border-slate-200 w-full h-[60vh] md:h-[85vh] relative overflow-auto"
-                                style={{ WebkitOverflowScrolling: 'touch' }}
-                            >
-                                <object
-                                    data="/City-Multi.pdf#view=FitV"
-                                    type="application/pdf"
-                                    className="absolute inset-0 w-full h-full border-0 block"
-                                >
-                                    <div className="flex flex-col items-center justify-center h-full p-4 text-center">
-                                        <p className="text-slate-600 mb-4 text-sm font-medium">Your device might not support viewing inline PDFs.</p>
-                                        <a href="/City-Multi.pdf" target="_blank" rel="noopener noreferrer" className="px-6 py-3 bg-blue-600 text-white rounded-xl shadow-md font-bold text-sm">Download / View Native PDF</a>
-                                    </div>
-                                </object>
-                            </div>
-                        </div>
-                    </div>
-                ) : null}
+                        </>
+                    )}
+                </div>
             </main>
 
-            {/* Footer / Info */}
-            <footer className="text-center py-8 text-slate-500 text-sm border-t border-slate-100 mt-12 bg-white">
+            <footer className={`border-t py-8 text-center text-sm font-semibold ${isDark ? 'border-[#242529] bg-[#101112] text-[#6e737e]' : 'border-[#e2e8f0] bg-white text-[#667085]'}`}>
                 &copy; {new Date().getFullYear()} Satguru Engineers. All rights reserved.
             </footer>
 
-            {/* Phone Enquiry Modal */}
-            {
-                showPhonePopup && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={() => setShowPhonePopup(false)}>
-                        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 text-center animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-                            <div className="w-20 h-20 bg-blue-600/10 rounded-full flex items-center justify-center mx-auto mb-6 text-blue-600 shadow-inner">
-                                <span className="material-icons-outlined text-4xl">phone_in_talk</span>
-                            </div>
-                            <h3 className="text-2xl font-display font-bold text-slate-900 mb-2">Sales & Enquiry</h3>
-                            <p className="text-slate-500 mb-8 text-sm px-4">Our experts are ready to help you find the perfect cooling solution.</p>
-
-                            <a href="tel:09592292292" className="block w-full bg-slate-50 border border-slate-200 hover:border-blue-600/50 hover:bg-blue-60/5 rounded-2xl p-4 transition-all mb-4 group cursor-pointer shadow-sm hover:shadow-md">
-                                <div className="text-3xl font-bold tracking-wider text-slate-800 group-hover:text-blue-600 transition-colors flex items-center justify-center gap-2">
-                                    <span className="material-icons-outlined text-blue-600">phone</span>
-                                    95922 92292
-                                </div>
-                                <div className="text-xs font-bold text-slate-400 mt-2 uppercase tracking-widest flex items-center justify-center gap-1">
-                                    <span className="material-icons-outlined text-[14px]">touch_app</span>
-                                    Tap to Call
-                                </div>
-                            </a>
-
-                            <a href="https://maps.google.com/?q=Mitsubishi+Electric+-+Satguru+Engineers,+SCF-29+PH-2,+Sahibzada+Ajit+Singh+Nagar,+Punjab+160055" target="_blank" rel="noopener noreferrer" className="block w-full bg-slate-50 border border-slate-200 hover:border-blue-500/50 hover:bg-blue-50/50 rounded-2xl p-4 transition-all mb-6 group cursor-pointer shadow-sm hover:shadow-md">
-                                <div className="text-sm font-bold tracking-tight text-slate-800 group-hover:text-blue-600 transition-colors flex items-start text-left gap-3">
-                                    <span className="material-icons-outlined text-blue-500 shrink-0 mt-0.5">place</span>
-                                    <span>Mitsubishi Electric - Satguru Engineers, SCF-29 PH-2, Sahibzada Ajit Singh Nagar, Punjab 160055</span>
-                                </div>
-                                <div className="text-xs font-bold text-slate-400 mt-3 uppercase tracking-widest flex items-center justify-center gap-1">
-                                    <span className="material-icons-outlined text-[14px]">directions</span>
-                                    Open in Maps
-                                </div>
-                            </a>
-
-                            <button
-                                onClick={() => setShowPhonePopup(false)}
-                                className="w-full py-4 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors rounded-xl hover:bg-slate-100"
-                            >
-                                Close
-                            </button>
+            {showPhonePopup && (
+                <div
+                    className="fixed inset-0 z-[100] flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm"
+                    onClick={() => setShowPhonePopup(false)}
+                >
+                    <div
+                        className={`w-full max-w-sm rounded-[18px] border p-7 text-center shadow-2xl ${isDark ? 'border-[#2d3139] bg-[#1d1f24]' : 'border-[#d8e0ec] bg-white'}`}
+                        onClick={event => event.stopPropagation()}
+                    >
+                        <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-[#126bff]/10 text-[#126bff]">
+                            <i className="fa-solid fa-phone text-2xl"></i>
                         </div>
+                        <h3 className={`text-2xl font-black ${isDark ? 'text-white' : 'text-[#111827]'}`}>Sales & Enquiry</h3>
+                        <p className={`mt-2 text-sm font-semibold leading-6 ${isDark ? 'text-[#a9adb8]' : 'text-[#667085]'}`}>
+                            Our experts are ready to help you find the perfect cooling solution.
+                        </p>
+                        <a
+                            href={`tel:${companyPhone.replace(/\D/g, '')}`}
+                            className={`mt-6 block rounded-xl border p-4 text-xl font-black transition hover:border-[#126bff] ${isDark ? 'border-[#30343d] bg-[#151619] text-white' : 'border-[#d9e0ec] bg-[#f8fafc] text-[#111827]'}`}
+                        >
+                            {companyPhone}
+                        </a>
+                        <a
+                            href="https://maps.google.com/?q=Mitsubishi+Electric+-+Satguru+Engineers,+SCF-29+PH-2,+Sahibzada+Ajit+Singh+Nagar,+Punjab+160055"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={`mt-4 block rounded-xl border p-4 text-left text-sm font-bold leading-5 transition hover:border-[#126bff] ${isDark ? 'border-[#30343d] bg-[#151619] text-[#c6cfdf]' : 'border-[#d9e0ec] bg-[#f8fafc] text-[#4f5f76]'}`}
+                        >
+                            <i className="fa-solid fa-location-dot mr-2 text-[#126bff]"></i>
+                            Mitsubishi Electric - Satguru Engineers, SCF-29 PH-2, Sahibzada Ajit Singh Nagar, Punjab 160055
+                        </a>
+                        <button
+                            type="button"
+                            onClick={() => setShowPhonePopup(false)}
+                            className={`mt-6 h-11 w-full rounded-xl text-sm font-black transition ${isDark ? 'text-[#a9adb8] hover:bg-white/5 hover:text-white' : 'text-[#667085] hover:bg-[#edf2f8] hover:text-[#111827]'}`}
+                        >
+                            Close
+                        </button>
                     </div>
-                )
-            }
-        </div >
+                </div>
+            )}
+        </div>
     );
 };
 

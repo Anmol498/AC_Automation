@@ -1,10 +1,13 @@
 import React from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useAuth } from '../App';
+import { useAuth, useSettings } from '../context/AppContext';
 import { APP_NAME } from '../constants';
+import CustomSelect from '../components/CustomSelect';
+
 
 const ProductDetail: React.FC = () => {
     const { id } = useParams<{ id: string }>();
+    const { companyPhone } = useSettings();
     const [selectedModel, setSelectedModel] = React.useState(0);
     const [selectedImageIndex, setSelectedImageIndex] = React.useState(0);
     const [showPhonePopup, setShowPhonePopup] = React.useState(false);
@@ -17,12 +20,42 @@ const ProductDetail: React.FC = () => {
     }, [id]);
 
     let isAuthenticated = false;
+    let setLoginModalOpen: (open: boolean) => void = () => {};
     try {
         const auth = useAuth();
         isAuthenticated = auth.isAuthenticated;
+        setLoginModalOpen = auth.setLoginModalOpen;
     } catch (e) {
         // useAuth throws if not wrapped in provider
     }
+
+    const topbarBlue = '#246BFF';
+    const [isDark, setIsDark] = React.useState(() => {
+        const saved = localStorage.getItem('dashboard-theme');
+        return saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    });
+
+    React.useEffect(() => {
+        if (isDark) {
+            document.documentElement.classList.add('dark');
+            document.body.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+            document.body.classList.remove('dark');
+        }
+        localStorage.setItem('dashboard-theme', isDark ? 'dark' : 'light');
+    }, [isDark]);
+
+    React.useEffect(() => {
+        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        const handleChange = (e: MediaQueryListEvent) => {
+            if (!localStorage.getItem('dashboard-theme')) {
+                setIsDark(e.matches);
+            }
+        };
+        mediaQuery.addEventListener('change', handleChange);
+        return () => mediaQuery.removeEventListener('change', handleChange);
+    }, []);
 
     const isGK = id === 'ms-gk';
     const isGRT = id === 'msy-grt';
@@ -748,30 +781,78 @@ const ProductDetail: React.FC = () => {
                     ];
 
     return (
-        <div className="bg-background-light text-slate-800 min-h-screen transition-colors duration-300 font-sans">
-            <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-auto sm:h-16 py-2 sm:py-0 flex items-center justify-between">
-                    <Link to="/" className="flex flex-col sm:flex-row items-center sm:gap-3 gap-1 hover:opacity-90 transition-opacity">
-                        <img src="/logo.png" alt={`${APP_NAME} Logo`} className="h-10 sm:h-12 w-auto object-contain drop-shadow-sm" />
-                        <span className="font-normal text-xs sm:text-2xl tracking-tight text-slate-900 uppercase text-center sm:text-left leading-tight" style={{ fontFamily: "'Open Sans', sans-serif" }}>{APP_NAME}</span>
+        <div className={`min-h-screen transition-colors duration-300 font-sans ${isDark ? 'bg-[#151619] text-slate-300' : 'bg-background-light text-slate-800'}`}>
+            <header className={`sticky top-0 z-50 border-b px-6 transition-colors duration-300 sm:px-8 backdrop-blur-md ${isDark ? 'border-[#202125] bg-[#101112]/80' : 'border-[#e4e8f0] bg-white/80'}`}>
+                <div className="mx-auto flex h-[76px] max-w-[1440px] items-center justify-between">
+                    <Link to="/" className="flex items-center gap-5 hover:opacity-90 transition-opacity">
+                        <img src="/logo.png" alt={`${APP_NAME} Logo`} className="h-8 w-auto object-contain opacity-75" />
+                        <span className={`text-[22px] font-black uppercase leading-none tracking-[-0.02em] sm:text-[30px] ${isDark ? 'text-white' : 'text-[#111827]'}`}>
+                            {APP_NAME}
+                        </span>
                     </Link>
+
                     <div className="flex items-center gap-3 sm:gap-4">
-                        <Link className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm font-medium text-slate-600 hover:text-primary transition-colors" to="/">
-                            <span className="material-icons-outlined text-[18px] sm:text-[20px]">arrow_back</span>
-                            <span className="hidden sm:inline">Back to Catalog</span>
-                            <span className="sm:hidden">Back</span>
+                        <Link
+                            to="/"
+                            className={`flex h-10 items-center gap-2 rounded-full border px-5 text-sm font-extrabold transition ${isDark ? 'border-[#24262b] bg-[#18191b] text-[#126bff] hover:bg-[#202226]' : 'border-[#D7E3FF] bg-white hover:border-[#C7D8FF] hover:bg-[#EEF4FF]'}`}
+                            style={!isDark ? { color: topbarBlue } : undefined}
+                        >
+                            <i className="fa-solid fa-house text-sm"></i>
+                            <span className="hidden sm:inline">Home</span>
                         </Link>
+                        <Link
+                            to="/contact"
+                            className={`flex h-10 items-center gap-2 rounded-full border px-5 text-sm font-extrabold transition ${isDark ? 'border-[#24262b] bg-[#18191b] text-[#126bff] hover:bg-[#202226]' : 'border-[#D7E3FF] bg-white hover:border-[#C7D8FF] hover:bg-[#EEF4FF]'}`}
+                            style={!isDark ? { color: topbarBlue } : undefined}
+                        >
+                            <i className="fa-solid fa-envelope text-sm"></i>
+                            <span className="hidden sm:inline">Contact Us</span>
+                        </Link>
+                        {isAuthenticated ? (
+                            <Link
+                                to="/dashboard"
+                                className={`flex h-10 items-center gap-2 rounded-full border px-5 text-sm font-extrabold transition ${isDark ? 'border-[#24262b] bg-[#18191b] text-[#126bff] hover:bg-[#202226]' : 'border-[#D7E3FF] bg-white hover:border-[#C7D8FF] hover:bg-[#EEF4FF]'}`}
+                                style={!isDark ? { color: topbarBlue } : undefined}
+                            >
+                                <i className="fa-solid fa-square-poll-horizontal text-sm"></i>
+                                <span>Dashboard</span>
+                            </Link>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={() => setLoginModalOpen(true)}
+                                className={`flex h-10 items-center gap-2 rounded-full border px-5 text-sm font-extrabold transition ${isDark ? 'border-[#24262b] bg-[#18191b] text-[#126bff] hover:bg-[#202226]' : 'border-[#D7E3FF] bg-white hover:border-[#C7D8FF] hover:bg-[#EEF4FF]'}`}
+                                style={!isDark ? { color: topbarBlue } : undefined}
+                            >
+                                <i className="fa-solid fa-right-to-bracket text-sm"></i>
+                                <span>Login</span>
+                            </button>
+                        )}
                     </div>
                 </div>
-            </nav>
+            </header>
 
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <div className="mb-6 flex">
+                    <Link
+                        to="/"
+                        className={`w-10 h-10 rounded-full flex items-center justify-center border transition-all ${
+                            isDark
+                                ? 'bg-[#1a1c20] border-[#2a2e36] text-slate-400 hover:text-white hover:bg-[#252830] hover:border-slate-600'
+                                : 'bg-white border-slate-200 text-slate-600 hover:text-brand-blue hover:bg-slate-50 hover:border-slate-300'
+                        }`}
+                        title="Back to Catalog"
+                    >
+                        <span className="material-icons-outlined text-[20px]">arrow_back</span>
+                    </Link>
+                </div>
+
                 <div className="grid lg:grid-cols-2 gap-12 items-center mb-12">
                     <div className="relative group w-full max-w-full overflow-hidden">
-                        <div className="absolute -inset-4 bg-primary/5 rounded-3xl blur-2xl group-hover:bg-primary/10 transition-all" />
+                        <div className="absolute -inset-4 bg-blue-600/5 rounded-3xl blur-2xl group-hover:bg-blue-600/10 transition-all" />
                         <img
                             alt={`Sleek Modern Split AC Unit - ${currentModel.idu}`}
-                            className="relative z-10 w-full max-h-[300px] md:max-h-none h-auto drop-shadow-2xl rounded-2xl bg-white p-4 object-contain aspect-square md:aspect-auto mix-blend-multiply cursor-pointer hover:scale-[1.02] transition-transform duration-300"
+                            className={`relative z-10 w-full max-h-[300px] md:max-h-none h-auto drop-shadow-2xl rounded-2xl bg-white p-4 object-contain aspect-square md:aspect-auto cursor-pointer hover:scale-[1.02] transition-transform duration-300 ${isDark ? '' : 'mix-blend-multiply'}`}
                             src={productImages[selectedImageIndex] || productImages[0]}
                             onClick={() => setIsImageModalOpen(true)}
                         />
@@ -783,7 +864,9 @@ const ProductDetail: React.FC = () => {
                                         const container = document.getElementById('thumbnail-scroll-container');
                                         if (container) container.scrollBy({ left: -200, behavior: 'smooth' });
                                     }}
-                                    className="shrink-0 w-10 h-10 rounded-full bg-white border border-slate-200 hover:bg-slate-50 hover:text-primary text-slate-500 flex items-center justify-center transition-all shadow-sm hover:shadow hidden sm:flex"
+                                    className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-sm hover:shadow hidden sm:flex ${
+                                        isDark ? 'bg-[#1a1c20] border-[#2a2e36] hover:bg-[#252830] hover:text-blue-400 text-slate-400' : 'bg-white border-slate-200 hover:bg-slate-50 hover:text-blue-600 text-slate-500'
+                                    }`}
                                 >
                                     <i className="fa-solid fa-chevron-left text-sm"></i>
                                 </button>
@@ -793,12 +876,13 @@ const ProductDetail: React.FC = () => {
                                         <button
                                             key={idx}
                                             onClick={() => setSelectedImageIndex(idx)}
-                                            className={`snap-center shrink-0 w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-xl bg-white border-2 overflow-hidden transition-all ${selectedImageIndex === idx
-                                                ? 'border-primary ring-4 ring-primary/10 shadow-md scale-105'
-                                                : 'border-slate-100 opacity-60 hover:opacity-100 hover:border-slate-300'
-                                                }`}
+                                            className={`snap-center shrink-0 w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-xl bg-white border-2 overflow-hidden transition-all ${
+                                                selectedImageIndex === idx
+                                                    ? 'border-blue-500 ring-4 ring-blue-500/10 shadow-md scale-105'
+                                                    : (isDark ? 'border-[#2a2e36]' : 'border-slate-100 opacity-60 hover:opacity-100 hover:border-slate-300')
+                                            }`}
                                         >
-                                            <img src={img} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-contain p-2 mix-blend-multiply" />
+                                            <img src={img} alt={`Thumbnail ${idx + 1}`} className={`w-full h-full object-contain p-2 ${isDark ? '' : 'mix-blend-multiply'}`} />
                                         </button>
                                     ))}
                                 </div>
@@ -809,7 +893,9 @@ const ProductDetail: React.FC = () => {
                                         const container = document.getElementById('thumbnail-scroll-container');
                                         if (container) container.scrollBy({ left: 200, behavior: 'smooth' });
                                     }}
-                                    className="shrink-0 w-10 h-10 rounded-full bg-white border border-slate-200 hover:bg-slate-50 hover:text-primary text-slate-500 flex items-center justify-center transition-all shadow-sm hover:shadow hidden sm:flex"
+                                    className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-sm hover:shadow hidden sm:flex ${
+                                        isDark ? 'bg-[#1a1c20] border-[#2a2e36] hover:bg-[#252830] hover:text-blue-400 text-slate-400' : 'bg-white border-slate-200 hover:bg-slate-50 hover:text-blue-600 text-slate-500'
+                                    }`}
                                 >
                                     <i className="fa-solid fa-chevron-right text-sm"></i>
                                 </button>
@@ -821,64 +907,62 @@ const ProductDetail: React.FC = () => {
                         <div>
                             <div>
                                 <div>
-                                    <span className="inline-block px-3 py-1 bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider rounded-full mb-3">{seriesSubtitle}</span>
-                                    <h1 className="text-4xl lg:text-5xl font-bold text-slate-900 leading-tight font-display mb-4">{currentModel.idu}</h1>
+                                    <span className={`inline-block px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-full mb-3 ${isDark ? 'bg-blue-500/10 text-blue-400' : 'bg-blue-50 text-brand-blue'}`}>{seriesSubtitle}</span>
+                                    <h1 className={`text-4xl lg:text-5xl font-bold leading-tight font-display mb-4 ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.idu}</h1>
                                 </div>
 
-                                <div className="flex items-center gap-2 text-sm bg-slate-50 p-2 rounded-xl border border-slate-100 max-w-sm mt-2">
-                                    <span className="text-slate-500 font-medium pl-2">Model Selector:</span>
-                                    <select
-                                        className="flex-1 bg-white border-slate-200 rounded-lg text-sm font-semibold focus:ring-primary focus:border-primary px-3 py-2 outline-none shadow-sm cursor-pointer"
+                                <div className={`flex items-center gap-2 text-sm p-2 rounded-xl border max-w-sm mt-2 ${isDark ? 'bg-[#111318] border-[#2b3038]' : 'bg-slate-50 border-slate-100'}`}>
+                                    <span className={`font-medium pl-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Model Selector:</span>
+                                    <CustomSelect
                                         value={selectedModel}
-                                        onChange={(e) => setSelectedModel(Number(e.target.value))}
-                                    >
-                                        {models.map((m, idx) => (
-                                            <option key={idx} value={idx}>{m.title}</option>
-                                        ))}
-                                    </select>
+                                        onChange={val => setSelectedModel(Number(val))}
+                                        options={models.map((m, idx) => ({ value: idx, label: m.title }))}
+                                        isDark={isDark}
+                                        className={`flex-1 ${isDark ? 'bg-[#1a1c20] text-white border-[#2b3038]' : 'bg-white'}`}
+                                    />
                                 </div>
                             </div>
-                            <p className="text-lg text-slate-500 mt-2 leading-relaxed font-body">
+                            <p className={`text-lg mt-2 leading-relaxed font-body ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                 Engineered for silence and efficiency. The series combines precision with tropical climate endurance, delivering rapid cooling even at high temperatures.
                             </p>
                         </div>
 
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-0 p-4 md:p-6 bg-white rounded-2xl border border-slate-100 shadow-sm mx-auto w-full">
+                        <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-0 p-4 md:p-6 rounded-2xl border mx-auto w-full transition-colors duration-300 ${isDark ? 'bg-[#1a1c20] border-[#2a2e36] text-slate-300' : 'bg-white border-slate-100 shadow-sm'}`}>
                             <div className="flex flex-col gap-1 p-2 md:p-0">
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Capacity</span>
+                                <span className={`text-[10px] font-bold uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Capacity</span>
                                 <div className="flex items-end gap-1">
-                                    <span className="text-2xl font-bold text-slate-900">{rawCapacity}</span>
+                                    <span className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{rawCapacity}</span>
                                     <span className="text-sm font-medium text-slate-500 mb-1">Tr</span>
                                 </div>
                             </div>
 
-                            <div className="flex flex-col gap-1 md:border-l md:border-slate-100 md:pl-4 p-2 md:p-0">
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Rating</span>
+                            <div className={`flex flex-col gap-1 md:border-l md:pl-4 p-2 md:p-0 ${isDark ? 'border-[#2a2e36]' : 'border-slate-100'}`}>
+                                <span className={`text-[10px] font-bold uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Rating</span>
                                 <div className="flex items-center">
                                     {currentModel.rating >= 2 ? (
                                         <img src={`/${currentModel.rating}-star.png`} alt={`${currentModel.rating} Star Rating`} className="h-6 object-contain" />
                                     ) : (
-                                        <span className="text-sm font-bold text-slate-900">{currentModel.rating > 0 ? `${currentModel.rating}-Star` : 'N/A'}</span>
+                                        <span className={`text-sm font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.rating > 0 ? `${currentModel.rating}-Star` : 'N/A'}</span>
                                     )}
                                 </div>
                             </div>
 
-                            <div className="flex flex-col gap-1 md:border-l md:border-slate-100 md:pl-4 p-2 md:p-0">
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Refrigerant</span>
+                            <div className={`flex flex-col gap-1 md:border-l md:pl-4 p-2 md:p-0 ${isDark ? 'border-[#2a2e36]' : 'border-slate-100'}`}>
+                                <span className={`text-[10px] font-bold uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Refrigerant</span>
                                 <div className="flex items-center gap-2">
                                     <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                                    <span className="text-xl font-bold text-slate-900 uppercase">{currentModel.refrigerant}</span>
+                                    <span className={`text-xl font-bold uppercase ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.refrigerant}</span>
                                 </div>
                             </div>
 
-                            <div className="flex flex-col gap-1 md:border-l md:border-slate-100 md:pl-4 p-2 md:p-0">
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Price (MRP)</span>
-                                <div className="text-2xl font-bold text-primary max-w-full overflow-hidden text-ellipsis whitespace-nowrap" title={currentModel.mrp}>{currentModel.mrp}</div>
+                            <div className={`flex flex-col gap-1 md:border-l md:pl-4 p-2 md:p-0 ${isDark ? 'border-[#2a2e36]' : 'border-slate-100'}`}>
+                                <span className={`text-[10px] font-bold uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Price (MRP)</span>
+                                <div className={`text-2xl font-bold max-w-full overflow-hidden text-ellipsis whitespace-nowrap ${isDark ? 'text-blue-400' : 'text-brand-blue'}`} title={currentModel.mrp}>{currentModel.mrp}</div>
                             </div>
                         </div>
 
                         <div className="flex gap-4">
-                            <button onClick={() => setShowPhonePopup(true)} className="flex-1 bg-slate-900 text-white font-bold py-4 px-6 rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2">
+                            <button onClick={() => setShowPhonePopup(true)} className={`flex-1 font-bold py-4 px-6 rounded-xl transition-all flex items-center justify-center gap-2 ${isDark ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/10' : 'bg-slate-900 hover:opacity-90 text-white'}`}>
                                 <span className="material-icons-outlined text-[20px]">phone</span>
                                 Enquire Now
                             </button>
@@ -886,179 +970,179 @@ const ProductDetail: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="pt-12 border-t border-slate-200">
+                <div className={`pt-12 border-t ${isDark ? 'border-[#2a2e36]' : 'border-slate-200'}`}>
                     <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
                         <div>
-                            <h2 className="text-3xl font-bold text-slate-900 font-display">Technical Specifications</h2>
-                            <p className="text-slate-500 mt-1">Detailed engineering data for professional installation.</p>
+                            <h2 className={`text-3xl font-bold font-display ${isDark ? 'text-white' : 'text-slate-900'}`}>Technical Specifications</h2>
+                            <p className={`${isDark ? 'text-slate-400' : 'text-slate-500'} mt-1`}>Detailed engineering data for professional installation.</p>
                         </div>
                     </div>
 
                     {isPLA || isSEZ ? (
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                             <div className="space-y-6">
-                                <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
-                                    <div className="bg-primary px-6 py-4">
+                                <div className={`rounded-2xl border overflow-hidden shadow-sm ${isDark ? 'bg-[#1a1c20] border-[#2a2e36]' : 'bg-white border-slate-100'}`}>
+                                    <div className="bg-brand-blue px-6 py-4">
                                         <h3 className="text-white font-bold uppercase tracking-wider text-sm font-body">Unit Identification</h3>
                                     </div>
-                                    <div className="divide-y divide-slate-100">
+                                    <div className={`divide-y ${isDark ? 'divide-[#2a2e36]' : 'divide-slate-100'}`}>
                                         <div className="p-4 px-6">
-                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Indoor Unit</label>
-                                            <div className="text-lg font-bold text-slate-900">{currentModel.idu}</div>
+                                            <label className={`text-[10px] font-bold uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Indoor Unit</label>
+                                            <div className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.idu}</div>
                                         </div>
                                         <div className="p-4 px-6">
-                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Outdoor Unit</label>
-                                            <div className="text-lg font-bold text-slate-900">{currentModel.odu}</div>
+                                            <label className={`text-[10px] font-bold uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Outdoor Unit</label>
+                                            <div className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.odu}</div>
                                         </div>
                                         {currentModel.panel && (
                                             <div className="p-4 px-6">
-                                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Panel</label>
-                                                <div className="text-lg font-bold text-slate-900">{currentModel.panel}</div>
+                                                <label className={`text-[10px] font-bold uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Panel</label>
+                                                <div className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.panel}</div>
                                             </div>
                                         )}
                                     </div>
                                 </div>
-                                <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
+                                <div className={`rounded-2xl border overflow-hidden shadow-sm ${isDark ? 'bg-[#1a1c20] border-[#2a2e36]' : 'bg-white border-slate-100'}`}>
                                     <div className="bg-slate-800 px-6 py-4">
                                         <h3 className="text-white font-bold uppercase tracking-wider text-sm">Performance Parameters</h3>
                                     </div>
                                     <table className="w-full text-left border-collapse">
                                         <tbody>
-                                            <tr className="bg-slate-50">
-                                                <td colSpan={2} className="p-4 px-6 text-xs font-bold text-primary uppercase tracking-tighter">Cooling</td>
+                                            <tr className={isDark ? 'bg-[#111318]' : 'bg-slate-50'}>
+                                                <td colSpan={2} className="p-4 px-6 text-xs font-bold text-blue-600 uppercase tracking-tighter">Cooling</td>
                                             </tr>
-                                            <tr className="border-b border-slate-100">
-                                                <td className="p-4 px-6 text-sm font-medium text-slate-500">Capacity (Min-Max)</td>
-                                                <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.coolingCapacity}</td>
+                                            <tr className={`border-b ${isDark ? 'border-[#2a2e36]' : 'border-slate-100'}`}>
+                                                <td className={`p-4 px-6 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Capacity (Min-Max)</td>
+                                                <td className={`p-4 px-6 text-sm font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.coolingCapacity}</td>
                                             </tr>
-                                            <tr className="table-row-even bg-white border-b border-slate-100">
-                                                <td className="p-4 px-6 text-sm font-medium text-slate-500">Total Input</td>
-                                                <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.coolingPower}</td>
+                                            <tr className={`border-b ${isDark ? 'bg-[#1a1c20] border-[#2a2e36]' : 'bg-white border-slate-100'}`}>
+                                                <td className={`p-4 px-6 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Total Input</td>
+                                                <td className={`p-4 px-6 text-sm font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.coolingPower}</td>
                                             </tr>
-                                            <tr className="bg-slate-50 border-b border-slate-100">
-                                                <td className="p-4 px-6 text-sm font-medium text-slate-500">EER</td>
-                                                <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.eer}</td>
+                                            <tr className={`border-b ${isDark ? 'bg-[#111318] border-[#2a2e36]' : 'bg-slate-50 border-slate-100'}`}>
+                                                <td className={`p-4 px-6 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>EER</td>
+                                                <td className={`p-4 px-6 text-sm font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.eer}</td>
                                             </tr>
                                             {currentModel.iseer !== '-' && (
-                                                <tr className="table-row-even bg-white border-b border-slate-100">
-                                                    <td className="p-4 px-6 text-sm font-medium text-slate-500">ISEER</td>
-                                                    <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.iseer}</td>
+                                                <tr className={`border-b ${isDark ? 'bg-[#1a1c20] border-[#2a2e36]' : 'bg-white border-slate-100'}`}>
+                                                    <td className={`p-4 px-6 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>ISEER</td>
+                                                    <td className={`p-4 px-6 text-sm font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.iseer}</td>
                                                 </tr>
                                             )}
-                                            <tr className="bg-slate-50">
-                                                <td colSpan={2} className="p-4 px-6 text-xs font-bold text-primary uppercase tracking-tighter">Heating</td>
+                                            <tr className={isDark ? 'bg-[#111318]' : 'bg-slate-50'}>
+                                                <td colSpan={2} className="p-4 px-6 text-xs font-bold text-blue-600 uppercase tracking-tighter">Heating</td>
                                             </tr>
-                                            <tr className="border-b border-slate-100">
-                                                <td className="p-4 px-6 text-sm font-medium text-slate-500">Capacity (Min-Max)</td>
-                                                <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.heatingCapacity}</td>
+                                            <tr className={`border-b ${isDark ? 'border-[#2a2e36]' : 'border-slate-100'}`}>
+                                                <td className={`p-4 px-6 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Capacity (Min-Max)</td>
+                                                <td className={`p-4 px-6 text-sm font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.heatingCapacity}</td>
                                             </tr>
-                                            <tr className="table-row-even bg-white border-b border-slate-100">
-                                                <td className="p-4 px-6 text-sm font-medium text-slate-500">Total Input</td>
-                                                <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.heatingPower}</td>
+                                            <tr className={`border-b ${isDark ? 'bg-[#1a1c20] border-[#2a2e36]' : 'bg-white border-slate-100'}`}>
+                                                <td className={`p-4 px-6 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Total Input</td>
+                                                <td className={`p-4 px-6 text-sm font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.heatingPower}</td>
                                             </tr>
-                                            <tr className="bg-slate-50 border-b border-slate-100">
-                                                <td className="p-4 px-6 text-sm font-medium text-slate-500">COP</td>
-                                                <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.cop}</td>
+                                            <tr className={`border-b ${isDark ? 'bg-[#111318] border-[#2a2e36]' : 'bg-slate-50 border-slate-100'}`}>
+                                                <td className={`p-4 px-6 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>COP</td>
+                                                <td className={`p-4 px-6 text-sm font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.cop}</td>
                                             </tr>
                                         </tbody>
                                     </table>
                                 </div>
                             </div>
 
-                            <div className="lg:col-span-1 border border-slate-100 rounded-2xl overflow-hidden self-start">
-                                <div className="bg-white shadow-sm">
-                                    <div className="bg-primary px-6 py-4">
+                            <div className={`lg:col-span-1 border rounded-2xl overflow-hidden self-start ${isDark ? 'bg-[#1a1c20] border-[#2a2e36]' : 'border-slate-100'}`}>
+                                <div className={`shadow-sm ${isDark ? 'bg-[#1a1c20]' : 'bg-white'}`}>
+                                    <div className="bg-brand-blue px-6 py-4">
                                         <h3 className="text-white font-bold uppercase tracking-wider text-sm font-body">Indoor Unit</h3>
                                     </div>
                                     <table className="w-full text-left border-collapse">
                                         <tbody>
-                                            <tr className="border-b border-slate-100 bg-white">
-                                                <td className="p-4 px-6 text-sm font-medium text-slate-500">Power Supply</td>
-                                                <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.powerSupply}</td>
+                                            <tr className={`border-b ${isDark ? 'bg-[#1a1c20] border-[#2a2e36]' : 'bg-white border-slate-100'}`}>
+                                                <td className={`p-4 px-6 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Power Supply</td>
+                                                <td className={`p-4 px-6 text-sm font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.powerSupply}</td>
                                             </tr>
-                                            <tr className="table-row-even border-b border-slate-100 bg-slate-50">
-                                                <td className="p-4 px-6 text-sm font-medium text-slate-500">External finish</td>
-                                                <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.iduFinish}</td>
+                                            <tr className={`border-b ${isDark ? 'bg-[#111318] border-[#2a2e36]' : 'bg-slate-50 border-slate-100'}`}>
+                                                <td className={`p-4 px-6 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>External finish</td>
+                                                <td className={`p-4 px-6 text-sm font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.iduFinish}</td>
                                             </tr>
-                                            <tr className="border-b border-slate-100 bg-white">
-                                                <td className="p-4 px-6 text-sm font-medium text-slate-500">Airflow (low-med2-med1-high)</td>
-                                                <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.iduAirflow}</td>
+                                            <tr className={`border-b ${isDark ? 'bg-[#1a1c20] border-[#2a2e36]' : 'bg-white border-slate-100'}`}>
+                                                <td className={`p-4 px-6 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Airflow (low-med2-med1-high)</td>
+                                                <td className={`p-4 px-6 text-sm font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.iduAirflow}</td>
                                             </tr>
-                                            <tr className="table-row-even border-b border-slate-100 bg-slate-50">
-                                                <td className="p-4 px-6 text-sm font-medium text-slate-500">External static pressure</td>
-                                                <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.externalStaticPressuse}</td>
+                                            <tr className={`border-b ${isDark ? 'bg-[#111318] border-[#2a2e36]' : 'bg-slate-50 border-slate-100'}`}>
+                                                <td className={`p-4 px-6 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>External static pressure</td>
+                                                <td className={`p-4 px-6 text-sm font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.externalStaticPressuse}</td>
                                             </tr>
-                                            <tr className="border-b border-slate-100 bg-white">
-                                                <td className="p-4 px-6 text-sm font-medium text-slate-500">Operation control and thermostat</td>
-                                                <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.operationControl}</td>
+                                            <tr className={`border-b ${isDark ? 'bg-[#1a1c20] border-[#2a2e36]' : 'bg-white border-slate-100'}`}>
+                                                <td className={`p-4 px-6 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Operation control and thermostat</td>
+                                                <td className={`p-4 px-6 text-sm font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.operationControl}</td>
                                             </tr>
-                                            <tr className="table-row-even border-b border-slate-100 bg-slate-50">
-                                                <td className="p-4 px-6 text-sm font-medium text-slate-500">Noise level (low-med2-med1-high)</td>
-                                                <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.iduNoise}</td>
+                                            <tr className={`border-b ${isDark ? 'bg-[#111318] border-[#2a2e36]' : 'bg-slate-50 border-slate-100'}`}>
+                                                <td className={`p-4 px-6 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Noise level (low-med2-med1-high)</td>
+                                                <td className={`p-4 px-6 text-sm font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.iduNoise}</td>
                                             </tr>
-                                            <tr className="border-b border-slate-100 bg-white">
-                                                <td className="p-4 px-6 text-sm font-medium text-slate-500">Unit drain pipe (outer dia.)</td>
-                                                <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.unitDrainPipe}</td>
+                                            <tr className={`border-b ${isDark ? 'bg-[#1a1c20] border-[#2a2e36]' : 'bg-white border-slate-100'}`}>
+                                                <td className={`p-4 px-6 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Unit drain pipe (outer dia.)</td>
+                                                <td className={`p-4 px-6 text-sm font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.unitDrainPipe}</td>
                                             </tr>
-                                            <tr className="table-row-even border-b border-slate-100 bg-slate-50">
-                                                <td className="p-4 px-6 text-sm font-medium text-slate-500">Dimension {isPLA ? "Panel" : ""} (W x D x H)</td>
-                                                <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.iduDimPanel}</td>
+                                            <tr className={`border-b ${isDark ? 'bg-[#111318] border-[#2a2e36]' : 'bg-slate-50 border-slate-100'}`}>
+                                                <td className={`p-4 px-6 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Dimension {isPLA ? "Panel" : ""} (W x D x H)</td>
+                                                <td className={`p-4 px-6 text-sm font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.iduDimPanel}</td>
                                             </tr>
-                                            <tr className="border-b border-slate-100 bg-white">
-                                                <td className="p-4 px-6 text-sm font-medium text-slate-500">Weight {isPLA ? "(Panel)" : ""}</td>
-                                                <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.iduWeightPanel}</td>
+                                            <tr className={`border-b ${isDark ? 'bg-[#1a1c20] border-[#2a2e36]' : 'bg-white border-slate-100'}`}>
+                                                <td className={`p-4 px-6 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Weight {isPLA ? "(Panel)" : ""}</td>
+                                                <td className={`p-4 px-6 text-sm font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.iduWeightPanel}</td>
                                             </tr>
                                         </tbody>
                                     </table>
                                 </div>
                             </div>
 
-                            <div className="lg:col-span-1 border border-slate-100 rounded-2xl overflow-hidden self-start">
-                                <div className="bg-white shadow-sm">
+                            <div className={`lg:col-span-1 border rounded-2xl overflow-hidden self-start ${isDark ? 'bg-[#1a1c20] border-[#2a2e36]' : 'border-slate-100'}`}>
+                                <div className={`shadow-sm ${isDark ? 'bg-[#1a1c20]' : 'bg-white'}`}>
                                     <div className="bg-slate-800 px-6 py-4">
                                         <h3 className="text-white font-bold uppercase tracking-wider text-sm font-body">Outdoor Unit</h3>
                                     </div>
                                     <table className="w-full text-left border-collapse">
                                         <tbody>
-                                            <tr className="border-b border-slate-100 bg-white">
-                                                <td className="p-4 px-6 text-sm font-medium text-slate-500">Power Supply</td>
-                                                <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.powerSupply}</td>
+                                            <tr className={`border-b ${isDark ? 'bg-[#1a1c20] border-[#2a2e36]' : 'bg-white border-slate-100'}`}>
+                                                <td className={`p-4 px-6 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Power Supply</td>
+                                                <td className={`p-4 px-6 text-sm font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.powerSupply}</td>
                                             </tr>
-                                            <tr className="table-row-even border-b border-slate-100 bg-slate-50">
-                                                <td className="p-4 px-6 text-sm font-medium text-slate-500">External finish</td>
-                                                <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.oduFinish}</td>
+                                            <tr className={`border-b ${isDark ? 'bg-[#111318] border-[#2a2e36]' : 'bg-slate-50 border-slate-100'}`}>
+                                                <td className={`p-4 px-6 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>External finish</td>
+                                                <td className={`p-4 px-6 text-sm font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.oduFinish}</td>
                                             </tr>
-                                            <tr className="border-b border-slate-100 bg-white">
-                                                <td className="p-4 px-6 text-sm font-medium text-slate-500">Refrigerant (R410A) control</td>
-                                                <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.refrigerantControl}</td>
+                                            <tr className={`border-b ${isDark ? 'bg-[#1a1c20] border-[#2a2e36]' : 'bg-white border-slate-100'}`}>
+                                                <td className={`p-4 px-6 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Refrigerant (R410A) control</td>
+                                                <td className={`p-4 px-6 text-sm font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.refrigerantControl}</td>
                                             </tr>
-                                            <tr className="table-row-even border-b border-slate-100 bg-slate-50">
-                                                <td className="p-4 px-6 text-sm font-medium text-slate-500">Airflow</td>
-                                                <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.oduAirflow}</td>
+                                            <tr className={`border-b ${isDark ? 'bg-[#111318] border-[#2a2e36]' : 'bg-slate-50 border-slate-100'}`}>
+                                                <td className={`p-4 px-6 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Airflow</td>
+                                                <td className={`p-4 px-6 text-sm font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.oduAirflow}</td>
                                             </tr>
-                                            <tr className="border-b border-slate-100 bg-white">
-                                                <td className="p-4 px-6 text-sm font-medium text-slate-500">Noise Level</td>
-                                                <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.oduNoise}</td>
+                                            <tr className={`border-b ${isDark ? 'bg-[#1a1c20] border-[#2a2e36]' : 'bg-white border-slate-100'}`}>
+                                                <td className={`p-4 px-6 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Noise Level</td>
+                                                <td className={`p-4 px-6 text-sm font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.oduNoise}</td>
                                             </tr>
-                                            <tr className="table-row-even border-b border-slate-100 bg-slate-50">
-                                                <td className="p-4 px-6 text-sm font-medium text-slate-500">Dimensions (W x D x H)</td>
-                                                <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.oduDim}</td>
+                                            <tr className={`border-b ${isDark ? 'bg-[#111318] border-[#2a2e36]' : 'bg-slate-50 border-slate-100'}`}>
+                                                <td className={`p-4 px-6 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Dimensions (W x D x H)</td>
+                                                <td className={`p-4 px-6 text-sm font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.oduDim}</td>
                                             </tr>
-                                            <tr className="border-b border-slate-100 bg-white">
-                                                <td className="p-4 px-6 text-sm font-medium text-slate-500">Weight</td>
-                                                <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.oduWeight}</td>
+                                            <tr className={`border-b ${isDark ? 'bg-[#1a1c20] border-[#2a2e36]' : 'bg-white border-slate-100'}`}>
+                                                <td className={`p-4 px-6 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Weight</td>
+                                                <td className={`p-4 px-6 text-sm font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.oduWeight}</td>
                                             </tr>
-                                            <tr className="table-row-even border-b border-slate-100 bg-slate-50">
-                                                <td className="p-4 px-6 text-sm font-medium text-slate-500">Max. height difference</td>
-                                                <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.maxHeight}</td>
+                                            <tr className={`border-b ${isDark ? 'bg-[#111318] border-[#2a2e36]' : 'bg-slate-50 border-slate-100'}`}>
+                                                <td className={`p-4 px-6 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Max. height difference</td>
+                                                <td className={`p-4 px-6 text-sm font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.maxHeight}</td>
                                             </tr>
-                                            <tr className="border-b border-slate-100 bg-white">
-                                                <td className="p-4 px-6 text-sm font-medium text-slate-500">Max. piping length</td>
-                                                <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.maxLength}</td>
+                                            <tr className={`border-b ${isDark ? 'bg-[#1a1c20] border-[#2a2e36]' : 'bg-white border-slate-100'}`}>
+                                                <td className={`p-4 px-6 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Max. piping length</td>
+                                                <td className={`p-4 px-6 text-sm font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.maxLength}</td>
                                             </tr>
-                                            <tr className="table-row-even border-b border-slate-100 bg-slate-50">
-                                                <td className="p-4 px-6 text-sm font-medium text-slate-500">Pipe size (outer diameter)</td>
-                                                <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.pipeSize}</td>
+                                            <tr className={`border-b ${isDark ? 'bg-[#111318] border-[#2a2e36]' : 'bg-slate-50 border-slate-100'}`}>
+                                                <td className={`p-4 px-6 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Pipe size (outer diameter)</td>
+                                                <td className={`p-4 px-6 text-sm font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.pipeSize}</td>
                                             </tr>
                                         </tbody>
                                     </table>
@@ -1068,94 +1152,94 @@ const ProductDetail: React.FC = () => {
                     ) : (
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                             <div className="space-y-6">
-                                <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
-                                    <div className="bg-primary px-6 py-4">
+                                <div className={`rounded-2xl border overflow-hidden shadow-sm ${isDark ? 'bg-[#1a1c20] border-[#2a2e36]' : 'bg-white border-slate-100'}`}>
+                                    <div className="bg-brand-blue px-6 py-4">
                                         <h3 className="text-white font-bold uppercase tracking-wider text-sm font-body">Unit Identification</h3>
                                     </div>
-                                    <div className="divide-y divide-slate-100">
+                                    <div className={`divide-y ${isDark ? 'divide-[#2a2e36]' : 'divide-slate-100'}`}>
                                         <div className="p-4 px-6">
-                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Indoor Unit</label>
-                                            <div className="text-lg font-bold text-slate-900">{currentModel.idu}</div>
+                                            <label className={`text-[10px] font-bold uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Indoor Unit</label>
+                                            <div className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.idu}</div>
                                         </div>
                                         <div className="p-4 px-6">
-                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Outdoor Unit</label>
-                                            <div className="text-lg font-bold text-slate-900">{currentModel.odu}</div>
+                                            <label className={`text-[10px] font-bold uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Outdoor Unit</label>
+                                            <div className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.odu}</div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="lg:col-span-1 border border-slate-100 rounded-2xl overflow-hidden self-start">
-                                <div className="bg-white shadow-sm">
+                            <div className={`lg:col-span-1 border rounded-2xl overflow-hidden self-start ${isDark ? 'bg-[#1a1c20] border-[#2a2e36]' : 'border-slate-100'}`}>
+                                <div className={`shadow-sm ${isDark ? 'bg-[#1a1c20]' : 'bg-white'}`}>
                                     <div className="bg-slate-800 px-6 py-4">
                                         <h3 className="text-white font-bold uppercase tracking-wider text-sm">Performance Parameters</h3>
                                     </div>
                                     <table className="w-full text-left border-collapse">
                                         <tbody>
-                                            <tr className="table-row-even border-b border-slate-100">
-                                                <td className="p-4 px-6 text-sm font-medium text-slate-500">Capacity (Tr)</td>
-                                                <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.capacity}</td>
+                                            <tr className={`border-b ${isDark ? 'bg-[#111318] border-[#2a2e36]' : 'border-slate-100 bg-slate-50'}`}>
+                                                <td className={`p-4 px-6 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Capacity (Tr)</td>
+                                                <td className={`p-4 px-6 text-sm font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.capacity}</td>
                                             </tr>
-                                            <tr className="border-b border-slate-100 bg-white">
-                                                <td className="p-4 px-6 text-sm font-medium text-slate-500">BEE Star Rating</td>
-                                                <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.rating} Star</td>
+                                            <tr className={`border-b ${isDark ? 'bg-[#1a1c20] border-[#2a2e36]' : 'bg-white border-slate-100'}`}>
+                                                <td className={`p-4 px-6 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>BEE Star Rating</td>
+                                                <td className={`p-4 px-6 text-sm font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.rating} Star</td>
                                             </tr>
-                                            <tr className="table-row-even border-b border-slate-100">
-                                                <td className="p-4 px-6 text-sm font-medium text-slate-500">Power Supply</td>
-                                                <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.powerSupply}</td>
+                                            <tr className={`border-b ${isDark ? 'bg-[#111318] border-[#2a2e36]' : 'border-slate-100 bg-slate-50'}`}>
+                                                <td className={`p-4 px-6 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Power Supply</td>
+                                                <td className={`p-4 px-6 text-sm font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.powerSupply}</td>
                                             </tr>
-                                            <tr className="border-b border-slate-100 bg-white">
-                                                <td className="p-4 px-6 text-sm font-medium text-slate-500">{isHP ? 'Cooling Capacity (Rated Min-Max)' : 'Rated Capacity'}</td>
-                                                <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.ratedCapacity}</td>
+                                            <tr className={`border-b ${isDark ? 'bg-[#1a1c20] border-[#2a2e36]' : 'bg-white border-slate-100'}`}>
+                                                <td className={`p-4 px-6 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{isHP ? 'Cooling Capacity (Rated Min-Max)' : 'Rated Capacity'}</td>
+                                                <td className={`p-4 px-6 text-sm font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.ratedCapacity}</td>
                                             </tr>
                                             {isHP && (
-                                                <tr className="table-row-even border-b border-slate-100">
-                                                    <td className="p-4 px-6 text-sm font-medium text-slate-500">Heating Capacity (Min-Max)</td>
-                                                    <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.heatingCapacity}</td>
+                                                <tr className={`border-b ${isDark ? 'bg-[#111318] border-[#2a2e36]' : 'border-slate-100 bg-slate-50'}`}>
+                                                    <td className={`p-4 px-6 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Heating Capacity (Min-Max)</td>
+                                                    <td className={`p-4 px-6 text-sm font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.heatingCapacity}</td>
                                                 </tr>
                                             )}
-                                            <tr className="table-row-even border-b border-slate-100 bg-slate-50">
-                                                <td className="p-4 px-6 text-sm font-medium text-slate-500">{isHP ? 'Total Input (Cooling)' : 'Rated Power Input'}</td>
-                                                <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.ratedPower}</td>
+                                            <tr className={`border-b ${isDark ? 'bg-[#111318] border-[#2a2e36]' : 'bg-slate-50 border-slate-100'}`}>
+                                                <td className={`p-4 px-6 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{isHP ? 'Total Input (Cooling)' : 'Rated Power Input'}</td>
+                                                <td className={`p-4 px-6 text-sm font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.ratedPower}</td>
                                             </tr>
                                             {isHP && (
-                                                <tr className="border-b border-slate-100 bg-white">
-                                                    <td className="p-4 px-6 text-sm font-medium text-slate-500">Total Input (Heating)</td>
-                                                    <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.heatingPower}</td>
+                                                <tr className={`border-b ${isDark ? 'bg-[#1a1c20] border-[#2a2e36]' : 'bg-white border-slate-100'}`}>
+                                                    <td className={`p-4 px-6 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Total Input (Heating)</td>
+                                                    <td className={`p-4 px-6 text-sm font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.heatingPower}</td>
                                                 </tr>
                                             )}
-                                            <tr className="border-b border-slate-100 bg-white">
-                                                <td className="p-4 px-6 text-sm font-medium text-slate-500">{isGK ? 'EER' : 'ISEER'}</td>
-                                                <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.iseer}</td>
+                                            <tr className={`border-b ${isDark ? 'bg-[#1a1c20] border-[#2a2e36]' : 'bg-white border-slate-100'}`}>
+                                                <td className={`p-4 px-6 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{isGK ? 'EER' : 'ISEER'}</td>
+                                                <td className={`p-4 px-6 text-sm font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.iseer}</td>
                                             </tr>
-                                            <tr className="table-row-even border-b border-slate-100 bg-slate-50">
-                                                <td className="p-4 px-6 text-sm font-medium text-slate-500">{isHP ? 'Current (Cooling)' : 'Rated Current'}</td>
-                                                <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.current} {isHP ? '' : 'Amps'}</td>
+                                            <tr className={`border-b ${isDark ? 'bg-[#111318] border-[#2a2e36]' : 'bg-slate-50 border-slate-100'}`}>
+                                                <td className={`p-4 px-6 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{isHP ? 'Current (Cooling)' : 'Rated Current'}</td>
+                                                <td className={`p-4 px-6 text-sm font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.current} {isHP ? '' : 'Amps'}</td>
                                             </tr>
                                             {isHP && (
-                                                <tr className="border-b border-slate-100 bg-white">
-                                                    <td className="p-4 px-6 text-sm font-medium text-slate-500">Current (Heating)</td>
-                                                    <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.heatingCurrent}</td>
+                                                <tr className={`border-b ${isDark ? 'bg-[#1a1c20] border-[#2a2e36]' : 'bg-white border-slate-100'}`}>
+                                                    <td className={`p-4 px-6 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Current (Heating)</td>
+                                                    <td className={`p-4 px-6 text-sm font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.heatingCurrent}</td>
                                                 </tr>
                                             )}
-                                            <tr className="border-b border-slate-100 bg-white">
-                                                <td className="p-4 px-6 text-sm font-medium text-slate-500">Indoor Air Flow (m3/h)</td>
-                                                <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.airFlow}</td>
+                                            <tr className={`border-b ${isDark ? 'bg-[#1a1c20] border-[#2a2e36]' : 'bg-white border-slate-100'}`}>
+                                                <td className={`p-4 px-6 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Indoor Air Flow (m3/h)</td>
+                                                <td className={`p-4 px-6 text-sm font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.airFlow}</td>
                                             </tr>
                                             {isHP && (
-                                                <tr className="table-row-even border-b border-slate-100">
-                                                    <td className="p-4 px-6 text-sm font-medium text-slate-500">Air Flow (Heating)</td>
-                                                    <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.heatingAirFlow}</td>
+                                                <tr className={`border-b ${isDark ? 'bg-[#111318] border-[#2a2e36]' : 'border-slate-100 bg-slate-50'}`}>
+                                                    <td className={`p-4 px-6 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Air Flow (Heating)</td>
+                                                    <td className={`p-4 px-6 text-sm font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.heatingAirFlow}</td>
                                                 </tr>
                                             )}
-                                            <tr className="table-row-even border-b border-slate-100 bg-slate-50">
-                                                <td className="p-4 px-6 text-sm font-medium text-slate-500">Indoor Noise (dB(A))</td>
-                                                <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.noise}</td>
+                                            <tr className={`border-b ${isDark ? 'bg-[#111318] border-[#2a2e36]' : 'bg-slate-50 border-slate-100'}`}>
+                                                <td className={`p-4 px-6 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Indoor Noise (dB(A))</td>
+                                                <td className={`p-4 px-6 text-sm font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.noise}</td>
                                             </tr>
                                             {isHP && (
-                                                <tr className="border-b border-slate-100 bg-white">
-                                                    <td className="p-4 px-6 text-sm font-medium text-slate-500">Noise (Heating)</td>
-                                                    <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.heatingNoise}</td>
+                                                <tr className={`border-b ${isDark ? 'bg-[#1a1c20] border-[#2a2e36]' : 'bg-white border-slate-100'}`}>
+                                                    <td className={`p-4 px-6 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Noise (Heating)</td>
+                                                    <td className={`p-4 px-6 text-sm font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.heatingNoise}</td>
                                                 </tr>
                                             )}
                                         </tbody>
@@ -1163,51 +1247,51 @@ const ProductDetail: React.FC = () => {
                                 </div>
                             </div>
 
-                            <div className="lg:col-span-1 border border-slate-100 rounded-2xl overflow-hidden self-start">
-                                <div className="bg-white shadow-sm">
+                            <div className={`lg:col-span-1 border rounded-2xl overflow-hidden self-start ${isDark ? 'bg-[#1a1c20] border-[#2a2e36]' : 'border-slate-100'}`}>
+                                <div className={`shadow-sm ${isDark ? 'bg-[#1a1c20]' : 'bg-white'}`}>
                                     <div className="bg-slate-800 px-6 py-4">
                                         <h3 className="text-white font-bold uppercase tracking-wider text-sm">Dimensions & Weight</h3>
                                     </div>
                                     <table className="w-full text-left border-collapse">
                                         <tbody>
-                                            <tr className="bg-slate-50">
-                                                <td colSpan={2} className="p-4 px-6 text-xs font-bold text-primary uppercase tracking-tighter">Indoor Unit (IDU)</td>
+                                            <tr className={isDark ? 'bg-[#111318]' : 'bg-slate-50'}>
+                                                <td colSpan={2} className="p-4 px-6 text-xs font-bold text-blue-600 uppercase tracking-tighter">Indoor Unit (IDU)</td>
                                             </tr>
-                                            <tr className="border-b border-slate-100">
-                                                <td className="p-4 px-6 text-sm font-medium text-slate-500">Net Dim (WxDxH) mm</td>
-                                                <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.iduDim}</td>
+                                            <tr className={`border-b ${isDark ? 'border-[#2a2e36]' : 'border-slate-100'}`}>
+                                                <td className={`p-4 px-6 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Net Dim (WxDxH) mm</td>
+                                                <td className={`p-4 px-6 text-sm font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.iduDim}</td>
                                             </tr>
-                                            <tr className="table-row-even bg-slate-50 border-b border-slate-100">
-                                                <td className="p-4 px-6 text-sm font-medium text-slate-500">Net Weight</td>
-                                                <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.iduWeight} kg</td>
-                                            </tr>
-
-                                            <tr className="bg-slate-50">
-                                                <td colSpan={2} className="p-4 px-6 text-xs font-bold text-primary uppercase tracking-tighter">Outdoor Unit (ODU)</td>
-                                            </tr>
-                                            <tr className="border-b border-slate-100">
-                                                <td className="p-4 px-6 text-sm font-medium text-slate-500">Net Dim (WxDxH) mm</td>
-                                                <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.oduDim}</td>
-                                            </tr>
-                                            <tr className="table-row-even bg-slate-50 border-b border-slate-100">
-                                                <td className="p-4 px-6 text-sm font-medium text-slate-500">Net Weight</td>
-                                                <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.oduWeight} kg</td>
+                                            <tr className={`border-b ${isDark ? 'bg-[#111318] border-[#2a2e36]' : 'bg-slate-50 border-slate-100'}`}>
+                                                <td className={`p-4 px-6 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Net Weight</td>
+                                                <td className={`p-4 px-6 text-sm font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.iduWeight} kg</td>
                                             </tr>
 
-                                            <tr className="bg-slate-50">
-                                                <td colSpan={2} className="p-4 px-6 text-xs font-bold text-primary uppercase tracking-tighter">Installation Details</td>
+                                            <tr className={isDark ? 'bg-[#111318]' : 'bg-slate-50'}>
+                                                <td colSpan={2} className="p-4 px-6 text-xs font-bold text-blue-600 uppercase tracking-tighter">Outdoor Unit (ODU)</td>
                                             </tr>
-                                            <tr className="border-b border-slate-100">
-                                                <td className="p-4 px-6 text-sm font-medium text-slate-500">Ambient Op Range</td>
-                                                <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">Up to 48°C / 52°C</td>
+                                            <tr className={`border-b ${isDark ? 'border-[#2a2e36]' : 'border-slate-100'}`}>
+                                                <td className={`p-4 px-6 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Net Dim (WxDxH) mm</td>
+                                                <td className={`p-4 px-6 text-sm font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.oduDim}</td>
                                             </tr>
-                                            <tr className="table-row-even bg-slate-50 border-b border-slate-100">
-                                                <td className="p-4 px-6 text-sm font-medium text-slate-500">Piping Dia (Gas/Liq)</td>
-                                                <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.pipeDia}</td>
+                                            <tr className={`border-b ${isDark ? 'bg-[#111318] border-[#2a2e36]' : 'bg-slate-50 border-slate-100'}`}>
+                                                <td className={`p-4 px-6 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Net Weight</td>
+                                                <td className={`p-4 px-6 text-sm font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.oduWeight} kg</td>
                                             </tr>
-                                            <tr className="table-row-even bg-slate-50">
-                                                <td className="p-4 px-6 text-sm font-medium text-slate-500">Max Length/Elevation</td>
-                                                <td className="p-4 px-6 text-sm font-bold text-slate-900 text-right">{currentModel.maxLength}m / {currentModel.maxElev}m</td>
+
+                                            <tr className={isDark ? 'bg-[#111318]' : 'bg-slate-50'}>
+                                                <td colSpan={2} className="p-4 px-6 text-xs font-bold text-blue-600 uppercase tracking-tighter">Installation Details</td>
+                                            </tr>
+                                            <tr className={`border-b ${isDark ? 'border-[#2a2e36]' : 'border-slate-100'}`}>
+                                                <td className={`p-4 px-6 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Ambient Op Range</td>
+                                                <td className={`p-4 px-6 text-sm font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>Up to 48°C / 52°C</td>
+                                            </tr>
+                                            <tr className={`border-b ${isDark ? 'bg-[#111318] border-[#2a2e36]' : 'bg-slate-50 border-slate-100'}`}>
+                                                <td className={`p-4 px-6 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Piping Dia (Gas/Liq)</td>
+                                                <td className={`p-4 px-6 text-sm font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.pipeDia}</td>
+                                            </tr>
+                                            <tr className={isDark ? 'bg-[#111318]' : 'bg-slate-50'}>
+                                                <td className={`p-4 px-6 text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Max Length/Elevation</td>
+                                                <td className={`p-4 px-6 text-sm font-bold text-right ${isDark ? 'text-white' : 'text-slate-900'}`}>{currentModel.maxLength}m / {currentModel.maxElev}m</td>
                                             </tr>
                                         </tbody>
                                     </table>
@@ -1218,20 +1302,20 @@ const ProductDetail: React.FC = () => {
                 </div>
             </main>
 
-            <footer className="mt-20 border-t border-slate-200 py-12 bg-white">
+            <footer className={`mt-20 border-t py-12 transition-colors duration-300 ${isDark ? 'bg-[#111318] border-[#2a2e36]' : 'bg-white border-slate-200'}`}>
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex flex-col md:flex-row items-center justify-between gap-8">
                         <div className="flex items-center gap-2 grayscale opacity-60">
-                            <div className="w-8 h-8 bg-slate-400 rounded-md flex items-center justify-center text-white font-bold text-sm">SE</div>
-                            <span className="font-normal text-xs tracking-tight text-slate-600 uppercase" style={{ fontFamily: "'Open Sans', sans-serif" }}>{APP_NAME}</span>
+                            <div className={`w-8 h-8 rounded-md flex items-center justify-center text-white font-bold text-sm ${isDark ? 'bg-slate-700' : 'bg-slate-400'}`}>SE</div>
+                            <span className={`font-normal text-xs tracking-tight uppercase ${isDark ? 'text-slate-400' : 'text-slate-600'}`} style={{ fontFamily: "'Open Sans', sans-serif" }}>{APP_NAME}</span>
                         </div>
-                        <p className="text-sm text-slate-500">
+                        <p className={`text-sm ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
                             © {new Date().getFullYear()} {APP_NAME}. All rights reserved. Precision cooling solutions.
                         </p>
                         <div className="flex gap-6">
-                            <a href="#" className="text-slate-400 hover:text-primary transition-colors text-sm">Privacy Policy</a>
-                            <a href="#" className="text-slate-400 hover:text-primary transition-colors text-sm">Support</a>
-                            <a href="#" className="text-slate-400 hover:text-primary transition-colors text-sm">Contact</a>
+                            <a href="#" className={`transition-colors text-sm ${isDark ? 'text-slate-500 hover:text-blue-400' : 'text-slate-400 hover:text-blue-600'}`}>Privacy Policy</a>
+                            <a href="#" className={`transition-colors text-sm ${isDark ? 'text-slate-500 hover:text-blue-400' : 'text-slate-400 hover:text-blue-600'}`}>Support</a>
+                            <a href="#" className={`transition-colors text-sm ${isDark ? 'text-slate-500 hover:text-blue-400' : 'text-slate-400 hover:text-blue-600'}`}>Contact</a>
                         </div>
                     </div>
                 </div>
@@ -1240,30 +1324,30 @@ const ProductDetail: React.FC = () => {
             {/* Phone Enquiry Modal */}
             {showPhonePopup && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={() => setShowPhonePopup(false)}>
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 text-center animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-                        <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6 text-primary shadow-inner">
+                    <div className={`rounded-3xl shadow-2xl w-full max-w-sm p-8 text-center animate-in zoom-in-95 duration-200 ${isDark ? 'bg-[#1a1c20] border border-[#2a2e36]' : 'bg-white'}`} onClick={e => e.stopPropagation()}>
+                        <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner ${isDark ? 'bg-blue-950/40 text-blue-400' : 'bg-blue-50 text-blue-600'}`}>
                             <span className="material-icons-outlined text-4xl">phone_in_talk</span>
                         </div>
-                        <h3 className="text-2xl font-display font-bold text-slate-900 mb-2">Sales & Enquiry</h3>
-                        <p className="text-slate-500 mb-8 text-sm px-4">Our experts are ready to help you find the perfect cooling solution.</p>
+                        <h3 className={`text-2xl font-display font-bold mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>Sales & Enquiry</h3>
+                        <p className={`mb-8 text-sm px-4 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Our experts are ready to help you find the perfect cooling solution.</p>
 
-                        <a href="tel:09592292292" className="block w-full bg-slate-50 border border-slate-200 hover:border-primary/50 hover:bg-primary/5 rounded-2xl p-4 transition-all mb-4 group cursor-pointer shadow-sm hover:shadow-md">
-                            <div className="text-3xl font-bold tracking-wider text-slate-800 group-hover:text-primary transition-colors flex items-center justify-center gap-2">
-                                <span className="material-icons-outlined text-primary">phone</span>
-                                95922 92292
+                        <a href={`tel:${companyPhone.replace(/\D/g, '')}`} className={`block w-full border rounded-2xl p-4 transition-all mb-4 group cursor-pointer shadow-sm hover:shadow-md ${isDark ? 'bg-[#111318] border-[#2b3038] hover:border-blue-500/30 hover:bg-[#1d2026]' : 'bg-slate-50 border-slate-200 hover:border-blue-500/50 hover:bg-blue-50/50'}`}>
+                            <div className={`text-3xl font-bold tracking-wider transition-colors flex items-center justify-center gap-2 ${isDark ? 'text-white group-hover:text-blue-400' : 'text-slate-800 group-hover:text-blue-600'}`}>
+                                <span className={`material-icons-outlined ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>phone</span>
+                                {companyPhone}
                             </div>
-                            <div className="text-xs font-bold text-slate-400 mt-2 uppercase tracking-widest flex items-center justify-center gap-1">
+                            <div className={`text-xs font-bold mt-2 uppercase tracking-widest flex items-center justify-center gap-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                                 <span className="material-icons-outlined text-[14px]">touch_app</span>
                                 Tap to Call
                             </div>
                         </a>
 
-                        <a href="https://maps.google.com/?q=Mitsubishi+Electric+-+Satguru+Engineers,+SCF-29+PH-2,+Sahibzada+Ajit+Singh+Nagar,+Punjab+160055" target="_blank" rel="noopener noreferrer" className="block w-full bg-slate-50 border border-slate-200 hover:border-blue-500/50 hover:bg-blue-50/50 rounded-2xl p-4 transition-all mb-6 group cursor-pointer shadow-sm hover:shadow-md">
-                            <div className="text-sm font-bold tracking-tight text-slate-800 group-hover:text-blue-600 transition-colors flex items-start text-left gap-3">
-                                <span className="material-icons-outlined text-blue-500 shrink-0 mt-0.5">place</span>
+                        <a href="https://maps.google.com/?q=Mitsubishi+Electric+-+Satguru+Engineers,+SCF-29+PH-2,+Sahibzada+Ajit+Singh+Nagar,+Punjab+160055" target="_blank" rel="noopener noreferrer" className={`block w-full border rounded-2xl p-4 transition-all mb-6 group cursor-pointer shadow-sm hover:shadow-md ${isDark ? 'bg-[#111318] border-[#2b3038] hover:border-blue-500/30 hover:bg-[#1d2026]' : 'bg-slate-50 border-slate-200 hover:border-blue-500/50 hover:bg-blue-50/50'}`}>
+                            <div className={`text-sm font-bold tracking-tight transition-colors flex items-start text-left gap-3 ${isDark ? 'text-white group-hover:text-blue-400' : 'text-slate-800 group-hover:text-blue-600'}`}>
+                                <span className={`material-icons-outlined shrink-0 mt-0.5 ${isDark ? 'text-blue-400' : 'text-blue-500'}`}>place</span>
                                 <span>Mitsubishi Electric - Satguru Engineers, SCF-29 PH-2, Sahibzada Ajit Singh Nagar, Punjab 160055</span>
                             </div>
-                            <div className="text-xs font-bold text-slate-400 mt-3 uppercase tracking-widest flex items-center justify-center gap-1">
+                            <div className={`text-xs font-bold mt-3 uppercase tracking-widest flex items-center justify-center gap-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                                 <span className="material-icons-outlined text-[14px]">directions</span>
                                 Open in Maps
                             </div>
@@ -1271,7 +1355,7 @@ const ProductDetail: React.FC = () => {
 
                         <button
                             onClick={() => setShowPhonePopup(false)}
-                            className="w-full py-4 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors rounded-xl hover:bg-slate-100"
+                            className={`w-full py-4 text-sm font-bold transition-colors rounded-xl ${isDark ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'}`}
                         >
                             Close
                         </button>

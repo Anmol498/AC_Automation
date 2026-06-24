@@ -1,38 +1,61 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
   --font-sans: 'Inter', sans-serif;
-  --font-display: 'Outfit', sans-serif;
+  --font-display: 'Space Grotesk', sans-serif;
   --font-body: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
   
-  /* Premium Dark Theme Core Assets */
-  --color-primary: #D4AF37; /* Elegant metallic gold */
-  --color-primary-dark: #AA8B2C;
-  --color-accent: #38BDF8; /* Subtle blue accent for highlights */
+  /* Primary brand blue — refined + tokenized. */
+  --color-primary: #2554E8;
+  --color-primary-hover: #1E40C7;
+  --color-primary-light: rgba(37, 84, 232, 0.1);
+  --color-accent: #38BDF8; /* sky accent */
   
-  --color-background-light: #F8FAFC;
-  --color-background-dark: #0A0F1A; /* Deep, rich premium black */
+  /* Semantic Status Colors */
+  --color-success: #10B981;
+  --color-success-light: rgba(16, 185, 129, 0.1);
+  --color-danger: #EF4444;
+  --color-danger-light: rgba(239, 68, 68, 0.1);
+  --color-warning: #FBBF24;
+  --color-warning-light: rgba(251, 191, 36, 0.1);
+  
+  --color-background-light: #FFFFFF;
+  --color-background-dark: #151619; /* Warm charcoal black from home page */
   --color-card-light: #FFFFFF;
-  --color-card-dark: rgba(22, 32, 50, 0.65); /* Translucent dark cards for glass effect */
+  --color-card-dark: #1f2125; /* Elevated surface card */
+  --color-border-light: #ebebeb;
+  --color-border-dark: #2b2e33; /* Cohesive dark border */
 }
 
 /* Base Styles */
-body {
-  background-color: var(--color-background-dark);
-  color: #F1F5F9;
-  font-family: var(--font-body);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  background-image: 
-    radial-gradient(circle at 15% 50%, rgba(212, 175, 55, 0.03), transparent 25%),
-    radial-gradient(circle at 85% 30%, rgba(56, 189, 248, 0.03), transparent 25%);
-  background-attachment: fixed;
+@layer base {
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+
+  /* Ensure the app fills the screen and is centered if needed */
+  #root {
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
 }
 
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-display);
-  letter-spacing: -0.02em;
 }
+
+h1 { letter-spacing: -0.05em; }
+h2 { letter-spacing: -0.04em; }
+h3 { letter-spacing: -0.03em; }
 
 /* Premium UI Utilities */
 @layer utilities {
@@ -45,7 +68,7 @@ h1, h2, h3, h4, h5, h6 {
   }
 
   .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-[#D4AF37] to-[#FDE08B];
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-accent)];
   }
   
   .text-gradient-subtle {
@@ -57,27 +80,32 @@ h1, h2, h3, h4, h5, h6 {
   }
 
   .premium-hover {
-    @apply transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-[0_20px_40px_-10px_rgba(212,175,55,0.15)] hover:border-[#D4AF37]/30;
+    @apply transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-[0_20px_40px_-10px_rgba(37,84,232,0.15)] hover:border-[var(--color-primary)]/30;
   }
 }
 
 /* Custom Scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(100, 116, 139, 0.25) transparent;
+}
+
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--color-background-dark);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
+  background: rgba(100, 116, 139, 0.25);
+  border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(212, 175, 55, 0.3);
+  background: rgba(100, 116, 139, 0.45);
 }
 
 /* Subtle Page Load Animation */
@@ -92,16 +120,85 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Component Overrides for Dark Mode */
 .app-container {
-  @apply min-h-screen flex flex-col;
+  @apply min-h-screen flex flex-col w-full;
+  width: 100%;
 }
 
 .main-content {
-  @apply flex-grow relative z-10;
+  @apply flex-grow relative z-10 w-full;
+  width: 100%;
 }
 
 /* Global Input Styles */
 input, select, textarea {
-  color: #000000 !important;
+  color: #1e293b;
+}
+.dark input, .dark select, .dark textarea {
+  color: #f4f4f5 !important;
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+/* Modern styling for select dropdowns */
+select {
+  appearance: none !important;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%2364748b' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E") !important;
+  background-position: right 0.75rem center !important;
+  background-size: 1.1rem !important;
+  background-repeat: no-repeat !important;
+  padding-right: 2.25rem !important;
+}
+.dark select {
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%23a1a1aa' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E") !important;
+}
+
+/* Fix Chrome/browser autofill background and text color issues */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+textarea:-webkit-autofill:active,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus,
+select:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #f8fafc inset !important;
+  -webkit-text-fill-color: #0f172a !important;
+  box-shadow: 0 0 0 1000px #f8fafc inset !important;
+  text-fill-color: #0f172a !important;
+}
+
+.dark input:-webkit-autofill,
+.dark input:-webkit-autofill:hover,
+.dark input:-webkit-autofill:focus,
+.dark input:-webkit-autofill:active,
+.dark textarea:-webkit-autofill,
+.dark textarea:-webkit-autofill:hover,
+.dark textarea:-webkit-autofill:focus,
+.dark textarea:-webkit-autofill:active,
+.dark select:-webkit-autofill,
+.dark select:-webkit-autofill:hover,
+.dark select:-webkit-autofill:focus,
+.dark select:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #18181b inset !important;
+  -webkit-text-fill-color: #f8fafc !important;
+  box-shadow: 0 0 0 1000px #18181b inset !important;
+  text-fill-color: #f8fafc !important;
+}
+
+/* Hide native spinner arrows on number inputs globally for a clean look */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
 }
 
 /* Ensure placeholders are visible but slightly muted */
@@ -109,7 +206,46 @@ input::placeholder, textarea::placeholder {
   color: #64748b !important;
 }
 
-/* Fix for date inputs which can sometimes have invisible icons in some browsers */
-input[type="date"]::-webkit-calendar-picker-indicator {
+/* Fix for date/month inputs which can sometimes have invisible icons in some browsers */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="month"]::-webkit-calendar-picker-indicator {
   filter: invert(0);
+  cursor: pointer;
 }
+.dark input[type="date"]::-webkit-calendar-picker-indicator,
+.dark input[type="month"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+}
+
+/* Base link resets - wrapped in layer base so Tailwind utilities win */
+@layer base {
+  a:any-link, a, a:link, a:visited {
+    color: inherit;
+    text-decoration: none !important;
+  }
+
+  a i, a span, button i {
+    color: inherit;
+  }
+
+  a:hover, button:hover {
+    text-decoration: none;
+  }
+}
+
+/* Base brand blue color for consistency */
+:root {
+  --brand-blue: #0061FF;
+}
+
+.bg-brand-blue { background-color: var(--brand-blue) !important; }
+.text-brand-blue { color: var(--brand-blue) !important; }
+
+/* Fallback for the specific links mentioned by user and sidebar */
+.text-slate-600 { color: #475569 !important; }
+.text-slate-400 { color: #94a3b8 !important; }
+.text-slate-500 { color: #64748b !important; }
+.text-slate-300 { color: #cbd5e1 !important; }
+.text-white { color: #ffffff !important; }
+.text-red-400 { color: #f87171 !important; }
+.text-emerald-500 { color: #10b981 !important; }

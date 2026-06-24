@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_BASE_URL } from '../constants';
-import { useAuth } from '../App';
+import { useAuth } from '../context/AppContext';
+import { useRealtimeListener } from '../components/RealtimeProvider';
+import { toast } from 'sonner';
+import { useOutletContext } from 'react-router-dom';
+import CustomDatePicker from '../components/CustomDatePicker';
+
 
 interface WorkLog {
     id: number;
@@ -16,6 +21,7 @@ interface WorkLog {
 
 export default function TechnicianWork() {
     const { token, user } = useAuth();
+    const { isDark = false } = useOutletContext<{ isDark?: boolean }>() || {};
     const isSuperAdmin = user?.role === 'superadmin';
     const [logs, setLogs] = useState<WorkLog[]>([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -31,10 +37,6 @@ export default function TechnicianWork() {
     // Search state
     const [searchTerm, setSearchTerm] = useState('');
 
-    useEffect(() => {
-        fetchLogs();
-    }, []);
-
     const fetchLogs = async () => {
         setIsLoading(true);
         try {
@@ -49,17 +51,27 @@ export default function TechnicianWork() {
         }
     };
 
+    useEffect(() => {
+        fetchLogs();
+    }, []);
+
+    useRealtimeListener('work', fetchLogs);
+
     const handleAddRow = async () => {
-        if (!newRow.date) return alert('Date is required');
+        if (!newRow.date) {
+            toast.error('Date is required');
+            return;
+        }
         try {
             await axios.post(`${API_BASE_URL}/technician-work`, {
                 ...newRow
             }, { headers: { 'Authorization': `Bearer ${token}` } });
+            toast.success('Technician work entry added successfully!');
             setNewRow({ date: new Date().toISOString().split('T')[0], work_description: '', qty: '1', remarks: '', address: '' });
             setShowNewRow(false);
             fetchLogs();
         } catch (err) {
-            alert('Failed to add entry');
+            toast.error('Failed to add entry');
         }
     };
 
@@ -80,10 +92,11 @@ export default function TechnicianWork() {
             await axios.put(`${API_BASE_URL}/technician-work/${editingId}`, editForm, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
+            toast.success('Technician work entry updated successfully!');
             setEditingId(null);
             fetchLogs();
         } catch (err) {
-            alert('Failed to update');
+            toast.error('Failed to update entry');
         }
     };
 
@@ -91,16 +104,24 @@ export default function TechnicianWork() {
         setEditingId(null);
     };
 
-    const handleDelete = async (id: number) => {
-        if (!confirm('Delete this entry?')) return;
-        try {
-            await axios.delete(`${API_BASE_URL}/technician-work/${id}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            fetchLogs();
-        } catch (err) {
-            alert('Failed to delete');
-        }
+    const handleDelete = (id: number) => {
+        toast.error("Delete work entry?", {
+            description: "Are you sure you want to delete this work entry? This action cannot be undone.",
+            action: {
+                label: "Delete",
+                onClick: async () => {
+                    try {
+                        await axios.delete(`${API_BASE_URL}/technician-work/${id}`, {
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                        toast.success("Entry deleted successfully!");
+                        fetchLogs();
+                    } catch (err) {
+                        toast.error('Failed to delete entry');
+                    }
+                }
+            }
+        });
     };
 
     const filteredLogs = logs.filter(log => {
@@ -113,7 +134,10 @@ export default function TechnicianWork() {
     });
 
     const exportToCSV = () => {
-        if (!filteredLogs.length) return alert('No data to export.');
+        if (!filteredLogs.length) {
+            toast.error('No data to export.');
+            return;
+        }
 
         const headers = ['Date', 'Work Description', 'Qty', 'Technician', 'Address', 'Remarks'];
         const rows = filteredLogs.map(log => [
@@ -144,29 +168,33 @@ export default function TechnicianWork() {
         <div className="space-y-6 animate-in fade-in duration-300">
             {/* Header */}
             <div>
-                <h1 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight">
+                <h1 className={`text-2xl md:text-3xl font-black tracking-tight ${isDark ? 'text-zinc-100' : 'text-slate-800'}`}>
                     {isSuperAdmin ? 'Technician Work Logs' : 'My Work'}
                 </h1>
-                <p className="text-slate-500 text-sm mt-1">
+                <p className={`${isDark ? 'text-zinc-400' : 'text-slate-500'} text-sm mt-1`}>
                     {isSuperAdmin ? 'View all technician work entries combined.' : 'Track your daily work activities.'}
                 </p>
             </div>
 
             {/* Excel-like Table */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className={`rounded-2xl border shadow-sm overflow-hidden ${isDark ? 'bg-[var(--color-card-dark)] border-[var(--color-border-dark)]' : 'bg-white border-slate-200'}`}>
                 {/* Toolbar */}
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-5 py-3 bg-slate-50 border-b border-slate-200 gap-4">
-                    <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest min-w-max">Work Log</h3>
+                <div className={`flex flex-col sm:flex-row items-start sm:items-center justify-between px-5 py-3 border-b gap-4 ${isDark ? 'bg-zinc-900/50 border-zinc-800 text-zinc-400' : 'bg-slate-50 border-slate-200 text-slate-500'}`}>
+                    <h3 className="text-xs font-black uppercase tracking-widest min-w-max">Work Log</h3>
 
                     <div className="flex flex-1 items-center justify-end gap-3 w-full sm:w-auto">
                         <div className="relative w-full sm:max-w-xs">
-                            <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                            <i className={`fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-xs ${isDark ? 'text-zinc-500' : 'text-slate-400'}`}></i>
                             <input
                                 type="text"
                                 placeholder={isSuperAdmin ? "Search tech, work or address..." : "Search work or address..."}
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-8 pr-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-400"
+                                className={`w-full pl-8 pr-3 py-2 border rounded-lg text-sm transition-all outline-none ${
+                                    isDark 
+                                        ? 'bg-[#1e1e21] border-zinc-700 text-white placeholder-zinc-500 focus:border-zinc-650' 
+                                        : 'bg-white border-slate-200 text-slate-705 placeholder-slate-400 focus:border-blue-500'
+                                }`}
                             />
                         </div>
                         <div className="flex gap-2 shrink-0">
@@ -174,7 +202,11 @@ export default function TechnicianWork() {
                                 type="button"
                                 onClick={exportToCSV}
                                 disabled={filteredLogs.length === 0}
-                                className="px-4 py-2 bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100 font-bold text-xs rounded-lg transition-all flex items-center gap-2 disabled:opacity-50"
+                                className={`px-4 py-2 border font-bold text-xs rounded-lg transition-all flex items-center gap-2 disabled:opacity-50 ${
+                                    isDark 
+                                        ? 'bg-emerald-950/20 text-emerald-400 border-emerald-900/50 hover:bg-emerald-900/30' 
+                                        : 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100'
+                                }`}
                             >
                                 <i className="fa-solid fa-file-csv"></i> Export CSV
                             </button>
@@ -193,75 +225,91 @@ export default function TechnicianWork() {
 
                 <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm">
-                        <thead className="bg-slate-100 text-slate-500 text-[10px] uppercase font-black tracking-wider">
+                        <thead className={`${isDark ? 'bg-zinc-900 text-zinc-400' : 'bg-slate-100 text-slate-500'} text-[10px] uppercase font-black tracking-wider`}>
                             <tr>
-                                <th className="p-3 pl-5 border-b border-r border-slate-200 w-10 text-center">#</th>
-                                <th className="p-3 border-b border-r border-slate-200 min-w-[130px]">Date</th>
-                                <th className="p-3 border-b border-r border-slate-200 min-w-[280px]">Work Description</th>
-                                <th className="p-3 border-b border-r border-slate-200 min-w-[80px] text-center">Qty</th>
-                                {isSuperAdmin && <th className="p-3 border-b border-r border-slate-200 min-w-[140px]">Technician</th>}
-                                <th className="p-3 border-b border-r border-slate-200 min-w-[200px]">Address</th>
-                                <th className="p-3 border-b border-r border-slate-200 min-w-[220px]">Remarks</th>
-                                {!isSuperAdmin && <th className="p-3 border-b border-slate-200 w-24 text-center">Actions</th>}
+                                <th className={`p-3 pl-5 border-b border-r w-10 text-center ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>#</th>
+                                <th className={`p-3 border-b border-r min-w-[130px] ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>Date</th>
+                                <th className={`p-3 border-b border-r min-w-[280px] ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>Work Description</th>
+                                <th className={`p-3 border-b border-r min-w-[80px] text-center ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>Qty</th>
+                                {isSuperAdmin && <th className={`p-3 border-b border-r min-w-[140px] ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>Technician</th>}
+                                <th className={`p-3 border-b border-r min-w-[200px] ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>Address</th>
+                                <th className={`p-3 border-b border-r min-w-[220px] ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>Remarks</th>
+                                {!isSuperAdmin && <th className={`p-3 border-b w-24 text-center ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>Actions</th>}
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100 bg-white">
+                        <tbody className={`divide-y ${isDark ? 'divide-zinc-800 bg-[#242427]' : 'divide-slate-100 bg-white'}`}>
                             {/* New Row Input */}
                             {showNewRow && !isSuperAdmin && (
-                                <tr className="bg-blue-50/50 animate-in fade-in duration-200">
-                                    <td className="p-2 pl-5 border-r border-slate-100 text-center text-slate-400 font-bold text-xs">
+                                <tr className={`${isDark ? 'bg-blue-950/20' : 'bg-blue-50/50'} animate-in fade-in duration-200`}>
+                                    <td className={`p-2 pl-5 border-r text-center font-bold text-xs ${isDark ? 'border-zinc-800 text-zinc-500' : 'border-slate-100 text-slate-400'}`}>
                                         <i className="fa-solid fa-asterisk text-blue-400"></i>
                                     </td>
-                                    <td className="p-1.5 border-r border-slate-100">
-                                        <input
-                                            type="date"
-                                            value={newRow.date}
-                                            onChange={e => setNewRow({ ...newRow, date: e.target.value })}
-                                            className="w-full bg-white border border-blue-200 rounded-lg px-2 py-1.5 text-sm font-medium focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                                    <td className={`p-1.5 border-r ${isDark ? 'border-zinc-800' : 'border-slate-100'}`}>
+                                        <CustomDatePicker
+                                            value={newRow.date || ''}
+                                            onChange={val => setNewRow({ ...newRow, date: val })}
+                                            isDark={isDark}
+                                            placeholder="Select date..."
                                         />
                                     </td>
-                                    <td className="p-1.5 border-r border-slate-100">
+                                    <td className={`p-1.5 border-r ${isDark ? 'border-zinc-800' : 'border-slate-100'}`}>
                                         <input
                                             type="text"
                                             value={newRow.work_description}
                                             onChange={e => setNewRow({ ...newRow, work_description: e.target.value })}
                                             placeholder="Describe work done..."
-                                            className="w-full bg-white border border-blue-200 rounded-lg px-2 py-1.5 text-sm font-medium focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                                            className={`w-full border rounded-lg px-2 py-1.5 text-sm font-medium focus:ring-2 outline-none ${
+                                                isDark 
+                                                    ? 'bg-[#1e1e21] border-zinc-700 text-white focus:ring-blue-500/20 focus:border-zinc-600' 
+                                                    : 'bg-white border-blue-200 focus:ring-blue-500/20 focus:border-blue-500'
+                                            }`}
                                         />
                                     </td>
-                                    <td className="p-1.5 border-r border-slate-100">
+                                    <td className={`p-1.5 border-r ${isDark ? 'border-zinc-800' : 'border-slate-100'}`}>
                                         <input
                                             type="text"
                                             value={newRow.qty}
                                             onChange={e => setNewRow({ ...newRow, qty: e.target.value })}
                                             placeholder="0"
-                                            className="w-full bg-white border border-blue-200 rounded-lg px-2 py-1.5 text-sm font-medium text-center focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                                            className={`w-full border rounded-lg px-2 py-1.5 text-sm font-medium text-center focus:ring-2 outline-none ${
+                                                isDark 
+                                                    ? 'bg-[#1e1e21] border-zinc-700 text-white focus:ring-blue-500/20 focus:border-zinc-600' 
+                                                    : 'bg-white border-blue-200 focus:ring-blue-500/20 focus:border-blue-500'
+                                            }`}
                                         />
                                     </td>
-                                    <td className="p-1.5 border-r border-slate-100">
+                                    <td className={`p-1.5 border-r ${isDark ? 'border-zinc-800' : 'border-slate-100'}`}>
                                         <input
                                             type="text"
                                             value={newRow.address}
                                             onChange={e => setNewRow({ ...newRow, address: e.target.value })}
                                             placeholder="Address..."
-                                            className="w-full bg-white border border-blue-200 rounded-lg px-2 py-1.5 text-sm font-medium focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                                            className={`w-full border rounded-lg px-2 py-1.5 text-sm font-medium focus:ring-2 outline-none ${
+                                                isDark 
+                                                    ? 'bg-[#1e1e21] border-zinc-700 text-white focus:ring-blue-500/20 focus:border-zinc-600' 
+                                                    : 'bg-white border-blue-200 focus:ring-blue-500/20 focus:border-blue-500'
+                                            }`}
                                         />
                                     </td>
-                                    <td className="p-1.5 border-r border-slate-100">
+                                    <td className={`p-1.5 border-r ${isDark ? 'border-zinc-800' : 'border-slate-100'}`}>
                                         <input
                                             type="text"
                                             value={newRow.remarks}
                                             onChange={e => setNewRow({ ...newRow, remarks: e.target.value })}
                                             placeholder="Remarks..."
-                                            className="w-full bg-white border border-blue-200 rounded-lg px-2 py-1.5 text-sm font-medium focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                                            className={`w-full border rounded-lg px-2 py-1.5 text-sm font-medium focus:ring-2 outline-none ${
+                                                isDark 
+                                                    ? 'bg-[#1e1e21] border-zinc-700 text-white focus:ring-blue-500/20 focus:border-zinc-600' 
+                                                    : 'bg-white border-blue-200 focus:ring-blue-500/20 focus:border-blue-500'
+                                            }`}
                                         />
                                     </td>
                                     <td className="p-1.5 text-center">
                                         <div className="flex items-center justify-center gap-1">
-                                            <button onClick={handleAddRow} className="w-7 h-7 rounded-lg bg-green-100 text-green-600 hover:bg-green-200 transition-colors flex items-center justify-center" title="Save">
+                                            <button onClick={handleAddRow} className={`w-7 h-7 rounded-lg transition-colors flex items-center justify-center ${isDark ? 'bg-green-950/30 text-green-400 hover:bg-green-900/40' : 'bg-green-100 text-green-600 hover:bg-green-200'}`} title="Save">
                                                 <i className="fa-solid fa-check text-xs"></i>
                                             </button>
-                                            <button onClick={() => { setShowNewRow(false); setNewRow({ date: new Date().toISOString().split('T')[0], work_description: '', qty: '1', remarks: '', address: '' }); }} className="w-7 h-7 rounded-lg bg-red-100 text-red-500 hover:bg-red-200 transition-colors flex items-center justify-center" title="Cancel">
+                                            <button onClick={() => { setShowNewRow(false); setNewRow({ date: new Date().toISOString().split('T')[0], work_description: '', qty: '1', remarks: '', address: '' }); }} className={`w-7 h-7 rounded-lg transition-colors flex items-center justify-center ${isDark ? 'bg-red-950/30 text-red-400 hover:bg-red-900/40' : 'bg-red-100 text-red-500 hover:bg-red-200'}`} title="Cancel">
                                                 <i className="fa-solid fa-xmark text-xs"></i>
                                             </button>
                                         </div>
@@ -276,35 +324,40 @@ export default function TechnicianWork() {
 
                             {/* Log Rows */}
                             {!isLoading && filteredLogs.map((log, index) => (
-                                <tr key={log.id} className={`group transition-colors ${editingId === log.id ? 'bg-amber-50/50' : 'hover:bg-slate-50/50'}`}>
-                                    <td className="p-3 pl-5 border-r border-slate-100 text-center text-slate-400 font-bold text-xs">{index + 1}</td>
+                                <tr key={log.id} className={`group transition-colors ${editingId === log.id ? (isDark ? 'bg-amber-950/20' : 'bg-amber-50/50') : (isDark ? 'hover:bg-zinc-800/40' : 'hover:bg-slate-50/50')}`}>
+                                    <td className={`p-3 pl-5 border-r text-center font-bold text-xs ${isDark ? 'border-zinc-800 text-zinc-500' : 'border-slate-100 text-slate-400'}`}>{index + 1}</td>
 
                                     {editingId === log.id ? (
                                         <>
-                                            <td className="p-1.5 border-r border-slate-100">
-                                                <input type="date" value={editForm.date} onChange={e => setEditForm({ ...editForm, date: e.target.value })} className="w-full bg-white border border-amber-300 rounded-lg px-2 py-1.5 text-sm font-medium focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none" />
+                                            <td className={`p-1.5 border-r ${isDark ? 'border-zinc-800' : 'border-slate-100'}`}>
+                                                <CustomDatePicker
+                                                    value={editForm.date}
+                                                    onChange={val => setEditForm({ ...editForm, date: val })}
+                                                    isDark={isDark}
+                                                    placeholder="Select date..."
+                                                />
                                             </td>
-                                            <td className="p-1.5 border-r border-slate-100">
-                                                <input type="text" value={editForm.work_description} onChange={e => setEditForm({ ...editForm, work_description: e.target.value })} className="w-full bg-white border border-amber-300 rounded-lg px-2 py-1.5 text-sm font-medium focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none" />
+                                            <td className={`p-1.5 border-r ${isDark ? 'border-zinc-800' : 'border-slate-100'}`}>
+                                                <input type="text" value={editForm.work_description} onChange={e => setEditForm({ ...editForm, work_description: e.target.value })} className={`w-full border rounded-lg px-2 py-1.5 text-sm font-medium focus:ring-2 outline-none ${isDark ? 'bg-[#1e1e21] border-zinc-700 text-white focus:ring-amber-500/20 focus:border-zinc-600' : 'bg-white border-amber-300 focus:ring-amber-500/20 focus:border-amber-500'}`} />
                                             </td>
-                                            <td className="p-1.5 border-r border-slate-100">
-                                                <input type="text" value={editForm.qty} onChange={e => setEditForm({ ...editForm, qty: e.target.value })} className="w-full bg-white border border-amber-300 rounded-lg px-2 py-1.5 text-sm font-medium text-center focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none" />
+                                            <td className={`p-1.5 border-r ${isDark ? 'border-zinc-800' : 'border-slate-100'}`}>
+                                                <input type="text" value={editForm.qty} onChange={e => setEditForm({ ...editForm, qty: e.target.value })} className={`w-full border rounded-lg px-2 py-1.5 text-sm font-medium text-center focus:ring-2 outline-none ${isDark ? 'bg-[#1e1e21] border-zinc-700 text-white focus:ring-amber-500/20 focus:border-zinc-600' : 'bg-white border-amber-300 focus:ring-amber-500/20 focus:border-amber-500'}`} />
                                             </td>
                                             {isSuperAdmin && (
-                                                <td className="p-3 border-r border-slate-100 font-medium text-slate-700">{log.technician || <span className="text-slate-300 italic">—</span>}</td>
+                                                <td className={`p-3 border-r font-medium ${isDark ? 'border-zinc-800 text-zinc-300' : 'border-slate-100 text-slate-700'}`}>{log.technician || <span className={`${isDark ? 'text-zinc-650' : 'text-slate-350'} italic`}>—</span>}</td>
                                             )}
-                                            <td className="p-1.5 border-r border-slate-100">
-                                                <input type="text" value={editForm.address} onChange={e => setEditForm({ ...editForm, address: e.target.value })} className="w-full bg-white border border-amber-300 rounded-lg px-2 py-1.5 text-sm font-medium focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none" />
+                                            <td className={`p-1.5 border-r ${isDark ? 'border-zinc-800' : 'border-slate-100'}`}>
+                                                <input type="text" value={editForm.address} onChange={e => setEditForm({ ...editForm, address: e.target.value })} className={`w-full border rounded-lg px-2 py-1.5 text-sm font-medium focus:ring-2 outline-none ${isDark ? 'bg-[#1e1e21] border-zinc-700 text-white focus:ring-amber-500/20 focus:border-zinc-600' : 'bg-white border-amber-300 focus:ring-amber-500/20 focus:border-amber-500'}`} />
                                             </td>
-                                            <td className="p-1.5 border-r border-slate-100">
-                                                <input type="text" value={editForm.remarks} onChange={e => setEditForm({ ...editForm, remarks: e.target.value })} className="w-full bg-white border border-amber-300 rounded-lg px-2 py-1.5 text-sm font-medium focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none" />
+                                            <td className={`p-1.5 border-r ${isDark ? 'border-zinc-800' : 'border-slate-100'}`}>
+                                                <input type="text" value={editForm.remarks} onChange={e => setEditForm({ ...editForm, remarks: e.target.value })} className={`w-full border rounded-lg px-2 py-1.5 text-sm font-medium focus:ring-2 outline-none ${isDark ? 'bg-[#1e1e21] border-zinc-700 text-white focus:ring-amber-500/20 focus:border-zinc-600' : 'bg-white border-amber-300 focus:ring-amber-500/20 focus:border-amber-500'}`} />
                                             </td>
                                             <td className="p-1.5 text-center">
                                                 <div className="flex items-center justify-center gap-1">
-                                                    <button onClick={handleSaveEdit} className="w-7 h-7 rounded-lg bg-green-100 text-green-600 hover:bg-green-200 transition-colors flex items-center justify-center" title="Save">
+                                                    <button onClick={handleSaveEdit} className={`w-7 h-7 rounded-lg transition-colors flex items-center justify-center ${isDark ? 'bg-green-950/30 text-green-400 hover:bg-green-900/40' : 'bg-green-100 text-green-600 hover:bg-green-200'}`} title="Save">
                                                         <i className="fa-solid fa-check text-xs"></i>
                                                     </button>
-                                                    <button onClick={handleCancelEdit} className="w-7 h-7 rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors flex items-center justify-center" title="Cancel">
+                                                    <button onClick={handleCancelEdit} className={`w-7 h-7 rounded-lg transition-colors flex items-center justify-center ${isDark ? 'bg-zinc-805 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`} title="Cancel">
                                                         <i className="fa-solid fa-xmark text-xs"></i>
                                                     </button>
                                                 </div>
@@ -312,21 +365,21 @@ export default function TechnicianWork() {
                                         </>
                                     ) : (
                                         <>
-                                            <td className="p-3 border-r border-slate-100 font-medium text-slate-700 whitespace-nowrap">{new Date(log.date).toLocaleDateString()}</td>
-                                            <td className="p-3 border-r border-slate-100 text-slate-700">{log.work_description || <span className="text-slate-300 italic">—</span>}</td>
-                                            <td className="p-3 border-r border-slate-100 text-center font-bold text-slate-800">{log.qty || '0'}</td>
+                                            <td className={`p-3 border-r font-medium whitespace-nowrap ${isDark ? 'border-zinc-800 text-zinc-300' : 'border-slate-100 text-slate-700'}`}>{new Date(log.date).toLocaleDateString()}</td>
+                                            <td className={`p-3 border-r ${isDark ? 'border-zinc-800 text-zinc-300' : 'border-slate-100 text-slate-700'}`}>{log.work_description || <span className={`${isDark ? 'text-zinc-605' : 'text-slate-300'} italic`}>—</span>}</td>
+                                            <td className={`p-3 border-r text-center font-bold ${isDark ? 'border-zinc-800 text-zinc-200' : 'border-slate-100 text-slate-800'}`}>{log.qty || '0'}</td>
                                             {isSuperAdmin && (
-                                                <td className="p-3 border-r border-slate-100 font-medium text-slate-700">{log.technician || <span className="text-slate-300 italic">—</span>}</td>
+                                                <td className={`p-3 border-r font-medium ${isDark ? 'border-zinc-800 text-zinc-300' : 'border-slate-100 text-slate-700'}`}>{log.technician || <span className={`${isDark ? 'text-zinc-605' : 'text-slate-300'} italic`}>—</span>}</td>
                                             )}
-                                            <td className="p-3 border-r border-slate-100 text-slate-700">{log.address || <span className="text-slate-300 italic">—</span>}</td>
-                                            <td className="p-3 border-r border-slate-100 text-slate-600 italic">{log.remarks || <span className="text-slate-300">—</span>}</td>
+                                            <td className={`p-3 border-r ${isDark ? 'border-zinc-800 text-zinc-300' : 'border-slate-100 text-slate-700'}`}>{log.address || <span className={`${isDark ? 'text-zinc-605' : 'text-slate-300'} italic`}>—</span>}</td>
+                                            <td className={`p-3 border-r italic ${isDark ? 'border-zinc-800 text-zinc-400' : 'border-slate-100 text-slate-600'}`}>{log.remarks || <span className={isDark ? 'text-zinc-650' : 'text-slate-300'}>—</span>}</td>
                                             {!isSuperAdmin && (
                                                 <td className="p-3 text-center">
                                                     <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <button onClick={() => handleStartEdit(log)} className="w-7 h-7 rounded-lg bg-slate-100 text-slate-500 hover:bg-blue-100 hover:text-blue-600 transition-colors flex items-center justify-center" title="Edit">
+                                                        <button onClick={() => handleStartEdit(log)} className={`w-7 h-7 rounded-lg transition-colors flex items-center justify-center ${isDark ? 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200' : 'bg-slate-100 text-slate-500 hover:bg-blue-100 hover:text-blue-600'}`} title="Edit">
                                                             <i className="fa-solid fa-pen text-xs"></i>
                                                         </button>
-                                                        <button onClick={() => handleDelete(log.id)} className="w-7 h-7 rounded-lg bg-slate-100 text-slate-400 hover:bg-red-100 hover:text-red-500 transition-colors flex items-center justify-center" title="Delete">
+                                                        <button onClick={() => handleDelete(log.id)} className={`w-7 h-7 rounded-lg transition-colors flex items-center justify-center ${isDark ? 'bg-zinc-800 text-zinc-500 hover:bg-red-950/40 hover:text-red-400' : 'bg-slate-100 text-slate-400 hover:bg-red-100 hover:text-red-500'}`} title="Delete">
                                                             <i className="fa-solid fa-trash-can text-xs"></i>
                                                         </button>
                                                     </div>
@@ -342,10 +395,10 @@ export default function TechnicianWork() {
                                 <tr>
                                     <td colSpan={isSuperAdmin ? 7 : 7} className="p-12 text-center">
                                         <div className="space-y-3">
-                                            <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto">
-                                                <i className="fa-solid fa-search text-2xl text-slate-300"></i>
+                                            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mx-auto ${isDark ? 'bg-zinc-850' : 'bg-slate-100'}`}>
+                                                <i className={`fa-solid fa-search text-2xl ${isDark ? 'text-zinc-600' : 'text-slate-300'}`}></i>
                                             </div>
-                                            <p className="text-slate-400 font-medium text-sm">
+                                            <p className={`${isDark ? 'text-zinc-500' : 'text-slate-400'} font-medium text-sm`}>
                                                 {isSuperAdmin ? 'No technician work logs found.' : 'No work logs found. Add your first entry!'}
                                             </p>
                                         </div>

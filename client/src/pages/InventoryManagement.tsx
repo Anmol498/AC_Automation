@@ -1,8 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import axios from 'axios';
-import { useAuth, useSettings } from '../App';
+import { useAuth, useSettings } from '../context/AppContext';
+import { useRealtimeListener } from '../components/RealtimeProvider';
 import { API_BASE_URL } from '../constants';
 import Pagination from '../components/Pagination';
+import { toast } from 'sonner';
+import CustomSelect from '../components/CustomSelect';
+
 
 
 interface InventoryItem {
@@ -25,16 +30,19 @@ interface HistoryRecord {
     modelName?: string;
     brand?: string;
     userEmail: string;
-    actionType: 'ADDED_STOCK' | 'SOLD_STOCK' | 'UPDATED_DETAILS';
+    actionType: 'ADDED_STOCK' | 'SOLD_STOCK' | 'UPDATED_DETAILS' | 'RETURNED_STOCK';
     quantityChange: number;
     previousQuantity: number;
     newQuantity: number;
     createdAt: string;
+    customerName?: string;
+    jobId?: number;
 }
 
 const InventoryManagement: React.FC = () => {
     const { token, user } = useAuth();
-    const { lowStockThreshold, enableLowStockAlert } = useSettings();
+    const { isDark = false } = useOutletContext<{ isDark?: boolean }>() || {};
+    const { lowStockThreshold, enableLowStockAlert, copperPipeLowStockThreshold, enableCopperPipeLowStockAlert } = useSettings();
     const [items, setItems] = useState<InventoryItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState('');
@@ -43,9 +51,22 @@ const InventoryManagement: React.FC = () => {
     const [isLowStockModalOpen, setIsLowStockModalOpen] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const [historyPage, setHistoryPage] = useState(1);
-    const [copperPage, setCopperPage] = useState(1);
     const itemsPerPage = 10;
 
+    // Copper inventory states
+    const [copperInventoryLogs, setCopperInventoryLogs] = useState<any[]>([]);
+    const [copperHistoryLogs, setCopperHistoryLogs] = useState<any[]>([]);
+    const [loadingCopper, setLoadingCopper] = useState(false);
+    const [copperFormData, setCopperFormData] = useState({
+        size: '',
+        totalInStock: '',
+        sentQty: '',
+        returnQty: '',
+        groupName: 'Standard Sizes'
+    });
+    const [editingCopperItem, setEditingCopperItem] = useState<any | null>(null);
+    const [customGroups, setCustomGroups] = useState<string[]>([]);
+    const [draggingOverGroup, setDraggingOverGroup] = useState<{ [key: string]: boolean }>({});
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
@@ -67,114 +88,14 @@ const InventoryManagement: React.FC = () => {
         salePrice: 0
     });
 
-    // ---- Copper Inventory State ----
-    const copperSizes = ['1/4', '3/8', '1/2', '5/8', '3/4', '7/8', '1 1/8', '1 3/8'];
-    type CopperEntryItem = { id: string; size: string; isCustomSize: boolean; sent: string; return: string };
-    const defaultCopperEntries = copperSizes.map((size, index) => ({ id: `default-${index}`, size, isCustomSize: false, sent: '', return: '' }));
-
-    const [copperDate, setCopperDate] = useState(new Date().toISOString().split('T')[0]);
-    const [copperEntries, setCopperEntries] = useState<CopperEntryItem[]>(defaultCopperEntries);
-    const [copperLogs, setCopperLogs] = useState<any[]>([]);
-    const [isCopperLoading, setIsCopperLoading] = useState(false);
-    const [expandedCopperSizes, setExpandedCopperSizes] = useState<Record<string, boolean>>({});
-    const toggleCopperSize = (size: string) => setExpandedCopperSizes(prev => ({ ...prev, [size]: !prev[size] }));
-
-    const fetchCopperLogs = async () => {
-        setIsCopperLoading(true);
-        try {
-            const apiUrl = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/inventory/copper` : `${API_BASE_URL}/inventory/copper`;
-            const res = await axios.get(apiUrl, { headers: { Authorization: `Bearer ${token}` } });
-            setCopperLogs(res.data);
-        } catch (err) { console.error('Error fetching copper logs:', err); }
-        finally { setIsCopperLoading(false); }
-    };
-
     useEffect(() => {
-        if (activeTab === 'Copper') fetchCopperLogs();
         setCurrentPage(1);
     }, [activeTab]);
-
-
-    const handleAddCopperEntry = () => {
-        setCopperEntries(prev => [...prev, { id: Date.now().toString() + Math.random(), size: '', isCustomSize: false, sent: '', return: '' }]);
-    };
-    const handleRemoveCopperEntry = (idToRemove: string) => {
-        setCopperEntries(prev => prev.filter(e => e.id !== idToRemove));
-    };
-    const handleCopperEntryChange = (id: string, field: 'size' | 'isCustomSize' | 'sent' | 'return', value: any) => {
-        setCopperEntries(prev => prev.map(entry => {
-            if (entry.id === id) {
-                const newEntry = { ...entry, [field]: value };
-                if (field === 'isCustomSize' && value === true) newEntry.size = '';
-                else if (field === 'isCustomSize' && value === false) newEntry.size = '';
-                return newEntry;
-            }
-            return entry;
-        }));
-    };
-
-    const handleCopperSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        try {
-            const apiUrl = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/inventory/copper` : `${API_BASE_URL}/inventory/copper`;
-            const promises = copperEntries.map(entry => {
-                if (entry.sent || entry.return) {
-                    return axios.post(apiUrl, { date: copperDate, size: entry.size, sent_qty: entry.sent || 0, return_qty: entry.return || 0 }, { headers: { Authorization: `Bearer ${token}` } });
-                }
-                return Promise.resolve();
-            });
-            await Promise.all(promises);
-            setCopperEntries(defaultCopperEntries);
-            fetchCopperLogs();
-        } catch (err) { alert('Failed to save copper log'); }
-    };
-
-    const deleteCopperLog = async (id: number) => {
-        if (!window.confirm('Delete this copper log entry?')) return;
-        try {
-            const apiUrl = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/inventory/copper/${id}` : `${API_BASE_URL}/inventory/copper/${id}`;
-            await axios.delete(apiUrl, { headers: { Authorization: `Bearer ${token}` } });
-            fetchCopperLogs();
-        } catch (err) { alert('Failed to delete log entry.'); }
-    };
-
-    const buildCopperDisplayLogs = () => {
-        const sorted = [...copperLogs].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime() || a.id - b.id);
-        const totalsBySize: Record<string, number> = {};
-        return sorted.map(log => {
-            const left = Number(log.return_qty) - Number(log.sent_qty);
-            totalsBySize[log.size] = (totalsBySize[log.size] || 0) + left;
-            return { ...log, left, cumulativeTotal: totalsBySize[log.size] };
-        }).reverse();
-    };
-
-    const buildGroupedCopperLogs = () => {
-        const logs = buildCopperDisplayLogs();
-        const grouped: Record<string, any[]> = {};
-        copperSizes.forEach(s => grouped[s] = []);
-        logs.forEach(l => {
-            if (!grouped[l.size]) grouped[l.size] = [];
-            grouped[l.size].push(l);
-        });
-        return Object.keys(grouped).map(size => {
-            if (grouped[size].length === 0) return null;
-            const sizeLogs = grouped[size];
-            const overallTotal = sizeLogs[0].cumulativeTotal;
-            const totalSent = sizeLogs.reduce((sum: number, l: any) => sum + Number(l.sent_qty), 0);
-            const totalReturn = sizeLogs.reduce((sum: number, l: any) => sum + Number(l.return_qty), 0);
-            const totalLeft = sizeLogs.reduce((sum: number, l: any) => sum + Number(l.left), 0);
-            return { size, overallTotal, totalSent, totalReturn, totalLeft, logs: sizeLogs };
-        }).filter(Boolean);
-    };
 
     const fetchInventory = async () => {
         try {
             setIsLoading(true);
-            const apiUrl = import.meta.env.VITE_API_URL
-                ? `${import.meta.env.VITE_API_URL}/inventory`
-                : 'http://localhost:5000/api/inventory';
-
-            const res = await axios.get(apiUrl, {
+            const res = await axios.get(`${API_BASE_URL}/inventory`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setItems(res.data);
@@ -187,12 +108,127 @@ const InventoryManagement: React.FC = () => {
         }
     };
 
+    const fetchCopperLogs = async () => {
+        try {
+            setLoadingCopper(true);
+            const headers = { Authorization: `Bearer ${token}` };
+            const [stockRes, logsRes] = await Promise.all([
+                axios.get(`${API_BASE_URL}/inventory/copper`, { headers }),
+                axios.get(`${API_BASE_URL}/inventory/copper/logs`, { headers })
+            ]);
+            setCopperInventoryLogs(stockRes.data);
+            setCopperHistoryLogs(logsRes.data);
+        } catch (err: any) {
+            console.error("Failed to fetch copper logs:", err);
+        } finally {
+            setLoadingCopper(false);
+        }
+    };
+
     useEffect(() => {
         fetchInventory();
+        fetchCopperLogs();
     }, [token]);
 
-    const openModal = (item?: InventoryItem) => {
-        if (item) {
+    useRealtimeListener('inventory', () => {
+        fetchInventory();
+        fetchCopperLogs();
+    });
+
+    useEffect(() => {
+        const stored = localStorage.getItem('satguru_copper_groups');
+        let groups = ['Standard Sizes', 'Home Sizes'];
+        if (stored) {
+            try {
+                groups = JSON.parse(stored);
+            } catch (e) {
+                console.error('Failed to parse stored groups:', e);
+            }
+        }
+        
+        if (!groups.includes('Standard Sizes')) {
+            groups.unshift('Standard Sizes');
+        }
+
+        const databaseGroups = Array.from(new Set(
+            copperInventoryLogs
+                .map(item => item.groupName || 'Standard Sizes')
+        ));
+        
+        const merged = Array.from(new Set([...groups, ...databaseGroups]));
+        setCustomGroups(merged);
+        localStorage.setItem('satguru_copper_groups', JSON.stringify(merged));
+    }, [copperInventoryLogs]);
+
+    const handleAddGroup = () => {
+        const name = window.prompt('Enter new group name:');
+        if (!name) return;
+        const trimmed = name.trim();
+        if (!trimmed) return;
+        
+        if (customGroups.includes(trimmed)) {
+            toast.error('A group with this name already exists');
+            return;
+        }
+        
+        const updated = [...customGroups, trimmed];
+        setCustomGroups(updated);
+        localStorage.setItem('satguru_copper_groups', JSON.stringify(updated));
+    };
+
+    const handleDeleteGroup = (groupName: string) => {
+        if (groupName === 'Standard Sizes') {
+            toast.error('Cannot delete the default Standard Sizes group');
+            return;
+        }
+        toast.error(`Delete size group "${groupName}"?`, {
+            description: `All copper sizes in this group will be moved to "Standard Sizes".`,
+            action: {
+                label: "Delete Group",
+                onClick: async () => {
+                    try {
+                        const itemsInGroup = copperInventoryLogs.filter(item => (item.groupName || 'Standard Sizes') === groupName);
+                        const headers = { Authorization: `Bearer ${token}` };
+                        
+                        for (const item of itemsInGroup) {
+                            await axios.put(`${API_BASE_URL}/inventory/copper/group/${item.id}`, { groupName: 'Standard Sizes' }, { headers });
+                        }
+                        
+                        const updated = customGroups.filter(grp => grp !== groupName);
+                        setCustomGroups(updated);
+                        localStorage.setItem('satguru_copper_groups', JSON.stringify(updated));
+                        toast.success("Group deleted successfully");
+                        fetchCopperLogs();
+                    } catch (err: any) {
+                        toast.error(err.response?.data?.error || 'Failed to delete group');
+                    }
+                }
+            }
+        });
+    };
+
+    const openModal = (item?: InventoryItem, copperItem?: any) => {
+        if (activeTab === 'Copper') {
+            if (copperItem) {
+                setEditingCopperItem(copperItem);
+                setCopperFormData({
+                    size: copperItem.size,
+                    totalInStock: '',
+                    sentQty: '',
+                    returnQty: '',
+                    groupName: copperItem.groupName || 'Standard Sizes'
+                });
+            } else {
+                setEditingCopperItem(null);
+                setCopperFormData({
+                    size: '',
+                    totalInStock: '',
+                    sentQty: '',
+                    returnQty: '',
+                    groupName: 'Standard Sizes'
+                });
+            }
+        } else if (item) {
             setEditingItem(item);
             setAddQtyAmount(0);
         } else {
@@ -215,17 +251,81 @@ const InventoryManagement: React.FC = () => {
     const closeModal = () => {
         setIsModalOpen(false);
         setEditingItem(null);
+        setEditingCopperItem(null);
         setAddQtyAmount(0);
         setIsEditingFullDetails(false);
+    };
+
+    const handleDeleteCopperLog = (logId: number) => {
+        toast.error("Delete copper log entry?", {
+            description: "Are you sure you want to delete this copper log entry?",
+            action: {
+                label: "Delete",
+                onClick: async () => {
+                    try {
+                        const headers = { Authorization: `Bearer ${token}` };
+                        await axios.delete(`${API_BASE_URL}/inventory/copper/logs/${logId}`, { headers });
+                        toast.success("Copper log entry deleted successfully");
+                        fetchCopperLogs();
+                    } catch (err: any) {
+                        toast.error(err.response?.data?.error || 'Failed to delete copper log entry');
+                    }
+                }
+            }
+        });
+    };
+
+    const handleDeleteCopperSize = (id: number) => {
+        toast.error("Delete copper size?", {
+            description: "Are you sure you want to delete this copper size? This will also delete all associated warehouse logs and job material logs.",
+            action: {
+                label: "Delete Size",
+                onClick: async () => {
+                    try {
+                        const headers = { Authorization: `Bearer ${token}` };
+                        await axios.delete(`${API_BASE_URL}/inventory/copper/${id}`, { headers });
+                        toast.success("Copper size deleted successfully");
+                        fetchCopperLogs();
+                    } catch (err: any) {
+                        toast.error(err.response?.data?.error || 'Failed to delete copper size');
+                    }
+                }
+            }
+        });
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const apiUrl = import.meta.env.VITE_API_URL
-                ? `${import.meta.env.VITE_API_URL}/inventory`
-                : 'http://localhost:5000/api/inventory';
             const headers = { Authorization: `Bearer ${token}` };
+
+            if (activeTab === 'Copper') {
+                if (editingCopperItem) {
+                    const payload = {
+                        size: copperFormData.size,
+                        sentQty: Number(copperFormData.sentQty || 0),
+                        returnQty: Number(copperFormData.returnQty || 0)
+                    };
+                    await axios.put(`${API_BASE_URL}/inventory/copper/${editingCopperItem.id}`, payload, { headers });
+                } else {
+                    const group = copperFormData.groupName || 'Standard Sizes';
+                    let sizeVal = copperFormData.size.trim();
+                    if (group !== 'Standard Sizes' && !sizeVal.toLowerCase().startsWith(group.toLowerCase() + ' ')) {
+                        sizeVal = group + ' ' + sizeVal;
+                    }
+                    const payload = {
+                        size: sizeVal,
+                        totalInStock: Number(copperFormData.totalInStock || 0),
+                        groupName: group
+                    };
+                    await axios.post(`${API_BASE_URL}/inventory/copper`, payload, { headers });
+                }
+                fetchCopperLogs();
+                closeModal();
+                return;
+            }
+
+            const apiUrl = `${API_BASE_URL}/inventory`;
 
             if (editingItem) {
                 if (isEditingFullDetails) {
@@ -252,15 +352,18 @@ const InventoryManagement: React.FC = () => {
             fetchInventory();
             closeModal();
         } catch (err: any) {
-            alert(err.response?.data?.error || 'Failed to save item');
+            toast.error(err.response?.data?.error || 'Failed to save item');
         }
     };
 
     const fetchHistory = async () => {
+        if (activeTab === 'Copper') {
+            setIsHistoryModalOpen(true);
+            setHistoryPage(1);
+            return;
+        }
         try {
-            const apiUrl = import.meta.env.VITE_API_URL
-                ? `${import.meta.env.VITE_API_URL}/inventory/history`
-                : `http://localhost:5000/api/inventory/history`;
+            const apiUrl = `${API_BASE_URL}/inventory/history`;
 
             const res = await axios.get(apiUrl, {
                 headers: { Authorization: `Bearer ${token}` }
@@ -270,7 +373,7 @@ const InventoryManagement: React.FC = () => {
             setIsHistoryModalOpen(true);
 
         } catch (err: any) {
-            alert(err.response?.data?.error || 'Failed to fetch history');
+            toast.error(err.response?.data?.error || 'Failed to fetch history');
         }
     };
 
@@ -281,13 +384,11 @@ const InventoryManagement: React.FC = () => {
 
     const handleSold = async (item: InventoryItem) => {
         if (item.quantity <= 0) {
-            alert('Out of stock!');
+            toast.error('Out of stock!');
             return;
         }
         try {
-            const apiUrl = import.meta.env.VITE_API_URL
-                ? `${import.meta.env.VITE_API_URL}/inventory/${item.id}`
-                : `http://localhost:5000/api/inventory/${item.id}`;
+            const apiUrl = `${API_BASE_URL}/inventory/${item.id}`;
             const headers = { Authorization: `Bearer ${token}` };
 
             const updatedData = {
@@ -310,10 +411,10 @@ const InventoryManagement: React.FC = () => {
                 quantity: item.quantity,
                 soldQuantity: item.soldQuantity
             });
-
+            toast.success(`${item.modelName} marked as sold`);
             fetchInventory();
         } catch (err: any) {
-            alert(err.response?.data?.error || 'Failed to update sold status');
+            toast.error(err.response?.data?.error || 'Failed to update sold status');
         }
     };
 
@@ -324,9 +425,7 @@ const InventoryManagement: React.FC = () => {
             const itemToRevert = items.find(i => i.id === lastSoldItem.id);
             if (!itemToRevert) return;
 
-            const apiUrl = import.meta.env.VITE_API_URL
-                ? `${import.meta.env.VITE_API_URL}/inventory/${lastSoldItem.id}`
-                : `http://localhost:5000/api/inventory/${lastSoldItem.id}`;
+            const apiUrl = `${API_BASE_URL}/inventory/${lastSoldItem.id}`;
             const headers = { Authorization: `Bearer ${token}` };
 
             const revertedData = {
@@ -343,38 +442,164 @@ const InventoryManagement: React.FC = () => {
 
             await axios.put(apiUrl, revertedData, { headers });
             setLastSoldItem(null);
+            toast.success("Action undone successfully");
             fetchInventory();
         } catch (err: any) {
-            alert(err.response?.data?.error || 'Failed to undo action');
+            toast.error(err.response?.data?.error || 'Failed to undo action');
         }
     };
 
-    const handleDelete = async (id: number) => {
-        if (!window.confirm('Are you sure you want to delete this item?')) return;
-        try {
-            const apiUrl = import.meta.env.VITE_API_URL
-                ? `${import.meta.env.VITE_API_URL}/inventory/${id}`
-                : `http://localhost:5000/api/inventory/${id}`;
+    const handleDelete = (id: number) => {
+        const itemToDelete = items.find(i => i.id === id);
+        toast.error("Delete inventory item?", {
+            description: `Are you sure you want to delete ${itemToDelete ? itemToDelete.modelName : 'this item'}?`,
+            action: {
+                label: "Delete",
+                onClick: async () => {
+                    try {
+                        const apiUrl = `${API_BASE_URL}/inventory/${id}`;
 
-            await axios.delete(apiUrl, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            fetchInventory();
-        } catch (err: any) {
-            alert(err.response?.data?.error || 'Failed to delete item');
-        }
+                        await axios.delete(apiUrl, {
+                            headers: { Authorization: `Bearer ${token}` }
+                        });
+                        toast.success("Item deleted successfully!");
+                        fetchInventory();
+                    } catch (err: any) {
+                        toast.error(err.response?.data?.error || 'Failed to delete item');
+                    }
+                }
+            }
+        });
     };
 
-    const filteredItems = items.filter(item => item.brand === activeTab);
+    const filteredItems = items.filter(item => item.brand === (activeTab === 'Copper' ? 'Mitsubishi' : activeTab));
     const paginatedItems = filteredItems.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
     const totalItemsPages = Math.ceil(filteredItems.length / itemsPerPage);
 
-    const groupedCopperLogs = buildGroupedCopperLogs();
-    const paginatedCopperLogs = groupedCopperLogs.slice((copperPage - 1) * itemsPerPage, copperPage * itemsPerPage);
-    const totalCopperPages = Math.ceil(groupedCopperLogs.length / itemsPerPage);
+    const copperSummary = copperInventoryLogs.map(item => ({
+        id: item.id,
+        size: item.size,
+        groupName: item.groupName || 'Standard Sizes',
+        totalInStock: Number(item.totalInStock || 0)
+    }));
+
+    const getCopperSizeTotals = (size: string) => {
+        let sent = 0;
+        let returned = 0;
+        const todayStr = new Date().toISOString().split('T')[0];
+
+        copperHistoryLogs.forEach(log => {
+            if (log.size === size && log.date === todayStr) {
+                sent += Number(log.sentQty || 0);
+                returned += Number(log.returnQty || 0);
+            }
+        });
+        return { sent, returned };
+    };
+
+    const formatSize = (size: string, groupName?: string) => {
+        let clean = size;
+        if (groupName && groupName !== 'Standard Sizes') {
+            const escapedGroup = groupName.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+            const prefix = new RegExp('^' + escapedGroup + '\\s+', 'i');
+            clean = clean.replace(prefix, '');
+        }
+        clean = clean.replace(/^(Homes|Home)\s+/i, '').trim().replace(/"/g, '');
+        return `${clean}"`;
+    };
+
+    const handleCopperDrop = async (e: React.DragEvent, targetGroup: string) => {
+        e.preventDefault();
+        const dataStr = e.dataTransfer.getData('text/plain');
+        if (!dataStr) return;
+        
+        try {
+            const dragData = JSON.parse(dataStr) as { id: number; size: string };
+            const { id } = dragData;
+            
+            const headers = { Authorization: `Bearer ${token}` };
+            await axios.put(`${API_BASE_URL}/inventory/copper/group/${id}`, { groupName: targetGroup }, { headers });
+            fetchCopperLogs();
+        } catch (err: any) {
+            console.error("Failed to move size group:", err);
+            toast.error(err.response?.data?.error || 'Failed to move size group.');
+        }
+    };
+
+    const renderCopperCard = (summary: { id: number; size: string; groupName: string; totalInStock: number }) => {
+        const { sent, returned } = getCopperSizeTotals(summary.size);
+        const originalItem = copperInventoryLogs.find(item => item.size === summary.size);
+        
+        return (
+            <div 
+                key={summary.size} 
+                draggable={true}
+                onDragStart={(e) => {
+                    e.dataTransfer.setData('text/plain', JSON.stringify({ id: summary.id, size: summary.size }));
+                }}
+                onClick={() => originalItem && openModal(undefined, originalItem)}
+                className={`p-3.5 rounded-2xl border shadow-sm flex flex-col justify-between hover:shadow-md hover:scale-[1.01] active:scale-[0.99] transition-all duration-300 cursor-grab active:cursor-grabbing select-none group relative ${
+                    isDark 
+                        ? 'bg-[#242427] border-zinc-800/80 hover:border-blue-500 text-white' 
+                        : 'bg-white border-slate-200/60 hover:border-blue-300 text-slate-800'
+                }`}
+                title="Drag to group, or click to record movement"
+            >
+                <div>
+                    <div className="flex justify-between items-baseline">
+                        <span className={`text-lg font-extrabold ${isDark ? 'text-white' : 'text-slate-800'}`}>
+                            {formatSize(summary.size, summary.groupName)}
+                        </span>
+                        <div className="flex items-center gap-1">
+                            <span className={`text-lg font-extrabold ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
+                                {summary.totalInStock.toFixed(1)} ft
+                            </span>
+                            {(user?.role === 'superadmin' || user?.role === 'admin') && originalItem && (
+                                <button
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteCopperSize(originalItem.id);
+                                    }}
+                                    className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all md:opacity-0 md:group-hover:opacity-100 shrink-0 ${
+                                        isDark 
+                                            ? 'text-zinc-500 hover:text-red-400 hover:bg-red-950/40' 
+                                            : 'text-slate-350 text-slate-300 hover:text-red-600 hover:bg-red-50'
+                                    }`}
+                                    title="Delete Size from Stock"
+                                >
+                                    <i className="fa-solid fa-trash-can text-[10px]"></i>
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                    <div className={`flex justify-between items-center text-[9px] uppercase tracking-widest font-black mt-0.5 ${
+                        isDark ? 'text-zinc-500' : 'text-slate-400'
+                    }`}>
+                        <span>Copper Diameter</span>
+                        <span>In Stock</span>
+                    </div>
+                </div>
+                <div className={`mt-3 pt-2.5 border-t grid grid-cols-2 gap-2 text-[10px] ${
+                    isDark ? 'border-zinc-800' : 'border-slate-100'
+                }`}>
+                    <div className="flex flex-col">
+                        <span className={`${isDark ? 'text-zinc-500' : 'text-slate-400'} font-medium`}>Sent</span>
+                        <span className="font-bold text-red-500">{sent.toFixed(1)} ft</span>
+                    </div>
+                    <div className="flex flex-col text-right">
+                        <span className={`${isDark ? 'text-zinc-500' : 'text-slate-400'} font-medium`}>Returned</span>
+                        <span className="font-bold text-emerald-500">{returned.toFixed(1)} ft</span>
+                    </div>
+                </div>
+            </div>
+        );
+    };
 
     const lowStockItems = enableLowStockAlert ? items.filter(i => i.quantity <= lowStockThreshold) : [];
-    const totalLowStockCount = lowStockItems.length;
+    const lowStockCopperItems = enableCopperPipeLowStockAlert ? copperSummary.filter(c => c.totalInStock <= copperPipeLowStockThreshold) : [];
+    const activeLowStockCount = activeTab === 'Copper' ? lowStockCopperItems.length : lowStockItems.length;
+    const isAlertEnabledForTab = activeTab === 'Copper' ? enableCopperPipeLowStockAlert : enableLowStockAlert;
 
     if (isLoading) return <div className="p-6">Loading inventory...</div>;
     if (error) return <div className="p-6 text-red-500">{error}</div>;
@@ -383,37 +608,53 @@ const InventoryManagement: React.FC = () => {
         <div className="space-y-6 max-w-7xl mx-auto">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-slate-900">Inventory Management</h1>
-                    <p className="text-slate-500 text-sm mt-1">Manage stock, pricing, and product details</p>
+                    <h1 className={`text-2xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>Inventory Management</h1>
+                    <p className={`${isDark ? 'text-zinc-400' : 'text-slate-500'} text-sm mt-1`}>Manage stock, pricing, and product details</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
                     {lastSoldItem && (
                         <button
                             onClick={handleUndo}
-                            className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 border border-slate-200"
+                            className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 border ${
+                                isDark 
+                                    ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border-zinc-700' 
+                                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
+                            }`}
                         >
                             <i className="fa-solid fa-rotate-left"></i>
                             Undo
                         </button>
                     )}
-                    <div className="flex items-center gap-2 mr-2 bg-slate-50 p-1.5 rounded-xl border border-slate-200">
+                    <div className={`flex items-center gap-2 mr-2 p-1.5 rounded-xl border ${
+                        isDark ? 'bg-zinc-900/50 border-zinc-800' : 'bg-slate-50 border-slate-200'
+                    }`}>
                         <button
                             onClick={fetchHistory}
                             title="Global Audit History"
-                            className="w-10 h-10 rounded-lg flex items-center justify-center text-amber-600 bg-amber-50 hover:bg-amber-100 transition-colors border border-amber-200 shadow-sm"
+                            className={`w-10 h-10 rounded-lg flex items-center justify-center border shadow-sm transition-colors ${
+                                isDark 
+                                    ? 'text-amber-400 bg-amber-950/20 hover:bg-amber-900/20 border-amber-950/40' 
+                                    : 'text-amber-600 bg-amber-50 hover:bg-amber-100 border-amber-200'
+                            }`}
                         >
                             <i className="fa-solid fa-history text-lg"></i>
                         </button>
-                        {enableLowStockAlert && (
+                        {isAlertEnabledForTab && (
                             <button
                                 onClick={() => setIsLowStockModalOpen(true)}
-                                title="Low Stock Vehicles"
-                                className="relative w-10 h-10 rounded-lg flex items-center justify-center text-red-600 bg-red-50 hover:bg-red-100 transition-colors border border-red-200 shadow-sm"
+                                title={activeTab === 'Copper' ? "Low Copper Pipe Alerts" : "Low Stock Alerts"}
+                                className={`relative w-10 h-10 rounded-lg flex items-center justify-center border shadow-sm transition-colors ${
+                                    isDark 
+                                        ? 'text-red-400 bg-red-950/20 hover:bg-red-900/20 border-red-950/40' 
+                                        : 'text-red-600 bg-red-50 hover:bg-red-100 border-red-200'
+                                }`}
                             >
                                 <i className="fa-solid fa-triangle-exclamation text-lg"></i>
-                                {totalLowStockCount > 0 && (
-                                    <span className="absolute -top-1.5 -right-1.5 bg-red-600 text-white text-[10px] font-bold px-1.5 min-w-[18px] h-[18px] rounded-full flex items-center justify-center border-2 border-white shadow-sm">
-                                        {totalLowStockCount}
+                                {activeLowStockCount > 0 && (
+                                    <span className={`absolute -top-1.5 -right-1.5 bg-red-600 text-white text-[10px] font-bold px-1.5 min-w-[18px] h-[18px] rounded-full flex items-center justify-center border-2 shadow-sm ${
+                                        isDark ? 'border-[#1e1e21]' : 'border-white'
+                                    }`}>
+                                        {activeLowStockCount}
                                     </span>
                                 )}
                             </button>
@@ -424,31 +665,45 @@ const InventoryManagement: React.FC = () => {
                         className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm shadow-blue-500/30 transition-all flex items-center gap-2"
                     >
                         <i className="fa-solid fa-plus"></i>
-                        Add Product
+                        {activeTab === 'Copper' ? 'Copper Pipe' : 'Add Product'}
                     </button>
                 </div>
             </div>
 
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className={`rounded-2xl shadow-sm border overflow-hidden ${
+                isDark ? 'bg-[#242427] border-zinc-800' : 'bg-white border-slate-200'
+            }`}>
                 {/* Tabs */}
-                <div className="flex border-b border-slate-200">
+                <div className={`flex border-b ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>
                     <button
-                        className={`flex-1 py-4 text-sm font-semibold text-center transition-colors ${activeTab === 'Mitsubishi' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
+                        className={`flex-1 py-4 text-sm font-semibold text-center transition-colors ${
+                            activeTab === 'Mitsubishi' 
+                                ? isDark ? 'text-blue-400 border-b-2 border-blue-500 bg-blue-950/20' : 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50' 
+                                : isDark ? 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                        }`}
                         onClick={() => setActiveTab('Mitsubishi')}
                     >
                         Mitsubishi
                     </button>
                     <button
-                        className={`flex-1 py-4 text-sm font-semibold text-center transition-colors ${activeTab === 'Akabishi' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
+                        className={`flex-1 py-4 text-sm font-semibold text-center transition-colors ${
+                            activeTab === 'Akabishi' 
+                                ? isDark ? 'text-blue-400 border-b-2 border-blue-500 bg-blue-950/20' : 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50' 
+                                : isDark ? 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                        }`}
                         onClick={() => setActiveTab('Akabishi')}
                     >
                         Akabishi
                     </button>
                     <button
-                        className={`flex-1 py-4 text-sm font-semibold text-center transition-colors ${activeTab === 'Copper' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
+                        className={`flex-1 py-4 text-sm font-semibold text-center transition-colors ${
+                            activeTab === 'Copper' 
+                                ? isDark ? 'text-blue-400 border-b-2 border-blue-500 bg-blue-950/20' : 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50' 
+                                : isDark ? 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                        }`}
                         onClick={() => setActiveTab('Copper')}
                     >
-                        Copper
+                        Copper Pipe
                     </button>
                 </div>
 
@@ -456,7 +711,9 @@ const InventoryManagement: React.FC = () => {
                 {(activeTab === 'Mitsubishi' || activeTab === 'Akabishi') && (
                 <div className="w-full">
                     <table className="w-full text-left text-sm block sm:table table-fixed">
-                        <thead className="hidden sm:table-header-group bg-slate-50 text-slate-600 uppercase text-[10px] sm:text-xs font-semibold border-b border-slate-200">
+                        <thead className={`hidden sm:table-header-group uppercase text-[10px] sm:text-xs font-semibold border-b ${
+                            isDark ? 'bg-[#1e1e21] text-zinc-400 border-zinc-855 border-zinc-800' : 'bg-slate-50 text-slate-600 border-slate-200'
+                        }`}>
                             <tr>
                                 <th className="px-3 py-3 w-auto whitespace-nowrap">Model Name</th>
                                 <th className="px-3 py-3 w-[12%] sm:w-auto">Type</th>
@@ -469,62 +726,100 @@ const InventoryManagement: React.FC = () => {
                                 <th className="px-3 py-3 text-right w-auto whitespace-nowrap">Actions</th>
                             </tr>
                         </thead>
-                        <tbody className="block sm:table-row-group divide-y sm:divide-y divide-slate-100">
+                        <tbody className={`block sm:table-row-group divide-y ${isDark ? 'divide-zinc-800 bg-[#242427]' : 'divide-slate-100 bg-white'}`}>
                             {filteredItems.length === 0 ? (
                                 <tr>
-                                    <td colSpan={7} className="px-6 py-8 text-center text-slate-500">
+                                    <td colSpan={9} className={`px-6 py-8 text-center ${isDark ? 'text-zinc-500' : 'text-slate-500'}`}>
                                         No products found for {activeTab}.
                                     </td>
                                 </tr>
                             ) : (
                                 paginatedItems.map(item => (
-                                    <tr key={item.id} className="block sm:table-row bg-white border border-slate-200 sm:border-none rounded-xl sm:rounded-none mb-4 sm:mb-0 shadow-sm sm:shadow-none hover:bg-slate-50/50 transition-colors text-xs sm:text-sm">
-                                        <td className="flex sm:table-cell justify-between items-center px-4 sm:px-3 py-3 border-b border-slate-50 sm:border-none font-medium text-slate-900 whitespace-nowrap text-right sm:text-left">
-                                            <span className="sm:hidden font-semibold text-slate-500 text-[10px] uppercase text-left w-1/3">Model Name</span>
+                                    <tr key={item.id} className={`block sm:table-row border sm:border-none rounded-xl sm:rounded-none mb-4 sm:mb-0 shadow-sm sm:shadow-none transition-colors text-xs sm:text-sm ${
+                                        isDark 
+                                            ? 'bg-[#242427] border-zinc-800 hover:bg-zinc-800/40' 
+                                            : 'bg-white border-slate-200 hover:bg-slate-50/50'
+                                    }`}>
+                                        <td className={`flex sm:table-cell justify-between items-center px-4 sm:px-3 py-3 border-b sm:border-none font-medium whitespace-nowrap text-right sm:text-left ${
+                                            isDark ? 'border-zinc-800 text-white' : 'border-slate-50 text-slate-900'
+                                        }`}>
+                                            <span className={`sm:hidden font-semibold text-[10px] uppercase text-left w-1/3 ${isDark ? 'text-zinc-500' : 'text-slate-550 text-slate-500'}`}>Model Name</span>
                                             <span>{item.modelName}</span>
                                         </td>
-                                        <td className="flex sm:table-cell justify-between items-center px-4 sm:px-3 py-2 sm:py-3 border-b border-slate-50 sm:border-none text-slate-600">
-                                            <span className="sm:hidden font-semibold text-slate-500 text-[10px] uppercase w-1/3">Type</span>
-                                            <span className="bg-slate-100 text-slate-700 px-2 py-1 rounded text-[10px] sm:text-xs whitespace-normal break-words inline-block text-right sm:text-left">
+                                        <td className={`flex sm:table-cell justify-between items-center px-4 sm:px-3 py-2 sm:py-3 border-b sm:border-none ${
+                                            isDark ? 'border-zinc-800 text-zinc-300' : 'border-slate-50 text-slate-600'
+                                        }`}>
+                                            <span className={`sm:hidden font-semibold text-[10px] uppercase w-1/3 ${isDark ? 'text-zinc-500' : 'text-slate-500'}`}>Type</span>
+                                            <span className={`px-2 py-1 rounded text-[10px] sm:text-xs whitespace-normal break-words inline-block text-right sm:text-left ${
+                                                isDark ? 'bg-zinc-800 text-zinc-200' : 'bg-slate-100 text-slate-700'
+                                            }`}>
                                                 {item.type || 'N/A'}
                                             </span>
                                         </td>
-                                        <td className="flex sm:table-cell justify-between items-center px-4 sm:px-2 py-2 sm:py-3 border-b border-slate-50 sm:border-none text-slate-600">
-                                            <span className="sm:hidden font-semibold text-slate-500 text-[10px] uppercase w-1/3">Tonnage</span>
+                                        <td className={`flex sm:table-cell justify-between items-center px-4 sm:px-2 py-2 sm:py-3 border-b sm:border-none ${
+                                            isDark ? 'border-zinc-800 text-zinc-300' : 'border-slate-50 text-slate-600'
+                                        }`}>
+                                            <span className={`sm:hidden font-semibold text-[10px] uppercase w-1/3 ${isDark ? 'text-zinc-500' : 'text-slate-500'}`}>Tonnage</span>
                                             <span className="text-right sm:text-left">{item.tonnage || '-'}</span>
                                         </td>
-                                        <td className="flex sm:table-cell justify-between items-center px-4 sm:px-3 py-2 sm:py-3 border-b border-slate-50 sm:border-none text-slate-600">
-                                            <span className="sm:hidden font-semibold text-slate-500 text-[10px] uppercase w-1/3">Cost</span>
+                                        <td className={`flex sm:table-cell justify-between items-center px-4 sm:px-3 py-2 sm:py-3 border-b sm:border-none ${
+                                            isDark ? 'border-zinc-800 text-zinc-300' : 'border-slate-50 text-slate-600'
+                                        }`}>
+                                            <span className={`sm:hidden font-semibold text-[10px] uppercase w-1/3 ${isDark ? 'text-zinc-500' : 'text-slate-500'}`}>Cost</span>
                                             <span className="text-right sm:text-left">₹{Number(item.ourPrice).toLocaleString()}</span>
                                         </td>
-                                        <td className="flex sm:table-cell justify-between items-center px-4 sm:px-3 py-2 sm:py-3 border-b border-slate-50 sm:border-none text-slate-600">
-                                            <span className="sm:hidden font-semibold text-slate-500 text-[10px] uppercase w-1/3">Sale</span>
+                                        <td className={`flex sm:table-cell justify-between items-center px-4 sm:px-3 py-2 sm:py-3 border-b sm:border-none ${
+                                            isDark ? 'border-zinc-800 text-zinc-300' : 'border-slate-50 text-slate-600'
+                                        }`}>
+                                            <span className={`sm:hidden font-semibold text-[10px] uppercase w-1/3 ${isDark ? 'text-zinc-500' : 'text-slate-500'}`}>Sale</span>
                                             <span className="text-right sm:text-left">₹{Number(item.salePrice).toLocaleString()}</span>
                                         </td>
-                                        <td className="flex sm:table-cell justify-between items-center px-4 sm:px-2 py-2 sm:py-3 border-b border-slate-50 sm:border-none sm:text-center">
-                                            <span className="sm:hidden font-semibold text-slate-500 text-[10px] uppercase w-1/3">Qty</span>
-                                            <span className={`inline-block px-2 py-1 rounded-full text-[10px] sm:text-xs font-bold whitespace-nowrap text-right sm:text-center ${item.quantity <= 5 ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                                        <td className={`flex sm:table-cell justify-between items-center px-4 sm:px-2 py-2 sm:py-3 border-b sm:border-none sm:text-center ${
+                                            isDark ? 'border-zinc-800' : 'border-slate-50'
+                                        }`}>
+                                            <span className={`sm:hidden font-semibold text-[10px] uppercase w-1/3 ${isDark ? 'text-zinc-500' : 'text-slate-500'}`}>Qty</span>
+                                            <span className={`inline-block px-2 py-1 rounded-full text-[10px] sm:text-xs font-bold whitespace-nowrap text-right sm:text-center ${
+                                                item.quantity <= 5 
+                                                    ? isDark ? 'bg-red-950/40 text-red-400' : 'bg-red-100 text-red-700' 
+                                                    : isDark ? 'bg-emerald-950/40 text-emerald-400' : 'bg-emerald-100 text-emerald-700'
+                                            }`}>
                                                 {item.quantity}
                                             </span>
                                         </td>
-                                        <td className="flex sm:table-cell justify-between items-center px-4 sm:px-2 py-2 sm:py-3 border-b border-slate-50 sm:border-none text-slate-800 font-bold sm:text-center">
-                                            <span className="sm:hidden font-semibold text-slate-500 text-[10px] uppercase w-1/3">Sold</span>
+                                        <td className={`flex sm:table-cell justify-between items-center px-4 sm:px-2 py-2 sm:py-3 border-b sm:border-none font-bold sm:text-center ${
+                                            isDark ? 'border-zinc-800 text-zinc-200' : 'border-slate-50 text-slate-800'
+                                        }`}>
+                                            <span className={`sm:hidden font-semibold text-[10px] uppercase w-1/3 ${isDark ? 'text-zinc-500' : 'text-slate-500'}`}>Sold</span>
                                             <span className="text-right sm:text-center">{item.soldQuantity || 0}</span>
                                         </td>
-                                        <td className="hidden lg:table-cell px-1 py-3 text-slate-500 text-xs whitespace-nowrap">
+                                        <td className={`hidden lg:table-cell px-1 py-3 text-xs whitespace-nowrap ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>
                                             {new Date(item.updatedAt).toLocaleDateString('en-GB')}
                                         </td>
-                                        <td className="flex sm:table-cell justify-between items-center px-4 sm:px-3 py-3 sm:py-3 text-right">
-                                            <span className="sm:hidden font-semibold text-slate-500 text-[10px] uppercase text-left w-1/3">Actions</span>
+                                        <td className={`flex sm:table-cell justify-between items-center px-4 sm:px-3 py-3 border-b sm:border-none text-right ${
+                                            isDark ? 'border-zinc-800' : 'border-slate-50'
+                                        }`}>
+                                            <span className={`sm:hidden font-semibold text-[10px] uppercase text-left w-1/3 ${isDark ? 'text-zinc-500' : 'text-slate-500'}`}>Actions</span>
                                             <div className="flex flex-row justify-end gap-1 w-full lg:w-auto ml-auto">
-                                                <button onClick={() => handleSold(item)} title="Mark Sold" className="text-emerald-600 hover:text-emerald-800 p-1.5 rounded-lg hover:bg-emerald-50 transition-colors bg-emerald-50 sm:bg-transparent border border-emerald-200 sm:border-none shadow-sm sm:shadow-none flex items-center justify-center w-8 h-8">
+                                                <button onClick={() => handleSold(item)} title="Mark Sold" className={`p-1.5 rounded-lg transition-colors border shadow-sm sm:shadow-none flex items-center justify-center w-8 h-8 ${
+                                                    isDark 
+                                                        ? 'text-emerald-400 hover:text-emerald-300 hover:bg-emerald-950/30 bg-emerald-950/20 border-emerald-900/35 sm:bg-transparent sm:border-none' 
+                                                        : 'text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 bg-emerald-50 sm:bg-transparent border border-emerald-200 sm:border-none'
+                                                }`}>
                                                     <span className="material-icons-outlined text-[18px]">remove</span>
                                                 </button>
-                                                <button onClick={() => openModal(item)} title="Update Stock" className="text-blue-600 hover:text-blue-800 p-1.5 rounded-lg hover:bg-blue-50 transition-colors bg-blue-50 sm:bg-transparent border border-blue-200 sm:border-none shadow-sm sm:shadow-none flex items-center justify-center w-8 h-8">
+                                                <button onClick={() => openModal(item)} title="Update Stock" className={`p-1.5 rounded-lg transition-colors border shadow-sm sm:shadow-none flex items-center justify-center w-8 h-8 ${
+                                                    isDark 
+                                                        ? 'text-blue-400 hover:text-blue-300 hover:bg-blue-950/30 bg-blue-950/20 border-blue-900/35 sm:bg-transparent sm:border-none' 
+                                                        : 'text-blue-600 hover:text-blue-800 hover:bg-blue-50 bg-blue-50 sm:bg-transparent border border-blue-200 sm:border-none'
+                                                }`}>
                                                     <span className="material-icons-outlined text-[18px]">add</span>
                                                 </button>
                                                 {user?.role === 'superadmin' && (
-                                                    <button onClick={() => handleDelete(item.id)} title="Delete" className="text-red-600 hover:text-red-800 p-1.5 rounded-lg hover:bg-red-50 transition-colors bg-red-50 sm:bg-transparent border border-red-200 sm:border-none shadow-sm sm:shadow-none flex items-center justify-center w-8 h-8">
+                                                    <button onClick={() => handleDelete(item.id)} title="Delete" className={`p-1.5 rounded-lg transition-colors border shadow-sm sm:shadow-none flex items-center justify-center w-8 h-8 ${
+                                                        isDark 
+                                                            ? 'text-red-400 hover:text-red-300 hover:bg-red-950/30 bg-red-950/20 border-red-900/35 sm:bg-transparent sm:border-none' 
+                                                            : 'text-red-600 hover:text-red-800 hover:bg-red-50 bg-red-50 sm:bg-transparent border border-red-200 sm:border-none'
+                                                    }`}>
                                                         <span className="material-icons-outlined text-[18px]">delete</span>
                                                     </button>
                                                 )}
@@ -532,166 +827,106 @@ const InventoryManagement: React.FC = () => {
                                         </td>
                                     </tr>
                                 ))
-                            )}
+                             )}
                         </tbody>
                     </table>
-                    <Pagination
+                    <Pagination isDark={isDark}
                         currentPage={currentPage}
                         totalPages={totalItemsPages}
                         onPageChange={setCurrentPage}
                     />
                 </div>
-
                 )}
 
-                {/* Copper Tab Content */}
                 {activeTab === 'Copper' && (
-                    <div className="p-4 sm:p-6 space-y-8">
-                        {isCopperLoading && <div className="py-10 text-center text-slate-400"><i className="fa-solid fa-spinner fa-spin text-2xl"></i></div>}
-                        {!isCopperLoading && (
-                        <>
-                        <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200">
-                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-4">
-                                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Log Copper Usage</h3>
-                                <div className="flex items-center gap-2">
-                                    <div className="flex items-center gap-2 bg-white px-3 py-1 border border-slate-200 rounded-lg shadow-sm">
-                                        <i className="fa-solid fa-calendar text-slate-400 text-xs"></i>
-                                        <input type="date" required value={copperDate} onChange={e => setCopperDate(e.target.value)} className="bg-transparent border-none text-sm font-semibold focus:ring-0 text-slate-700 outline-none w-[125px]" />
-                                    </div>
-                                    <button type="button" onClick={handleAddCopperEntry} className="bg-white border border-slate-200 text-blue-600 w-8 h-8 rounded-lg shadow-sm flex items-center justify-center hover:bg-blue-50 transition-colors" title="Add Custom Size Entry">
-                                        <i className="fa-solid fa-plus"></i>
-                                    </button>
-                                </div>
+                    <div className="w-full flex flex-col gap-6 p-6">
+                        {/* Header bar for groups */}
+                        <div className="flex justify-between items-center pb-2 border-b border-dashed border-zinc-800/20">
+                            <div className="flex items-center gap-2">
+                                <h3 className={`text-base font-bold ${isDark ? 'text-white' : 'text-slate-800'}`}>
+                                    Group Boards
+                                </h3>
+                                <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold ${isDark ? 'bg-zinc-800 text-zinc-400' : 'bg-slate-100 text-slate-600'}`}>
+                                    {customGroups.length} Groups
+                                </span>
                             </div>
-
-                            <form onSubmit={handleCopperSubmit} className="space-y-4">
-                                <div className="overflow-x-auto border border-slate-200 rounded-xl bg-white shadow-sm">
-                                    <table className="w-full text-left text-sm">
-                                        <thead className="bg-slate-100 text-slate-500 text-[10px] uppercase font-black tracking-wider">
-                                            <tr>
-                                                <th className="p-3 pl-5 border-b border-r border-slate-200 min-w-[150px]">Pipe Size</th>
-                                                <th className="p-3 border-b border-r border-slate-200 min-w-[120px] text-center">Sent</th>
-                                                <th className="p-3 border-b border-r border-slate-200 min-w-[120px] text-center">Return</th>
-                                                <th className="p-3 border-b border-slate-200 w-16 text-center"></th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-100 bg-white">
-                                            {copperEntries.map((entry) => (
-                                                <tr key={entry.id} className="hover:bg-slate-50/50 group transition-colors">
-                                                    <td className="p-1.5 border-r border-slate-100 align-top relative">
-                                                        {!entry.isCustomSize ? (
-                                                            <div className="relative h-full flex items-center">
-                                                                <select required value={entry.size} onChange={(e) => { if (e.target.value === 'custom') { handleCopperEntryChange(entry.id, 'isCustomSize', true); } else { handleCopperEntryChange(entry.id, 'size', e.target.value); }}}
-                                                                    className={`w-full bg-transparent border-none py-2 pl-3 pr-8 text-sm font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all appearance-none cursor-pointer ${!entry.size ? 'text-slate-400' : 'text-slate-800'}`}>
-                                                                    <option value="" disabled hidden>Select Size...</option>
-                                                                    {copperSizes.map(size => {
-                                                                        const isSelectedElsewhere = copperEntries.some(e => e.id !== entry.id && e.size === size);
-                                                                        return (<option key={size} value={size} disabled={isSelectedElsewhere} className={isSelectedElsewhere ? 'text-slate-300 bg-slate-50' : 'text-slate-800'}>{size} {isSelectedElsewhere ? '(Selected)' : ''}</option>);
-                                                                    })}
-                                                                    <option value="custom" className="text-blue-600 font-bold">Other (Custom)...</option>
-                                                                </select>
-                                                                <i className="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs"></i>
-                                                            </div>
-                                                        ) : (
-                                                            <div className="flex items-center gap-1 p-1 h-full">
-                                                                <input type="text" required value={entry.size} onChange={(e) => handleCopperEntryChange(entry.id, 'size', e.target.value)} placeholder="Type size..." autoFocus
-                                                                    className="w-full bg-white border border-blue-300 rounded-lg pl-3 pr-3 py-1.5 text-sm font-semibold text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all" />
-                                                                <button type="button" onClick={() => handleCopperEntryChange(entry.id, 'isCustomSize', false)} className="p-2 text-slate-400 hover:text-red-500" title="Cancel Custom Size">
-                                                                    <i className="fa-solid fa-xmark text-sm"></i>
-                                                                </button>
-                                                            </div>
-                                                        )}
-                                                    </td>
-                                                    <td className={`p-1.5 border-r border-slate-100 align-top transition-opacity duration-300 ${!entry.size ? 'opacity-40' : 'opacity-100'}`}>
-                                                        <input type="number" step="0.01" min="0" value={entry.sent} onChange={e => handleCopperEntryChange(entry.id, 'sent', e.target.value)} placeholder="0.00" disabled={!entry.size} className="w-full bg-transparent border-none px-3 py-2 text-sm font-semibold text-center focus:bg-white focus:ring-2 focus:ring-blue-500/20 rounded-md transition-all outline-none" />
-                                                    </td>
-                                                    <td className={`p-1.5 border-r border-slate-100 align-top transition-opacity duration-300 ${!entry.size ? 'opacity-40' : 'opacity-100'}`}>
-                                                        <input type="number" step="0.01" min="0" value={entry.return} onChange={e => handleCopperEntryChange(entry.id, 'return', e.target.value)} placeholder="0.00" disabled={!entry.size} className="w-full bg-transparent border-none px-3 py-2 text-sm font-semibold text-center focus:bg-white focus:ring-2 focus:ring-blue-500/20 rounded-md transition-all outline-none" />
-                                                    </td>
-                                                    <td className="p-1.5 text-center align-middle">
-                                                        <button type="button" onClick={() => handleRemoveCopperEntry(entry.id)} className="w-7 h-7 mx-auto rounded-lg bg-slate-100 text-slate-400 hover:bg-red-100 hover:text-red-500 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100" title="Remove Entry">
-                                                            <i className="fa-solid fa-trash-can text-xs"></i>
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <div className="flex justify-end pt-4 border-t border-slate-200 mt-6 gap-3">
-                                    <button type="submit" className="w-full sm:w-auto px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl transition-all shadow-md shadow-blue-500/20 flex items-center justify-center gap-2">
-                                        <i className="fa-solid fa-save"></i> Save Copper Logs
-                                    </button>
-                                </div>
-                            </form>
+                            <button
+                                type="button"
+                                onClick={handleAddGroup}
+                                className="bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 rounded-xl text-xs font-semibold shadow-sm transition-all flex items-center gap-1.5"
+                            >
+                                <i className="fa-solid fa-plus"></i>
+                                Add Group Board
+                            </button>
                         </div>
 
-                        {/* Copper History */}
-                        <div className="space-y-3">
-                            <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest">History</h3>
-                            <div className="overflow-x-auto rounded-xl border border-slate-200 shadow-sm">
-                                <table className="w-full text-left text-sm">
-                                    <thead className="bg-slate-100 text-slate-500 text-xs uppercase font-bold tracking-wider">
-                                        <tr>
-                                            <th className="p-4 border-b border-slate-200 text-slate-600">Date</th>
-                                            <th className="p-4 border-b border-slate-200 text-slate-600">Size</th>
-                                            <th className="p-4 border-b border-slate-200 text-right text-slate-600">Sent</th>
-                                            <th className="p-4 border-b border-slate-200 text-right text-slate-600">Return</th>
-                                            <th className="p-4 border-b border-slate-200 text-right text-emerald-600">Left</th>
-                                            <th className="p-4 border-b border-slate-200 text-right text-blue-600">Cumulative Total</th>
-                                            <th className="p-4 border-b border-slate-200 w-10"></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100 bg-white">
-                                        {paginatedCopperLogs.map((group: any) => (
-                                            <React.Fragment key={group.size}>
-                                                <tr className="hover:bg-slate-50/50 transition-colors cursor-pointer bg-slate-50/30" onClick={() => toggleCopperSize(group.size)}>
-                                                    <td className="p-4 font-bold text-slate-700 whitespace-nowrap">
-                                                        <i className={`fa-solid fa-chevron-${expandedCopperSizes[group.size] ? 'up' : 'down'} mr-3 text-slate-400 text-xs transition-transform`}></i>
-                                                        {new Date(group.logs[0].date).toLocaleDateString()} ({group.logs.length})
-                                                    </td>
-                                                    <td className="p-4 font-bold text-slate-900"><span className="bg-slate-100 px-2 py-1 rounded text-xs shadow-sm border border-slate-200">{group.size}</span></td>
-                                                    <td className="p-4 text-right font-bold text-slate-600">{group.totalSent.toFixed(2)}</td>
-                                                    <td className="p-4 text-right font-bold text-slate-600">{group.totalReturn.toFixed(2)}</td>
-                                                    <td className="p-4 text-right font-black text-emerald-600">{group.totalLeft.toFixed(2)}</td>
-                                                    <td className="p-4 text-right font-black text-blue-700 text-base bg-blue-50/50">{group.overallTotal}</td>
-                                                    <td className="p-4 text-center"></td>
-                                                </tr>
-                                                {expandedCopperSizes[group.size] && group.logs.map((log: any) => (
-                                                    <tr key={log.id} className="hover:bg-slate-50/50 transition-colors bg-white">
-                                                        <td className="p-4 pl-12 font-medium text-slate-500 whitespace-nowrap">
-                                                            <i className="fa-solid fa-turn-up fa-rotate-90 mr-2 text-slate-300"></i>
-                                                            {new Date(log.date).toLocaleDateString()}
-                                                        </td>
-                                                        <td className="p-4 text-slate-400 text-xs italic">Entry</td>
-                                                        <td className="p-4 text-right font-medium text-slate-500">{log.sent_qty}</td>
-                                                        <td className="p-4 text-right font-medium text-slate-500">{log.return_qty}</td>
-                                                        <td className="p-4 text-right font-bold text-emerald-500/80">{log.left}</td>
-                                                        <td className="p-4 text-right font-bold text-blue-600/80 bg-blue-50/20">{log.cumulativeTotal}</td>
-                                                        <td className="p-4 text-center">
-                                                            {user?.role === 'superadmin' && (
-                                                                <button onClick={(e) => { e.stopPropagation(); deleteCopperLog(log.id); }} className="w-8 h-8 rounded-full bg-slate-50 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all flex items-center justify-center mx-auto"><i className="fa-solid fa-trash-can"></i></button>
-                                                            )}
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </React.Fragment>
-                                        ))}
-                                        {copperLogs.length === 0 && (
-                                            <tr><td colSpan={7} className="p-8 text-center text-slate-400 italic font-medium">No copper logs recorded yet.</td></tr>
+                        {/* Horizontal Rows Container */}
+                        <div className="flex flex-col gap-6">
+                            {customGroups.map(groupName => {
+                                const groupItems = copperSummary.filter(s => s.groupName === groupName);
+                                const isDraggingOver = !!draggingOverGroup[groupName];
+                                
+                                return (
+                                    <div 
+                                        key={groupName}
+                                        onDragOver={(e) => {
+                                            e.preventDefault();
+                                            setDraggingOverGroup(prev => ({ ...prev, [groupName]: true }));
+                                        }}
+                                        onDragLeave={() => {
+                                            setDraggingOverGroup(prev => ({ ...prev, [groupName]: false }));
+                                        }}
+                                        onDrop={(e) => {
+                                            setDraggingOverGroup(prev => ({ ...prev, [groupName]: false }));
+                                            handleCopperDrop(e, groupName);
+                                        }}
+                                        className={`flex flex-col gap-4 border-2 border-dashed rounded-3xl p-5 transition-all duration-300 w-full ${
+                                            isDraggingOver
+                                                ? (isDark ? 'border-blue-500 bg-blue-500/5' : 'border-blue-500 bg-blue-50/50')
+                                                : (isDark ? 'border-zinc-800 bg-[#1e1e21]/30' : 'border-slate-200 bg-slate-50/30')
+                                        }`}
+                                    >
+                                        <h3 className={`text-sm font-bold uppercase tracking-wider pl-1 flex items-center justify-between transition-colors duration-300 ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>
+                                            <div className="flex items-center gap-2">
+                                                <span>{groupName}</span>
+                                                <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold transition-all ${
+                                                    isDark ? 'bg-zinc-800 text-zinc-300' : 'bg-slate-100 text-slate-600'
+                                                }`}>{groupItems.length} sizes</span>
+                                            </div>
+                                            {groupName !== 'Standard Sizes' && (
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDeleteGroup(groupName);
+                                                    }}
+                                                    className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all shrink-0 ${
+                                                        isDark 
+                                                            ? 'text-zinc-500 hover:text-red-400 hover:bg-red-955/40' 
+                                                            : 'text-slate-400 hover:text-red-600 hover:bg-red-50'
+                                                    }`}
+                                                    title={`Delete group ${groupName}`}
+                                                >
+                                                    <i className="fa-solid fa-trash-can text-[10px]"></i>
+                                                </button>
+                                            )}
+                                        </h3>
+
+                                        {groupItems.length === 0 ? (
+                                            <div className={`text-center py-8 border border-dashed rounded-2xl text-sm transition-all ${
+                                                isDark ? 'border-zinc-800 text-zinc-500' : 'border-slate-200 text-slate-400'
+                                            }`}>
+                                                Drag sizes here to add to this group
+                                            </div>
+                                        ) : (
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                                                {groupItems.map(summary => renderCopperCard(summary))}
+                                            </div>
                                         )}
-                                    </tbody>
-                                </table>
-                            </div>
-                            <Pagination
-                                currentPage={copperPage}
-                                totalPages={totalCopperPages}
-                                onPageChange={setCopperPage}
-                            />
+                                    </div>
+                                );
+                            })}
                         </div>
-
-                        </>
-                        )}
                     </div>
                 )}
             </div>
@@ -699,10 +934,14 @@ const InventoryManagement: React.FC = () => {
             {/* Modal */}
             {isModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
-                        <div className="p-6 border-b border-slate-100 flex justify-between items-center shrink-0">
-                            <h2 className="text-xl font-bold text-slate-800">
-                                {isEditingFullDetails ? 'Edit Product Details' : (editingItem ? 'Update Stock Options' : 'Add Product')}
+                    <div className={`rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh] border ${
+                        isDark ? 'bg-[#242427] border-zinc-800 text-zinc-100' : 'bg-white border-slate-200'
+                    }`}>
+                        <div className={`p-6 border-b flex justify-between items-center shrink-0 ${
+                            isDark ? 'bg-[#1e1e21] border-zinc-800' : 'bg-slate-50/50 border-slate-100'
+                        }`}>
+                            <h2 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-800'}`}>
+                                {activeTab === 'Copper' ? (editingCopperItem ? 'Record Copper Pipe Movement' : 'Add Copper Stock') : (isEditingFullDetails ? 'Edit Product Details' : (editingItem ? 'Update Stock Options' : 'Add Product'))}
                             </h2>
                             <div className="flex items-center gap-2">
                                 {editingItem && !isEditingFullDetails && (
@@ -722,13 +961,19 @@ const InventoryManagement: React.FC = () => {
                                                 salePrice: editingItem.salePrice
                                             });
                                         }}
-                                        className="text-slate-500 hover:text-blue-600 font-semibold px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors text-sm border border-slate-200 hover:border-blue-200 shadow-sm flex items-center gap-2"
+                                        className={`font-semibold px-3 py-1.5 rounded-lg transition-colors text-sm border shadow-sm flex items-center gap-2 ${
+                                            isDark 
+                                                ? 'text-zinc-300 border-zinc-700 hover:text-white hover:bg-zinc-800' 
+                                                : 'text-slate-500 hover:text-blue-600 hover:bg-blue-50 border-slate-200 hover:border-blue-200'
+                                        }`}
                                     >
                                         <i className="fa-solid fa-pen text-xs"></i>
                                         Edit Details
                                     </button>
                                 )}
-                                <button type="button" onClick={closeModal} className="text-slate-400 hover:text-slate-600 transition-colors rounded-lg p-2 hover:bg-slate-100 flex items-center justify-center">
+                                <button type="button" onClick={closeModal} className={`transition-colors rounded-lg p-2 flex items-center justify-center ${
+                                    isDark ? 'text-zinc-400 hover:text-white hover:bg-zinc-800' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
+                                }`}>
                                     <i className="fa-solid fa-xmark text-lg"></i>
                                 </button>
                             </div>
@@ -736,21 +981,116 @@ const InventoryManagement: React.FC = () => {
 
                         <div className="p-6 overflow-y-auto">
                             <form id="inventory-form" onSubmit={handleSubmit} className="space-y-4">
-                                {editingItem && !isEditingFullDetails ? (
+                                {activeTab === 'Copper' ? (
                                     <div className="space-y-4">
-                                        <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 mb-6">
-                                            <h3 className="text-lg font-bold text-slate-800 mb-1">{editingItem.modelName}</h3>
-                                            <p className="text-sm text-slate-500">Current Stock: <span className="font-bold text-slate-700">{editingItem.quantity} units</span></p>
+                                        <div>
+                                            <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-zinc-300' : 'text-slate-700'}`}>Pipe Size *</label>
+                                            <input
+                                                required
+                                                type="text"
+                                                placeholder="e.g. 1/4, 3/8, 1-1/8, etc."
+                                                className={`w-full rounded-xl px-4 py-2.5 transition-all font-semibold focus:outline-none focus:ring-4 ${
+                                                    isDark 
+                                                        ? 'bg-[#1e1e21] border-zinc-700 text-white focus:ring-blue-500/20 focus:border-blue-500' 
+                                                        : 'bg-slate-50 border-slate-200 text-slate-800 focus:ring-blue-500/20 focus:border-blue-500'
+                                                }`}
+                                                value={copperFormData.size}
+                                                onChange={e => setCopperFormData({ ...copperFormData, size: e.target.value })}
+                                                disabled={!!editingCopperItem}
+                                            />
+                                        </div>
+                                        {!editingCopperItem && (
+                                            <div>
+                                                <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-zinc-300' : 'text-slate-700'}`}>Group Board *</label>
+                                                <CustomSelect
+                                                    value={copperFormData.groupName}
+                                                    onChange={val => setCopperFormData({ ...copperFormData, groupName: val })}
+                                                    options={customGroups.map(grp => ({ value: grp, label: grp }))}
+                                                    isDark={isDark}
+                                                    placeholder="Select Group..."
+                                                />
+                                            </div>
+                                        )}
+                                        {!editingCopperItem ? (
+                                            <div>
+                                                <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-zinc-300' : 'text-slate-700'}`}>Total In Stock (ft) *</label>
+                                                <input
+                                                    required
+                                                    type="number"
+                                                    min="0"
+                                                    step="0.1"
+                                                    placeholder="0.0"
+                                                    className={`w-full rounded-xl px-4 py-2.5 transition-all font-semibold focus:outline-none focus:ring-4 ${
+                                                        isDark 
+                                                            ? 'bg-[#1e1e21] border-zinc-700 text-white focus:ring-blue-500/20 focus:border-blue-500' 
+                                                            : 'bg-slate-50 border-slate-200 text-slate-800 focus:ring-blue-500/20 focus:border-blue-500'
+                                                    }`}
+                                                    value={copperFormData.totalInStock}
+                                                    onChange={e => setCopperFormData({ ...copperFormData, totalInStock: e.target.value })}
+                                                />
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <div>
+                                                    <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-zinc-300' : 'text-slate-700'}`}>Pipe Sent (ft) *</label>
+                                                    <input
+                                                        required
+                                                        type="number"
+                                                        min="0"
+                                                        step="0.1"
+                                                        placeholder="0.0"
+                                                        className={`w-full rounded-xl px-4 py-2.5 transition-all font-semibold focus:outline-none focus:ring-4 ${
+                                                            isDark 
+                                                                ? 'bg-[#1e1e21] border-zinc-700 text-white focus:ring-blue-500/20 focus:border-blue-500' 
+                                                                : 'bg-slate-50 border-slate-200 text-slate-800 focus:ring-blue-500/20 focus:border-blue-500'
+                                                        }`}
+                                                        value={copperFormData.sentQty}
+                                                        onChange={e => setCopperFormData({ ...copperFormData, sentQty: e.target.value })}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-zinc-300' : 'text-slate-700'}`}>Pipe Returned (ft) *</label>
+                                                    <input
+                                                        required
+                                                        type="number"
+                                                        min="0"
+                                                        step="0.1"
+                                                        placeholder="0.0"
+                                                        className={`w-full rounded-xl px-4 py-2.5 transition-all font-semibold focus:outline-none focus:ring-4 ${
+                                                            isDark 
+                                                                ? 'bg-[#1e1e21] border-zinc-700 text-white focus:ring-blue-500/20 focus:border-blue-500' 
+                                                                : 'bg-slate-50 border-slate-200 text-slate-800 focus:ring-blue-500/20 focus:border-blue-500'
+                                                        }`}
+                                                        value={copperFormData.returnQty}
+                                                        onChange={e => setCopperFormData({ ...copperFormData, returnQty: e.target.value })}
+                                                    />
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                ) : editingItem && !isEditingFullDetails ? (
+                                    <div className="space-y-4">
+                                        <div className={`p-4 rounded-xl border mb-6 ${
+                                            isDark ? 'bg-blue-950/20 border-blue-900/30' : 'bg-blue-50/50 border border-blue-100'
+                                        }`}>
+                                            <h3 className={`text-lg font-bold mb-1 ${isDark ? 'text-white' : 'text-slate-800'}`}>{editingItem.modelName}</h3>
+                                            <p className={`text-sm ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>
+                                                Current Stock: <span className={`font-bold ${isDark ? 'text-zinc-200' : 'text-slate-700'}`}>{editingItem.quantity} units</span>
+                                            </p>
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Add Stock Quantity</label>
+                                            <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-zinc-300' : 'text-slate-700'}`}>Add Stock Quantity</label>
                                             <input
                                                 required
                                                 type="number"
                                                 min="1"
                                                 placeholder="Enter quantity to add to inventory..."
-                                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-lg font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                                                className={`w-full rounded-xl px-4 py-3 text-lg font-bold focus:outline-none focus:ring-4 transition-all ${
+                                                    isDark 
+                                                        ? 'bg-[#1e1e21] border-zinc-700 text-white focus:ring-blue-500/20 focus:border-blue-500' 
+                                                        : 'bg-slate-50 border-slate-200 text-slate-800 focus:ring-blue-500/20 focus:border-blue-500'
+                                                }`}
                                                 value={addQtyAmount || ''}
                                                 onChange={e => setAddQtyAmount(parseInt(e.target.value) || 0)}
                                             />
@@ -759,106 +1099,136 @@ const InventoryManagement: React.FC = () => {
                                 ) : (
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div className="sm:col-span-2">
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Model Name *</label>
+                                            <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-zinc-300' : 'text-slate-700'}`}>Model Name *</label>
                                             <input
                                                 required
                                                 type="text"
-                                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                                                className={`w-full rounded-xl px-4 py-2.5 transition-all focus:outline-none focus:ring-4 ${
+                                                    isDark 
+                                                        ? 'bg-[#1e1e21] border-zinc-700 text-white focus:ring-blue-500/20 focus:border-blue-500' 
+                                                        : 'bg-slate-50 border-slate-200 text-slate-800 focus:ring-blue-500/20 focus:border-blue-500'
+                                                }`}
                                                 value={formData.modelName}
                                                 onChange={e => setFormData({ ...formData, modelName: e.target.value })}
                                             />
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Brand *</label>
-                                            <select
-                                                required
-                                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                                                value={formData.brand}
-                                                onChange={e => setFormData({ ...formData, brand: e.target.value as 'Mitsubishi' | 'Akabishi' })}
-                                            >
-                                                <option value="Mitsubishi">Mitsubishi</option>
-                                                <option value="Akabishi">Akabishi</option>
-                                            </select>
+                                            <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-zinc-300' : 'text-slate-700'}`}>Brand *</label>
+                                            <CustomSelect
+                                                 value={formData.brand}
+                                                 onChange={val => setFormData({ ...formData, brand: val as 'Mitsubishi' | 'Akabishi' })}
+                                                 options={[
+                                                     { value: 'Mitsubishi', label: 'Mitsubishi' },
+                                                     { value: 'Akabishi', label: 'Akabishi' }
+                                                 ]}
+                                                 isDark={isDark}
+                                                 placeholder="Select Brand..."
+                                             />
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Type *</label>
-                                            <select
-                                                required
-                                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                                                value={formData.type}
-                                                onChange={e => setFormData({ ...formData, type: e.target.value })}
-                                            >
-                                                <option value="Inverter">Inverter</option>
-                                                <option value="Non-Inverter">Non-Inverter</option>
-                                                <option value="Inverter Hot & Cold">Inverter Hot & Cold</option>
-                                            </select>
+                                            <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-zinc-300' : 'text-slate-700'}`}>Type *</label>
+                                            <CustomSelect
+                                                 value={formData.type}
+                                                 onChange={val => setFormData({ ...formData, type: val })}
+                                                 options={[
+                                                     { value: 'Inverter', label: 'Inverter' },
+                                                     { value: 'Non-Inverter', label: 'Non-Inverter' },
+                                                     { value: 'Inverter Hot & Cold', label: 'Inverter Hot & Cold' }
+                                                 ]}
+                                                 isDark={isDark}
+                                                 placeholder="Select Type..."
+                                             />
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Quantity</label>
+                                            <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-zinc-300' : 'text-slate-700'}`}>Quantity</label>
                                             <input
                                                 type="number"
                                                 min="0"
-                                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                                                className={`w-full rounded-xl px-4 py-2.5 transition-all focus:outline-none focus:ring-4 ${
+                                                    isDark 
+                                                        ? 'bg-[#1e1e21] border-zinc-700 text-white focus:ring-blue-500/20 focus:border-blue-500' 
+                                                        : 'bg-slate-50 border-slate-200 text-slate-800 focus:ring-blue-500/20 focus:border-blue-500'
+                                                }`}
                                                 value={formData.quantity}
                                                 onChange={e => setFormData({ ...formData, quantity: parseInt(e.target.value) || 0 })}
                                             />
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Sold Quantity</label>
+                                            <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-zinc-300' : 'text-slate-700'}`}>Sold Quantity</label>
                                             <input
                                                 type="number"
                                                 min="0"
-                                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                                                className={`w-full rounded-xl px-4 py-2.5 transition-all focus:outline-none focus:ring-4 ${
+                                                    isDark 
+                                                        ? 'bg-[#1e1e21] border-zinc-700 text-white focus:ring-blue-500/20 focus:border-blue-500' 
+                                                        : 'bg-slate-50 border-slate-200 text-slate-800 focus:ring-blue-500/20 focus:border-blue-500'
+                                                }`}
                                                 value={formData.soldQuantity}
                                                 onChange={e => setFormData({ ...formData, soldQuantity: parseInt(e.target.value) || 0 })}
                                             />
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Tonnage</label>
+                                            <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-zinc-300' : 'text-slate-700'}`}>Tonnage</label>
                                             <input
                                                 type="text"
                                                 placeholder="e.g. 1.5 Ton"
-                                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                                                className={`w-full rounded-xl px-4 py-2.5 transition-all focus:outline-none focus:ring-4 ${
+                                                    isDark 
+                                                        ? 'bg-[#1e1e21] border-zinc-700 text-white focus:ring-blue-500/20 focus:border-blue-500' 
+                                                        : 'bg-slate-50 border-slate-200 text-slate-800 focus:ring-blue-500/20 focus:border-blue-500'
+                                                }`}
                                                 value={formData.tonnage}
                                                 onChange={e => setFormData({ ...formData, tonnage: e.target.value })}
                                             />
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Rating</label>
+                                            <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-zinc-300' : 'text-slate-700'}`}>Rating</label>
                                             <input
                                                 type="text"
                                                 placeholder="e.g. 5 Star"
-                                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                                                className={`w-full rounded-xl px-4 py-2.5 transition-all focus:outline-none focus:ring-4 ${
+                                                    isDark 
+                                                        ? 'bg-[#1e1e21] border-zinc-700 text-white focus:ring-blue-500/20 focus:border-blue-500' 
+                                                        : 'bg-slate-50 border-slate-200 text-slate-800 focus:ring-blue-500/20 focus:border-blue-500'
+                                                }`}
                                                 value={formData.starRating}
                                                 onChange={e => setFormData({ ...formData, starRating: e.target.value })}
                                             />
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Cost (₹)</label>
+                                            <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-zinc-300' : 'text-slate-700'}`}>Cost (₹)</label>
                                             <input
                                                 type="number"
                                                 min="0"
                                                 step="0.01"
-                                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                                                className={`w-full rounded-xl px-4 py-2.5 transition-all focus:outline-none focus:ring-4 ${
+                                                    isDark 
+                                                        ? 'bg-[#1e1e21] border-zinc-700 text-white focus:ring-blue-500/20 focus:border-blue-500' 
+                                                        : 'bg-slate-50 border-slate-200 text-slate-800 focus:ring-blue-500/20 focus:border-blue-500'
+                                                }`}
                                                 value={formData.ourPrice}
                                                 onChange={e => setFormData({ ...formData, ourPrice: parseFloat(e.target.value) || 0 })}
                                             />
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Sale (₹)</label>
+                                            <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-zinc-300' : 'text-slate-700'}`}>Sale (₹)</label>
                                             <input
                                                 type="number"
                                                 min="0"
                                                 step="0.01"
-                                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                                                className={`w-full rounded-xl px-4 py-2.5 transition-all focus:outline-none focus:ring-4 ${
+                                                    isDark 
+                                                        ? 'bg-[#1e1e21] border-zinc-700 text-white focus:ring-blue-500/20 focus:border-blue-500' 
+                                                        : 'bg-slate-50 border-slate-200 text-slate-800 focus:ring-blue-500/20 focus:border-blue-500'
+                                                }`}
                                                 value={formData.salePrice}
                                                 onChange={e => setFormData({ ...formData, salePrice: parseFloat(e.target.value) || 0 })}
                                             />
@@ -868,11 +1238,15 @@ const InventoryManagement: React.FC = () => {
                             </form>
                         </div>
 
-                        <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 shrink-0">
+                        <div className={`p-6 border-t flex justify-end gap-3 shrink-0 ${
+                            isDark ? 'border-zinc-800 bg-[#1e1e21]' : 'border-slate-100 bg-slate-50'
+                        }`}>
                             <button
                                 type="button"
                                 onClick={closeModal}
-                                className="px-4 py-2.5 rounded-xl font-medium text-slate-600 hover:bg-slate-200 hover:text-slate-800 transition-colors"
+                                className={`px-4 py-2.5 rounded-xl font-medium transition-colors ${
+                                    isDark ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300' : 'text-slate-600 hover:bg-slate-200 hover:text-slate-800'
+                                }`}
                             >
                                 Cancel
                             </button>
@@ -881,7 +1255,7 @@ const InventoryManagement: React.FC = () => {
                                 form="inventory-form"
                                 className="px-4 py-2.5 rounded-xl font-medium bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-500/20 transition-all"
                             >
-                                {editingItem ? 'Update Stock' : 'Add Product'}
+                                {activeTab === 'Copper' ? 'Save Logs' : (editingItem ? 'Update Stock' : 'Add Product')}
                             </button>
                         </div>
                     </div>
@@ -891,68 +1265,92 @@ const InventoryManagement: React.FC = () => {
             {/* Low Stock Modal */}
             {isLowStockModalOpen && (
                 <div className="fixed top-0 left-0 w-screen h-screen z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-hidden" style={{ margin: 0 }}>
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh] relative z-[101]">
-                        <div className="p-6 border-b border-red-100 flex justify-between items-center shrink-0 bg-red-50/80">
+                    <div className={`rounded-2xl shadow-xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh] relative z-[101] border ${
+                        isDark ? 'bg-[#242427] border-zinc-800 text-zinc-100' : 'bg-white border-slate-200'
+                    }`}>
+                        <div className={`p-6 border-b flex justify-between items-center shrink-0 ${
+                            isDark ? 'bg-red-950/20 border-red-900/30' : 'bg-red-50/80 border-red-100'
+                        }`}>
                             <div className="flex flex-row items-center gap-3">
-                                <div className="bg-red-100 text-red-600 w-10 h-10 rounded-full flex items-center justify-center shrink-0">
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                                    isDark ? 'bg-red-950/40 text-red-400 border border-red-900/30' : 'bg-red-100 text-red-600'
+                                }`}>
                                     <i className="fa-solid fa-triangle-exclamation text-xl"></i>
                                 </div>
                                 <div>
-                                    <h2 className="text-xl font-bold text-red-800">Low Stock Alert</h2>
-                                    <p className="text-red-600 text-sm mt-0.5">Products with {lowStockThreshold} or fewer units available.</p>
+                                    <h2 className={`text-xl font-bold ${isDark ? 'text-red-400' : 'text-red-800'}`}>
+                                        {activeTab === 'Copper' ? 'Low Copper Pipe Alert' : 'Low Stock Alert'}
+                                    </h2>
+                                    <p className={`text-sm mt-0.5 ${isDark ? 'text-red-300' : 'text-red-600'}`}>
+                                        {activeTab === 'Copper' 
+                                            ? `Copper pipes with ${copperPipeLowStockThreshold} ft or less available.` 
+                                            : `Products with ${lowStockThreshold} or fewer units available.`}
+                                    </p>
                                 </div>
                             </div>
-                            <button onClick={() => setIsLowStockModalOpen(false)} className="text-red-400 hover:text-red-600 transition-colors rounded-lg p-2 hover:bg-red-100 bg-white shadow-sm border border-red-100">
+                            <button onClick={() => setIsLowStockModalOpen(false)} className={`transition-colors rounded-lg p-2 border ${
+                                isDark 
+                                    ? 'text-red-450 hover:text-red-300 hover:bg-red-950/30 bg-red-950/20 border-red-900/40' 
+                                    : 'text-red-400 hover:text-red-600 hover:bg-red-100 bg-white border-red-100'
+                            }`}>
                                 <i className="fa-solid fa-xmark text-lg"></i>
                             </button>
                         </div>
-                        <div className="p-0 overflow-y-auto flex-1 bg-slate-50/30">
-                            {lowStockItems.length === 0 ? (
+                        <div className={`p-0 overflow-auto flex-1 ${
+                            isDark ? 'bg-[#1e1e21]/50' : 'bg-slate-50/30'
+                        }`}>
+                            {activeLowStockCount === 0 ? (
                                 <div className="p-10 text-center text-slate-500">
-                                    <i className="fa-solid fa-check-circle text-4xl mb-3 text-emerald-400"></i>
-                                    <p className="text-slate-700 font-bold mb-1">All Stock Levels Healthy</p>
+                                    <i className={`text-4xl mb-3 ${isDark ? 'text-emerald-500' : 'text-emerald-400'}`}></i>
+                                    <p className={`font-bold mb-1 ${isDark ? 'text-zinc-200' : 'text-slate-700'}`}>All Stock Levels Healthy</p>
                                     <p className="text-sm">No items are currently running low on stock.</p>
                                 </div>
                             ) : (
                                 <table className="w-full text-left text-sm border-collapse">
-                                    <thead className="bg-white text-slate-600 uppercase text-[10px] sm:text-xs font-semibold border-b border-slate-200 sticky top-0 z-10 shadow-sm">
-                                        <tr>
-                                            <th className="px-6 py-4">Product Model</th>
-                                            <th className="px-6 py-4">Brand</th>
-                                            <th className="px-6 py-4">Type / Ton</th>
-                                            <th className="px-6 py-4 text-right">Stock Extant</th>
-                                            <th className="px-6 py-4 text-center">Available</th>
-                                            <th className="px-6 py-4 text-center">Action</th>
-                                        </tr>
+                                    <thead className={`uppercase text-[10px] sm:text-xs font-semibold border-b sticky top-0 z-10 shadow-sm ${
+                                        isDark ? 'bg-[#242427] text-zinc-400 border-zinc-800' : 'bg-white text-slate-600 border-slate-200'
+                                    }`}>
+                                        {activeTab === 'Copper' ? (
+                                            <tr>
+                                                <th className="px-4 py-3">Copper Size</th>
+                                                <th className="px-4 py-3 text-right">Available Stock</th>
+                                                <th className="px-4 py-3 text-center">Action</th>
+                                            </tr>
+                                        ) : (
+                                            <tr>
+                                                <th className="px-4 py-3">Product Model</th>
+                                                <th className="px-4 py-3">Brand</th>
+                                                <th className="px-4 py-3">Type / Ton</th>
+                                                <th className="px-4 py-3 text-right">Stock Extant</th>
+                                                <th className="px-4 py-3 text-center">Available</th>
+                                                <th className="px-4 py-3 text-center">Action</th>
+                                            </tr>
+                                        )}
                                     </thead>
-                                    <tbody className="divide-y divide-slate-100 bg-white">
-                                        {lowStockItems.map(item => {
-                                            const available = item.quantity;
-                                            const brought = item.quantity + item.soldQuantity;
-                                            return (
-                                                <tr key={item.id} className="hover:bg-red-50/30 transition-colors">
-                                                    <td className="px-6 py-4 whitespace-nowrap">
-                                                        <div className="font-bold text-slate-900">{item.modelName}</div>
+                                    <tbody className={`divide-y ${
+                                        isDark ? 'divide-zinc-800/60 bg-[#242427]' : 'divide-slate-100 bg-white'
+                                    }`}>
+                                        {activeTab === 'Copper' ? (
+                                            lowStockCopperItems.map(item => (
+                                                <tr key={item.size} className={`transition-colors ${
+                                                    isDark ? 'hover:bg-red-950/10' : 'hover:bg-red-50/30'
+                                                }`}>
+                                                    <td className="px-4 py-3 whitespace-nowrap">
+                                                        <div className={`font-bold text-lg ${isDark ? 'text-white' : 'text-slate-900'}`}>{item.size}"</div>
+                                                        <div className={`text-xs ${isDark ? 'text-zinc-500' : 'text-slate-500'}`}>COPPER DIAMETER</div>
                                                     </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-slate-700 text-xs font-bold uppercase tracking-wider">
-                                                        {item.brand}
+                                                    <td className="px-4 py-3 whitespace-nowrap text-right">
+                                                        <div className={`font-bold text-lg ${
+                                                            item.totalInStock <= 0 ? 'text-red-500' : 'text-orange-500'
+                                                        }`}>
+                                                            {item.totalInStock} ft
+                                                        </div>
                                                     </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-slate-600">
-                                                        {item.type} {item.tonnage ? `· ${item.tonnage}` : ''}
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-right text-slate-500 text-xs">
-                                                        {brought} brought - {item.soldQuantity} sold
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                                                        <span className="inline-block px-3 py-1 bg-red-100 text-red-700 font-bold rounded-full border border-red-200 shadow-sm">
-                                                            {available}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                    <td className="px-4 py-3 whitespace-nowrap text-center">
                                                         <button
                                                             onClick={() => {
                                                                 setIsLowStockModalOpen(false);
-                                                                openModal(item);
+                                                                openModal(undefined, item);
                                                             }}
                                                             className="text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm transition-colors"
                                                         >
@@ -960,8 +1358,55 @@ const InventoryManagement: React.FC = () => {
                                                         </button>
                                                     </td>
                                                 </tr>
-                                            );
-                                        })}
+                                            ))
+                                        ) : (
+                                            lowStockItems.map(item => {
+                                                const available = item.quantity;
+                                                const brought = item.quantity + item.soldQuantity;
+                                                return (
+                                                    <tr key={item.id} className={`transition-colors ${
+                                                        isDark ? 'hover:bg-red-950/10' : 'hover:bg-red-50/30'
+                                                    }`}>
+                                                        <td className="px-4 py-3">
+                                                            <div className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'} break-words min-w-[120px]`}>{item.modelName}</div>
+                                                        </td>
+                                                        <td className={`px-4 py-3 whitespace-nowrap text-xs font-bold uppercase tracking-wider ${
+                                                            isDark ? 'text-zinc-350' : 'text-slate-700'
+                                                        }`}>
+                                                            {item.brand}
+                                                        </td>
+                                                        <td className={`px-4 py-3 ${
+                                                            isDark ? 'text-zinc-400' : 'text-slate-600'
+                                                        }`}>
+                                                            {item.type} {item.tonnage ? `· ${item.tonnage}` : ''}
+                                                        </td>
+                                                        <td className={`px-4 py-3 whitespace-nowrap text-right text-xs ${
+                                                            isDark ? 'text-zinc-500' : 'text-slate-500'
+                                                        }`}>
+                                                            {brought} brought - {item.soldQuantity} sold
+                                                        </td>
+                                                        <td className="px-4 py-3 whitespace-nowrap text-center">
+                                                            <span className={`inline-block px-3 py-1 font-bold rounded-full border shadow-sm ${
+                                                                isDark ? 'bg-red-950/40 text-red-400 border-red-900/50' : 'bg-red-100 text-red-700 border-red-200'
+                                                            }`}>
+                                                                {available}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-4 py-3 whitespace-nowrap text-center">
+                                                            <button
+                                                                onClick={() => {
+                                                                    setIsLowStockModalOpen(false);
+                                                                    openModal(item);
+                                                                }}
+                                                                className="text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm transition-colors"
+                                                            >
+                                                                Update Stock
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })
+                                        )}
                                     </tbody>
                                 </table>
                             )}
@@ -973,69 +1418,175 @@ const InventoryManagement: React.FC = () => {
             {/* History Modal */}
             {isHistoryModalOpen && (
                 <div className="fixed top-0 left-0 w-screen h-screen z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-hidden" style={{ margin: 0 }}>
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-5xl overflow-hidden flex flex-col max-h-[90vh] relative z-[101]">
-                        <div className="p-6 border-b border-slate-100 flex justify-between items-center shrink-0 bg-slate-50/80">
+                    <div className={`rounded-2xl shadow-xl w-full max-w-5xl overflow-hidden flex flex-col max-h-[90vh] relative z-[101] border ${
+                        isDark ? 'bg-[#242427] border-zinc-800 text-zinc-100' : 'bg-white border-slate-200'
+                    }`}>
+                        <div className={`p-6 border-b flex justify-between items-center shrink-0 ${
+                            isDark ? 'bg-[#1e1e21] border-zinc-800' : 'bg-slate-50/80 border-slate-100'
+                        }`}>
                             <div>
-                                <h2 className="text-xl font-bold text-slate-800">Global Inventory Audit Log</h2>
-                                <p className="text-slate-500 text-sm mt-1">Review all stock additions, sales, and corrections.</p>
+                                <h2 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-800'}`}>
+                                    {activeTab === 'Copper' ? 'Copper Pipe Stock Audit Log' : 'Global Inventory Audit Log'}
+                                </h2>
+                                <p className={`text-sm mt-1 ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>
+                                    {activeTab === 'Copper' 
+                                        ? 'Review all copper pipe allocations, returns, and warehouse entries.' 
+                                        : 'Review all stock additions, sales, and corrections.'}
+                                </p>
                             </div>
-                            <button onClick={closeHistoryModal} className="text-slate-400 hover:text-slate-600 transition-colors rounded-lg p-2 hover:bg-slate-200 bg-white shadow-sm">
+                            <button onClick={closeHistoryModal} className={`transition-colors rounded-lg p-2 border ${
+                                isDark 
+                                    ? 'text-zinc-400 hover:text-white hover:bg-zinc-800 border-zinc-700 bg-zinc-900/20' 
+                                    : 'text-slate-400 hover:text-slate-600 hover:bg-slate-200 bg-white shadow-sm border-slate-100'
+                            }`}>
                                 <i className="fa-solid fa-xmark text-lg"></i>
                             </button>
                         </div>
-                        <div className="p-0 overflow-y-auto flex-1 bg-slate-50/30">
-                            {historyLogs.length === 0 ? (
-                                <div className="p-10 text-center text-slate-500">
-                                    <i className="fa-solid fa-clock-rotate-left text-4xl mb-3 text-slate-300"></i>
-                                    <p>No history available yet.</p>
-                                    <p className="text-xs mt-2">History tracking begins from when the items are next updated.</p>
-                                </div>
-                            ) : (
-                                <table className="w-full text-left text-sm border-collapse">
-                                    <thead className="bg-white text-slate-600 uppercase text-[10px] sm:text-xs font-semibold border-b border-slate-200 sticky top-0 z-10 shadow-sm">
-                                        <tr>
-                                            <th className="px-6 py-4">Date / Time</th>
-                                            <th className="px-6 py-4">Product Model</th>
-                                            <th className="px-6 py-4">User</th>
-                                            <th className="px-6 py-4">Action</th>
-                                            <th className="px-6 py-4 text-center">Change</th>
-                                            <th className="px-6 py-4 text-center">Available Stock</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100 bg-white">
-                                        {historyLogs.slice((historyPage - 1) * itemsPerPage, historyPage * itemsPerPage).map(log => (
-                                            <tr key={log.id} className="hover:bg-slate-50 transition-colors">
-                                                <td className="px-6 py-4 whitespace-nowrap text-slate-600">
-                                                    <div className="font-semibold text-slate-800">{new Date(log.createdAt).toLocaleDateString('en-GB')}</div>
-                                                    <div className="text-xs">{new Date(log.createdAt).toLocaleTimeString('en-US')}</div>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-slate-700">
-                                                    <div className="font-bold text-slate-900">{log.modelName || 'Unknown Model'}</div>
-                                                    <div className="text-[10px] uppercase text-slate-500">{log.brand}</div>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-slate-700">
-                                                    {log.userEmail}
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <span className={`inline-block px-2.5 py-1 rounded-md text-[10px] font-bold uppercase ${log.actionType === 'ADDED_STOCK' ? 'bg-blue-100 text-blue-700' :
-                                                        log.actionType === 'SOLD_STOCK' ? 'bg-emerald-100 text-emerald-700' :
-                                                            'bg-amber-100 text-amber-700'
-                                                        }`}>
-                                                        {log.actionType.replace('_', ' ')}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-center font-bold">
-                                                    <span className={log.quantityChange > 0 ? 'text-blue-600' : log.quantityChange < 0 ? 'text-red-500' : 'text-slate-500'}>
-                                                        {log.quantityChange > 0 ? '+' : ''}{log.quantityChange}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-center text-slate-700 font-semibold">
-                                                    {log.newQuantity}
-                                                </td>
+                        <div className={`p-0 overflow-y-auto flex-1 ${
+                            isDark ? 'bg-[#1e1e21]/40' : 'bg-slate-50/30'
+                        }`}>
+                            {activeTab === 'Copper' ? (
+                                copperHistoryLogs.length === 0 ? (
+                                    <div className={`p-10 text-center ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>
+                                        <i className={`fa-solid fa-clock-rotate-left text-4xl mb-3 ${isDark ? 'text-zinc-700' : 'text-slate-300'}`}></i>
+                                        <p>No copper logs available yet.</p>
+                                    </div>
+                                ) : (
+                                    <table className="w-full text-left text-sm border-collapse">
+                                        <thead className={`uppercase text-[10px] sm:text-xs font-semibold border-b sticky top-0 z-10 shadow-sm ${
+                                            isDark ? 'bg-[#242427] text-zinc-400 border-zinc-800' : 'bg-white text-slate-600 border-slate-200'
+                                        }`}>
+                                            <tr>
+                                                <th className="px-6 py-4">Date</th>
+                                                <th className="px-6 py-4">Pipe Size</th>
+                                                <th className="px-6 py-4">Origin</th>
+                                                <th className="px-6 py-4 text-center">Sent Qty</th>
+                                                <th className="px-6 py-4 text-center">Returned Qty</th>
+                                                <th className="px-6 py-4 text-center">Net Used</th>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                                        </thead>
+                                        <tbody className={`divide-y ${
+                                            isDark ? 'divide-zinc-800/60 bg-[#242427]' : 'divide-slate-100 bg-white'
+                                        }`}>
+                                            {copperHistoryLogs.map(log => {
+                                                const netUsed = Number(log.sentQty || 0) - Number(log.returnQty || 0);
+                                                return (
+                                                    <tr key={`${log.origin || 'warehouse'}-${log.id}`} className={`transition-colors ${
+                                                        isDark ? 'hover:bg-zinc-800/20' : 'hover:bg-slate-50'
+                                                    }`}>
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                            <div className={`font-semibold ${isDark ? 'text-zinc-200' : 'text-slate-800'}`}>{log.date}</div>
+                                                        </td>
+                                                        <td className={`px-6 py-4 whitespace-nowrap font-bold ${
+                                                            isDark ? 'text-zinc-200' : 'text-slate-700'
+                                                        }`}>
+                                                            {log.size}"
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                            {log.origin !== 'warehouse' ? (
+                                                                <span className={`inline-block px-2.5 py-0.5 rounded text-[10px] font-bold uppercase border ${
+                                                                    isDark ? 'bg-blue-950/40 border-blue-900/30 text-blue-400' : 'bg-blue-50 text-blue-700 border-blue-100'
+                                                                }`}>
+                                                                    {log.origin === 'job' ? 'Job site' : log.origin}
+                                                                </span>
+                                                            ) : (
+                                                                <span className={`inline-block px-2.5 py-0.5 rounded text-[10px] font-bold uppercase border ${
+                                                                    isDark ? 'bg-zinc-800 text-zinc-300 border-zinc-700' : 'bg-slate-50 text-slate-600 border-slate-200'
+                                                                }`}>Warehouse</span>
+                                                            )}
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-center text-red-600 font-semibold">
+                                                            {Number(log.sentQty).toFixed(1)} ft
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-center text-emerald-600 font-semibold">
+                                                            {Number(log.returnQty).toFixed(1)} ft
+                                                        </td>
+                                                        <td className={`px-6 py-4 whitespace-nowrap text-center font-bold ${
+                                                            isDark ? 'text-zinc-200' : 'text-slate-800'
+                                                        }`}>
+                                                            {netUsed.toFixed(1)} ft
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                )
+                            ) : (
+                                historyLogs.length === 0 ? (
+                                    <div className={`p-10 text-center ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>
+                                        <i className={`fa-solid fa-clock-rotate-left text-4xl mb-3 ${isDark ? 'text-zinc-700' : 'text-slate-300'}`}></i>
+                                        <p>No history available yet.</p>
+                                        <p className="text-xs mt-2">History tracking begins from when the items are next updated.</p>
+                                    </div>
+                                ) : (
+                                    <table className="w-full text-left text-sm border-collapse">
+                                        <thead className={`uppercase text-[10px] sm:text-xs font-semibold border-b sticky top-0 z-10 shadow-sm ${
+                                            isDark ? 'bg-[#242427] text-zinc-400 border-zinc-800' : 'bg-white text-slate-600 border-slate-200'
+                                        }`}>
+                                            <tr>
+                                                <th className="px-6 py-4">Date / Time</th>
+                                                <th className="px-6 py-4">Product Model</th>
+                                                <th className="px-6 py-4">User</th>
+                                                <th className="px-6 py-4">Action</th>
+                                                <th className="px-6 py-4">Customer</th>
+                                                <th className="px-6 py-4 text-center">Change</th>
+                                                <th className="px-6 py-4 text-center">Available Stock</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className={`divide-y ${
+                                            isDark ? 'divide-zinc-800/60 bg-[#242427]' : 'divide-slate-100 bg-white'
+                                        }`}>
+                                            {historyLogs.slice((historyPage - 1) * itemsPerPage, historyPage * itemsPerPage).map(log => (
+                                                <tr key={log.id} className={`transition-colors ${
+                                                    isDark ? 'hover:bg-zinc-800/20' : 'hover:bg-slate-50'
+                                                }`}>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-slate-600">
+                                                        <div className={`font-semibold ${isDark ? 'text-zinc-200' : 'text-slate-800'}`}>{new Date(log.createdAt).toLocaleDateString('en-GB')}</div>
+                                                        <div className={`text-xs ${isDark ? 'text-zinc-500' : 'text-slate-400'}`}>{new Date(log.createdAt).toLocaleTimeString('en-US')}</div>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-slate-700">
+                                                        <div className={`font-bold ${isDark ? 'text-zinc-200' : 'text-slate-900'}`}>{log.modelName || 'Unknown Model'}</div>
+                                                        <div className={`text-[10px] uppercase ${isDark ? 'text-zinc-500' : 'text-slate-500'}`}>{log.brand}</div>
+                                                    </td>
+                                                    <td className={`px-6 py-4 whitespace-nowrap ${isDark ? 'text-zinc-350' : 'text-slate-700'}`}>
+                                                        {log.userEmail}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                         <span className={`inline-block px-2.5 py-1 rounded-md text-[10px] font-bold uppercase border ${
+                                                             log.actionType === 'ADDED_STOCK' ? (isDark ? 'bg-blue-950/40 text-blue-400 border border-blue-900/30' : 'bg-blue-100 text-blue-700') :
+                                                             log.actionType === 'SOLD_STOCK' ? (isDark ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-900/30' : 'bg-emerald-100 text-emerald-700') :
+                                                             log.actionType === 'RETURNED_STOCK' ? (isDark ? 'bg-indigo-950/40 text-indigo-400 border border-indigo-900/30' : 'bg-indigo-100 text-indigo-700') :
+                                                             (isDark ? 'bg-amber-950/40 text-amber-400 border border-amber-900/30' : 'bg-amber-100 text-amber-700')
+                                                             }`}>
+                                                             {log.actionType === 'RETURNED_STOCK' ? 'RETURN' : log.actionType.replace('_', ' ')}
+                                                         </span>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-slate-700">
+                                                        {log.customerName ? (
+                                                            <div className="flex flex-col">
+                                                                <span className={`font-semibold ${isDark ? 'text-zinc-200' : 'text-slate-800'}`}>{log.customerName}</span>
+                                                                {log.jobId && <span className={`text-[10px] font-medium ${isDark ? 'text-zinc-500' : 'text-slate-400'}`}>Job #{log.jobId}</span>}
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-slate-400 font-medium">-</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-center font-bold">
+                                                        <span className={log.quantityChange > 0 ? (isDark ? 'text-blue-400' : 'text-blue-600') : log.quantityChange < 0 ? (isDark ? 'text-red-400' : 'text-red-500') : (isDark ? 'text-zinc-400' : 'text-slate-500')}>
+                                                            {log.quantityChange > 0 ? '+' : ''}{log.quantityChange}
+                                                        </span>
+                                                    </td>
+                                                    <td className={`px-6 py-4 whitespace-nowrap text-center font-semibold ${
+                                                        isDark ? 'text-zinc-300' : 'text-slate-700'
+                                                    }`}>
+                                                        {log.newQuantity}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                )
                             )}
                         </div>
                     </div>
