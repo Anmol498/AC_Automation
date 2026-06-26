@@ -143,7 +143,7 @@ const Login: React.FC<LoginProps> = ({ isOpen = true, onClose }) => {
             <div className="relative group">
               <i className={`fa-solid fa-envelope absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${iconTone}`}></i>
               <input
-                type="email"
+                type="text"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}

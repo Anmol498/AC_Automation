@@ -2,7 +2,6 @@ import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
-import vue from '@vitejs/plugin-vue';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 
 export default defineConfig(({ mode }) => {
@@ -15,7 +14,6 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(), 
       tailwindcss(),
-      vue(),
       viteStaticCopy({
         targets: [
           {
@@ -41,7 +39,7 @@ export default defineConfig(({ mode }) => {
         '@': path.resolve(__dirname, '.'),
         'worker_threads': path.resolve(__dirname, 'src/lib/empty.ts'),
       },
-      dedupe: ['three', 'vue', 'element-plus']
+      dedupe: ['three']
     }
   };
 });
