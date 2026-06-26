@@ -215,9 +215,9 @@ const Home: React.FC = () => {
         <div className={`min-h-screen font-sans transition-colors duration-300 ${isDark ? 'bg-[#151619] text-white' : 'bg-[#f5f7fb] text-[#111827]'}`}>
             <header className={`h-[76px] border-b px-6 transition-colors duration-300 sm:px-8 ${isDark ? 'border-[#202125] bg-[#101112]' : 'border-[#e4e8f0] bg-white'}`}>
                 <div className="mx-auto flex h-full max-w-[1440px] items-center justify-between">
-                    <Link to="/" className="flex items-center gap-2 sm:gap-5">
+                    <Link to="/" className="flex items-center gap-5">
                         <img src="/logo.png" alt={`${APP_NAME} Logo`} className="h-8 w-auto object-contain opacity-75" />
-                        <span className={`hidden sm:block text-[22px] font-black uppercase leading-none tracking-[-0.02em] sm:text-[30px] ${isDark ? 'text-white' : 'text-[#111827]'}`}>
+                        <span className={`text-[22px] font-black uppercase leading-none tracking-[-0.02em] sm:text-[30px] ${isDark ? 'text-white' : 'text-[#111827]'}`}>
                             {APP_NAME}
                         </span>
                     </Link>
