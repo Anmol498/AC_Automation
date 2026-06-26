@@ -99,53 +99,55 @@ const ContactUs: React.FC = () => {
 
     return (
         <div className={`min-h-screen font-sans transition-colors duration-300 ${shell}`}>
-            <header className={`h-[76px] border-b px-6 sm:px-8 ${isDark ? 'border-[#202125] bg-[#101112]' : 'border-[#e4e8f0] bg-white'}`}>
+            <header className={`h-[76px] border-b px-3 transition-colors duration-300 sm:px-8 ${isDark ? 'border-[#202125] bg-[#101112]' : 'border-[#e4e8f0] bg-white'}`}>
                 <div className="mx-auto flex h-full max-w-[1440px] items-center justify-between">
-                    <Link to="/" className="flex items-center gap-5">
+                    <Link to="/" className="flex items-center gap-2 sm:gap-5">
                         <img src="/logo.png" alt={`${APP_NAME} Logo`} className="h-8 w-auto object-contain opacity-75" />
-                        <span className={`text-[22px] font-black uppercase leading-none tracking-[-0.02em] sm:text-[30px] ${isDark ? 'text-white' : 'text-[#111827]'}`}>
+                        <span className={`text-[20px] sm:text-[30px] font-black uppercase leading-none tracking-[-0.02em] ${isDark ? 'text-white' : 'text-[#111827]'}`}>
                             {APP_NAME}
                         </span>
                     </Link>
 
-                    <div className={`flex items-center gap-1 p-1 rounded-full border transition-colors duration-300 sm:border-0 sm:bg-transparent sm:p-0 sm:gap-4 ${isDark ? 'border-[#24262b] bg-[#101112] sm:bg-transparent' : 'border-[#d8deea] bg-[#f0f4fc] sm:bg-transparent'}`}>
+                    <div className="flex items-center gap-3 sm:gap-4">
                         <button
                             type="button"
                             onClick={() => setIsDark(prev => !prev)}
-                            className={`flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full transition ${isDark ? 'text-[#f8fafc] hover:bg-[#252830] sm:border sm:border-[#24262b] sm:bg-[#1e2025] sm:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]' : 'text-[#126bff] hover:bg-[#e2eaf7] sm:border sm:border-[#d8deea] sm:bg-[#eef3fb]'}`}
+                            className={`flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full border shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition ${isDark ? 'border-[#24262b] bg-[#1e2025] text-[#f8fafc] hover:bg-[#252830]' : 'border-[#d8deea] bg-[#eef3fb] text-[#126bff] hover:bg-[#e2eaf7]'}`}
                             title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
                             aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
                         >
                             <i className={`fa-solid ${isDark ? 'fa-sun' : 'fa-moon'} text-xs sm:text-base`}></i>
                         </button>
-                        <Link
-                            to="/"
-                            className={`flex h-8 w-8 sm:h-10 sm:w-auto items-center justify-center sm:gap-2 rounded-full text-sm font-extrabold transition ${isDark ? 'text-[#126bff] hover:bg-[#202226] sm:border sm:border-[#24262b] sm:bg-[#18191b]' : 'text-[#126bff] hover:bg-[#e2eaf7] sm:border sm:border-[#D7E3FF] sm:bg-white sm:hover:border-[#C7D8FF] sm:hover:bg-[#EEF4FF]'}`}
-                            style={!isDark ? { color: accentBlue } : undefined}
-                        >
-                            <i className="fa-solid fa-house text-sm"></i>
-                            <span className="hidden sm:inline">Home</span>
-                        </Link>
-                        {isAuthenticated ? (
+                        <div className={`flex items-center gap-1.5 p-1 rounded-full border transition-colors duration-300 sm:border-0 sm:bg-transparent sm:p-0 sm:gap-4 ${isDark ? 'border-[#24262b] bg-[#101112] sm:bg-transparent' : 'border-[#d8deea] bg-[#f0f4fc] sm:bg-transparent'}`}>
                             <Link
-                                to="/dashboard"
-                                className={`flex h-8 w-8 sm:h-10 sm:w-auto items-center justify-center sm:gap-2 rounded-full text-sm font-extrabold transition ${isDark ? 'text-[#126bff] hover:bg-[#202226] sm:border sm:border-[#24262b] sm:bg-[#18191b]' : 'text-[#126bff] hover:bg-[#e2eaf7] sm:border sm:border-[#D7E3FF] sm:bg-white sm:hover:border-[#C7D8FF] sm:hover:bg-[#EEF4FF]'}`}
+                                to="/"
+                                className={`flex h-10 w-10 sm:w-auto items-center justify-center sm:gap-2 rounded-full text-sm font-extrabold transition ${isDark ? 'text-[#126bff] hover:bg-[#202226] sm:border sm:border-[#24262b] sm:bg-[#18191b]' : 'text-[#126bff] hover:bg-[#e2eaf7] sm:border sm:border-[#D7E3FF] sm:bg-white sm:hover:border-[#C7D8FF] sm:hover:bg-[#EEF4FF]'}`}
                                 style={!isDark ? { color: accentBlue } : undefined}
                             >
-                                <i className="fa-solid fa-square-poll-horizontal text-sm"></i>
-                                <span className="hidden sm:inline">Dashboard</span>
+                                <i className="fa-solid fa-house text-base sm:text-sm"></i>
+                                <span className="hidden sm:inline">Home</span>
                             </Link>
-                        ) : (
-                            <button
-                                type="button"
-                                onClick={() => setLoginModalOpen(true)}
-                                className={`flex h-8 w-8 sm:h-10 sm:w-auto items-center justify-center sm:gap-2 rounded-full text-sm font-extrabold transition ${isDark ? 'text-[#126bff] hover:bg-[#202226] sm:border sm:border-[#24262b] sm:bg-[#18191b]' : 'text-[#126bff] hover:bg-[#e2eaf7] sm:border sm:border-[#D7E3FF] sm:bg-white sm:hover:border-[#C7D8FF] sm:hover:bg-[#EEF4FF]'}`}
-                                style={!isDark ? { color: accentBlue } : undefined}
-                            >
-                                <i className="fa-solid fa-right-to-bracket text-sm"></i>
-                                <span className="hidden sm:inline">Login</span>
-                            </button>
-                        )}
+                            {isAuthenticated ? (
+                                <Link
+                                    to="/dashboard"
+                                    className={`flex h-10 w-10 sm:w-auto items-center justify-center sm:gap-2 rounded-full text-sm font-extrabold transition ${isDark ? 'text-[#126bff] hover:bg-[#202226] sm:border sm:border-[#24262b] sm:bg-[#18191b]' : 'text-[#126bff] hover:bg-[#e2eaf7] sm:border sm:border-[#D7E3FF] sm:bg-white sm:hover:border-[#C7D8FF] sm:hover:bg-[#EEF4FF]'}`}
+                                    style={!isDark ? { color: accentBlue } : undefined}
+                                >
+                                    <i className="fa-solid fa-square-poll-horizontal text-base sm:text-sm"></i>
+                                    <span className="hidden sm:inline">Dashboard</span>
+                                </Link>
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={() => setLoginModalOpen(true)}
+                                    className={`flex h-10 w-10 sm:w-auto items-center justify-center sm:gap-2 rounded-full text-sm font-extrabold transition ${isDark ? 'text-[#126bff] hover:bg-[#202226] sm:border sm:border-[#24262b] sm:bg-[#18191b]' : 'text-[#126bff] hover:bg-[#e2eaf7] sm:border sm:border-[#D7E3FF] sm:bg-white sm:hover:border-[#C7D8FF] sm:hover:bg-[#EEF4FF]'}`}
+                                    style={!isDark ? { color: accentBlue } : undefined}
+                                >
+                                    <i className="fa-solid fa-right-to-bracket text-base sm:text-sm"></i>
+                                    <span className="hidden sm:inline">Login</span>
+                                </button>
+                            )}
+                        </div>
                     </div>
                 </div>
             </header>

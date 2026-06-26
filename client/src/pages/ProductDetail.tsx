@@ -782,49 +782,49 @@ const ProductDetail: React.FC = () => {
 
     return (
         <div className={`min-h-screen transition-colors duration-300 font-sans ${isDark ? 'bg-[#151619] text-slate-300' : 'bg-background-light text-slate-800'}`}>
-            <header className={`sticky top-0 z-50 border-b px-6 transition-colors duration-300 sm:px-8 backdrop-blur-md ${isDark ? 'border-[#202125] bg-[#101112]/80' : 'border-[#e4e8f0] bg-white/80'}`}>
-                <div className="mx-auto flex h-[76px] max-w-[1440px] items-center justify-between">
-                    <Link to="/" className="flex items-center gap-5 hover:opacity-90 transition-opacity">
+            <header className={`h-[76px] border-b px-3 transition-colors duration-300 sm:px-8 ${isDark ? 'border-[#202125] bg-[#101112]' : 'border-[#e4e8f0] bg-white'}`}>
+                <div className="mx-auto flex h-full max-w-[1440px] items-center justify-between">
+                    <Link to="/" className="flex items-center gap-2 sm:gap-5">
                         <img src="/logo.png" alt={`${APP_NAME} Logo`} className="h-8 w-auto object-contain opacity-75" />
-                        <span className={`text-[22px] font-black uppercase leading-none tracking-[-0.02em] sm:text-[30px] ${isDark ? 'text-white' : 'text-[#111827]'}`}>
+                        <span className={`text-[20px] sm:text-[30px] font-black uppercase leading-none tracking-[-0.02em] ${isDark ? 'text-white' : 'text-[#111827]'}`}>
                             {APP_NAME}
                         </span>
                     </Link>
 
-                    <div className={`flex items-center gap-1 p-1 rounded-full border transition-colors duration-300 sm:border-0 sm:bg-transparent sm:p-0 sm:gap-4 ${isDark ? 'border-[#24262b] bg-[#101112] sm:bg-transparent' : 'border-[#d8deea] bg-[#f0f4fc] sm:bg-transparent'}`}>
+                    <div className={`flex items-center gap-1.5 p-1 rounded-full border transition-colors duration-300 sm:border-0 sm:bg-transparent sm:p-0 sm:gap-4 ${isDark ? 'border-[#24262b] bg-[#101112] sm:bg-transparent' : 'border-[#d8deea] bg-[#f0f4fc] sm:bg-transparent'}`}>
                         <Link
                             to="/"
-                            className={`flex h-8 w-8 sm:h-10 sm:w-auto items-center justify-center sm:gap-2 rounded-full text-sm font-extrabold transition ${isDark ? 'text-[#126bff] hover:bg-[#202226] sm:border sm:border-[#24262b] sm:bg-[#18191b]' : 'text-[#126bff] hover:bg-[#e2eaf7] sm:border sm:border-[#D7E3FF] sm:bg-white sm:hover:border-[#C7D8FF] sm:hover:bg-[#EEF4FF]'}`}
+                            className={`flex h-10 w-10 sm:w-auto items-center justify-center sm:gap-2 rounded-full text-sm font-extrabold transition ${isDark ? 'text-[#126bff] hover:bg-[#202226] sm:border sm:border-[#24262b] sm:bg-[#18191b]' : 'text-[#126bff] hover:bg-[#e2eaf7] sm:border sm:border-[#D7E3FF] sm:bg-white sm:hover:border-[#C7D8FF] sm:hover:bg-[#EEF4FF]'}`}
                             style={!isDark ? { color: topbarBlue } : undefined}
                         >
-                            <i className="fa-solid fa-house text-sm"></i>
+                            <i className="fa-solid fa-house text-base sm:text-sm"></i>
                             <span className="hidden sm:inline">Home</span>
                         </Link>
                         <Link
                             to="/contact"
-                            className={`flex h-8 w-8 sm:h-10 sm:w-auto items-center justify-center sm:gap-2 rounded-full text-sm font-extrabold transition ${isDark ? 'text-[#126bff] hover:bg-[#202226] sm:border sm:border-[#24262b] sm:bg-[#18191b]' : 'text-[#126bff] hover:bg-[#e2eaf7] sm:border sm:border-[#D7E3FF] sm:bg-white sm:hover:border-[#C7D8FF] sm:hover:bg-[#EEF4FF]'}`}
+                            className={`flex h-10 w-10 sm:w-auto items-center justify-center sm:gap-2 rounded-full text-sm font-extrabold transition ${isDark ? 'text-[#126bff] hover:bg-[#202226] sm:border sm:border-[#24262b] sm:bg-[#18191b]' : 'text-[#126bff] hover:bg-[#e2eaf7] sm:border sm:border-[#D7E3FF] sm:bg-white sm:hover:border-[#C7D8FF] sm:hover:bg-[#EEF4FF]'}`}
                             style={!isDark ? { color: topbarBlue } : undefined}
                         >
-                            <i className="fa-solid fa-envelope text-sm"></i>
+                            <i className="fa-solid fa-envelope text-base sm:text-sm"></i>
                             <span className="hidden sm:inline">Contact Us</span>
                         </Link>
                         {isAuthenticated ? (
                             <Link
                                 to="/dashboard"
-                                className={`flex h-8 w-8 sm:h-10 sm:w-auto items-center justify-center sm:gap-2 rounded-full text-sm font-extrabold transition ${isDark ? 'text-[#126bff] hover:bg-[#202226] sm:border sm:border-[#24262b] sm:bg-[#18191b]' : 'text-[#126bff] hover:bg-[#e2eaf7] sm:border sm:border-[#D7E3FF] sm:bg-white sm:hover:border-[#C7D8FF] sm:hover:bg-[#EEF4FF]'}`}
+                                className={`flex h-10 w-10 sm:w-auto items-center justify-center sm:gap-2 rounded-full text-sm font-extrabold transition ${isDark ? 'text-[#126bff] hover:bg-[#202226] sm:border sm:border-[#24262b] sm:bg-[#18191b]' : 'text-[#126bff] hover:bg-[#e2eaf7] sm:border sm:border-[#D7E3FF] sm:bg-white sm:hover:border-[#C7D8FF] sm:hover:bg-[#EEF4FF]'}`}
                                 style={!isDark ? { color: topbarBlue } : undefined}
                             >
-                                <i className="fa-solid fa-square-poll-horizontal text-sm"></i>
+                                <i className="fa-solid fa-square-poll-horizontal text-base sm:text-sm"></i>
                                 <span className="hidden sm:inline">Dashboard</span>
                             </Link>
                         ) : (
                             <button
                                 type="button"
                                 onClick={() => setLoginModalOpen(true)}
-                                className={`flex h-8 w-8 sm:h-10 sm:w-auto items-center justify-center sm:gap-2 rounded-full text-sm font-extrabold transition ${isDark ? 'text-[#126bff] hover:bg-[#202226] sm:border sm:border-[#24262b] sm:bg-[#18191b]' : 'text-[#126bff] hover:bg-[#e2eaf7] sm:border sm:border-[#D7E3FF] sm:bg-white sm:hover:border-[#C7D8FF] sm:hover:bg-[#EEF4FF]'}`}
+                                className={`flex h-10 w-10 sm:w-auto items-center justify-center sm:gap-2 rounded-full text-sm font-extrabold transition ${isDark ? 'text-[#126bff] hover:bg-[#202226] sm:border sm:border-[#24262b] sm:bg-[#18191b]' : 'text-[#126bff] hover:bg-[#e2eaf7] sm:border sm:border-[#D7E3FF] sm:bg-white sm:hover:border-[#C7D8FF] sm:hover:bg-[#EEF4FF]'}`}
                                 style={!isDark ? { color: topbarBlue } : undefined}
                             >
-                                <i className="fa-solid fa-right-to-bracket text-sm"></i>
+                                <i className="fa-solid fa-right-to-bracket text-base sm:text-sm"></i>
                                 <span className="hidden sm:inline">Login</span>
                             </button>
                         )}
