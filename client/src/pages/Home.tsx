@@ -269,7 +269,7 @@ const Home: React.FC = () => {
             <section className={`border-b px-6 py-[94px] transition-colors duration-300 sm:px-8 ${isDark ? 'border-[#20232a]' : 'border-[#20232a]'} bg-[linear-gradient(180deg,#091328_0%,#11162c_100%)]`}>
                 <div className="mx-auto grid max-w-[1250px] items-center gap-14 lg:grid-cols-[1fr_580px]">
                     <div className="max-w-[610px]">
-                        <div className={`mb-9 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-extrabold ${isDark ? 'border-[#11427d] bg-[#0a2a55] text-[#4aa0ff]' : 'border-[#9ec7ff] bg-white/10 text-white'}`}>
+                        <div className="mb-9 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-extrabold border-[#11427d] bg-[#0a2a55] text-[#4aa0ff]">
                             <i className="fa-solid fa-circle-check text-[10px]"></i>
                             Premium AC Solutions & Sales
                         </div>
