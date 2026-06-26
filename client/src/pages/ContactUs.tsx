@@ -112,11 +112,11 @@ const ContactUs: React.FC = () => {
                         <button
                             type="button"
                             onClick={() => setIsDark(prev => !prev)}
-                            className={`flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-xl sm:rounded-2xl border shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition ${isDark ? 'border-[#24262b] bg-[#1e2025] text-[#f8fafc] hover:bg-[#252830]' : 'border-[#d8deea] bg-[#eef3fb] text-[#126bff] hover:bg-[#e2eaf7]'}`}
+                            className={`flex h-10 w-10 items-center justify-center rounded-full border shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition ${isDark ? 'border-[#24262b] bg-[#1e2025] text-[#f8fafc] hover:bg-[#252830]' : 'border-[#d8deea] bg-[#eef3fb] text-[#126bff] hover:bg-[#e2eaf7]'}`}
                             title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
                             aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
                         >
-                            <i className={`fa-solid ${isDark ? 'fa-sun' : 'fa-moon'} text-xs sm:text-base`}></i>
+                            <i className={`fa-solid ${isDark ? 'fa-sun' : 'fa-moon'} text-base`}></i>
                         </button>
                         <Link
                             to="/"
