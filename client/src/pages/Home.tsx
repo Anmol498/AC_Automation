@@ -234,7 +234,7 @@ const Home: React.FC = () => {
                         </button>
                         <Link
                             to="/contact"
-                            className={`flex h-10 items-center gap-2 rounded-full border px-5 text-sm font-extrabold transition ${isDark ? 'border-[#24262b] bg-[#18191b] text-[#126bff] hover:bg-[#202226]' : 'border-[#D7E3FF] bg-white hover:border-[#C7D8FF] hover:bg-[#EEF4FF]'}`}
+                            className={`flex h-10 items-center gap-2 rounded-full border px-3 sm:px-5 text-sm font-extrabold transition ${isDark ? 'border-[#24262b] bg-[#18191b] text-[#126bff] hover:bg-[#202226]' : 'border-[#D7E3FF] bg-white hover:border-[#C7D8FF] hover:bg-[#EEF4FF]'}`}
                             style={!isDark ? { color: topbarBlue } : undefined}
                         >
                             <i className="fa-solid fa-envelope text-sm"></i>
@@ -243,21 +243,21 @@ const Home: React.FC = () => {
                         {isAuthenticated ? (
                             <Link
                                 to="/dashboard"
-                                className={`flex h-10 items-center gap-2 rounded-full border px-5 text-sm font-extrabold transition ${isDark ? 'border-[#24262b] bg-[#18191b] text-[#126bff] hover:bg-[#202226]' : 'border-[#D7E3FF] bg-white hover:border-[#C7D8FF] hover:bg-[#EEF4FF]'}`}
+                                className={`flex h-10 items-center gap-2 rounded-full border px-3 sm:px-5 text-sm font-extrabold transition ${isDark ? 'border-[#24262b] bg-[#18191b] text-[#126bff] hover:bg-[#202226]' : 'border-[#D7E3FF] bg-white hover:border-[#C7D8FF] hover:bg-[#EEF4FF]'}`}
                                 style={!isDark ? { color: topbarBlue } : undefined}
                             >
                                 <i className="fa-solid fa-square-poll-horizontal text-sm"></i>
-                                <span>Dashboard</span>
+                                <span className="hidden sm:inline">Dashboard</span>
                             </Link>
                         ) : (
                             <button
                                 type="button"
                                 onClick={() => setLoginModalOpen(true)}
-                                className={`flex h-10 items-center gap-2 rounded-full border px-5 text-sm font-extrabold transition ${isDark ? 'border-[#24262b] bg-[#18191b] text-[#126bff] hover:bg-[#202226]' : 'border-[#D7E3FF] bg-white hover:border-[#C7D8FF] hover:bg-[#EEF4FF]'}`}
+                                className={`flex h-10 items-center gap-2 rounded-full border px-3 sm:px-5 text-sm font-extrabold transition ${isDark ? 'border-[#24262b] bg-[#18191b] text-[#126bff] hover:bg-[#202226]' : 'border-[#D7E3FF] bg-white hover:border-[#C7D8FF] hover:bg-[#EEF4FF]'}`}
                                 style={!isDark ? { color: topbarBlue } : undefined}
                             >
                                 <i className="fa-solid fa-right-to-bracket text-sm"></i>
-                                <span>Login</span>
+                                <span className="hidden sm:inline">Login</span>
                             </button>
                         )}
                     </div>
