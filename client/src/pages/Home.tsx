@@ -222,19 +222,19 @@ const Home: React.FC = () => {
                         </span>
                     </Link>
 
-                    <div className="flex items-center gap-3 sm:gap-4">
+                    <div className={`flex items-center gap-1 p-1 rounded-full border transition-colors duration-300 sm:border-0 sm:bg-transparent sm:p-0 sm:gap-4 ${isDark ? 'border-[#24262b] bg-[#101112] sm:bg-transparent' : 'border-[#d8deea] bg-[#f0f4fc] sm:bg-transparent'}`}>
                         <button
                             type="button"
                             onClick={() => setIsDark(prev => !prev)}
-                            className={`flex h-10 w-10 items-center justify-center rounded-full border shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition ${isDark ? 'border-[#24262b] bg-[#1e2025] text-[#f8fafc] hover:bg-[#252830]' : 'border-[#d8deea] bg-[#eef3fb] text-[#126bff] hover:bg-[#e2eaf7]'}`}
+                            className={`flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full transition ${isDark ? 'text-[#f8fafc] hover:bg-[#252830] sm:border sm:border-[#24262b] sm:bg-[#1e2025] sm:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]' : 'text-[#126bff] hover:bg-[#e2eaf7] sm:border sm:border-[#d8deea] sm:bg-[#eef3fb]'}`}
                             title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
                             aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
                         >
-                            <i className={`fa-solid ${isDark ? 'fa-sun' : 'fa-moon'} text-base`}></i>
+                            <i className={`fa-solid ${isDark ? 'fa-sun' : 'fa-moon'} text-xs sm:text-base`}></i>
                         </button>
                         <Link
                             to="/contact"
-                            className={`flex h-10 items-center gap-2 rounded-full border px-3 sm:px-5 text-sm font-extrabold transition ${isDark ? 'border-[#24262b] bg-[#18191b] text-[#126bff] hover:bg-[#202226]' : 'border-[#D7E3FF] bg-white hover:border-[#C7D8FF] hover:bg-[#EEF4FF]'}`}
+                            className={`flex h-8 w-8 sm:h-10 sm:w-auto items-center justify-center sm:gap-2 rounded-full text-sm font-extrabold transition ${isDark ? 'text-[#126bff] hover:bg-[#202226] sm:border sm:border-[#24262b] sm:bg-[#18191b]' : 'text-[#126bff] hover:bg-[#e2eaf7] sm:border sm:border-[#D7E3FF] sm:bg-white sm:hover:border-[#C7D8FF] sm:hover:bg-[#EEF4FF]'}`}
                             style={!isDark ? { color: topbarBlue } : undefined}
                         >
                             <i className="fa-solid fa-envelope text-sm"></i>
@@ -243,7 +243,7 @@ const Home: React.FC = () => {
                         {isAuthenticated ? (
                             <Link
                                 to="/dashboard"
-                                className={`flex h-10 items-center gap-2 rounded-full border px-3 sm:px-5 text-sm font-extrabold transition ${isDark ? 'border-[#24262b] bg-[#18191b] text-[#126bff] hover:bg-[#202226]' : 'border-[#D7E3FF] bg-white hover:border-[#C7D8FF] hover:bg-[#EEF4FF]'}`}
+                                className={`flex h-8 w-8 sm:h-10 sm:w-auto items-center justify-center sm:gap-2 rounded-full text-sm font-extrabold transition ${isDark ? 'text-[#126bff] hover:bg-[#202226] sm:border sm:border-[#24262b] sm:bg-[#18191b]' : 'text-[#126bff] hover:bg-[#e2eaf7] sm:border sm:border-[#D7E3FF] sm:bg-white sm:hover:border-[#C7D8FF] sm:hover:bg-[#EEF4FF]'}`}
                                 style={!isDark ? { color: topbarBlue } : undefined}
                             >
                                 <i className="fa-solid fa-square-poll-horizontal text-sm"></i>
@@ -253,7 +253,7 @@ const Home: React.FC = () => {
                             <button
                                 type="button"
                                 onClick={() => setLoginModalOpen(true)}
-                                className={`flex h-10 items-center gap-2 rounded-full border px-3 sm:px-5 text-sm font-extrabold transition ${isDark ? 'border-[#24262b] bg-[#18191b] text-[#126bff] hover:bg-[#202226]' : 'border-[#D7E3FF] bg-white hover:border-[#C7D8FF] hover:bg-[#EEF4FF]'}`}
+                                className={`flex h-8 w-8 sm:h-10 sm:w-auto items-center justify-center sm:gap-2 rounded-full text-sm font-extrabold transition ${isDark ? 'text-[#126bff] hover:bg-[#202226] sm:border sm:border-[#24262b] sm:bg-[#18191b]' : 'text-[#126bff] hover:bg-[#e2eaf7] sm:border sm:border-[#D7E3FF] sm:bg-white sm:hover:border-[#C7D8FF] sm:hover:bg-[#EEF4FF]'}`}
                                 style={!isDark ? { color: topbarBlue } : undefined}
                             >
                                 <i className="fa-solid fa-right-to-bracket text-sm"></i>
