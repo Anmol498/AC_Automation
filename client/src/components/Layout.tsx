@@ -202,9 +202,9 @@ const Layout: React.FC = () => {
       <main className="flex-1 flex flex-col min-w-0 w-full overflow-y-auto pb-[68px] md:pb-0">
         {/* Mobile Header */}
         <header className={`md:hidden h-14 shrink-0 ${isDark ? 'bg-slate-900/95 border-slate-800' : 'bg-white/95 border-slate-200'} backdrop-blur-md border-b flex items-center justify-between px-4 sticky top-0 z-30 transition-shadow shadow-sm`}>
-          <Link to="/" className="flex flex-col sm:flex-row items-center md:hidden sm:gap-3 gap-0.5 hover:opacity-90 transition-opacity">
-            <img src="/logo.png" alt={`${APP_NAME} Logo`} className="h-11 sm:h-12 w-auto object-contain drop-shadow-sm shrink-0" />
-            <h1 className={`text-[10px] sm:text-lg font-normal font-display ${isDark ? 'text-white' : 'text-slate-800'} uppercase text-center sm:text-left leading-tight`}>{APP_NAME}</h1>
+          <Link to="/" className="flex items-center md:hidden gap-2 hover:opacity-90 transition-opacity">
+            <img src="/logo.png" alt={`${APP_NAME} Logo`} className="h-9 w-auto object-contain drop-shadow-sm shrink-0" />
+            <h1 className={`hidden sm:block text-xs sm:text-lg font-normal font-display ${isDark ? 'text-white' : 'text-slate-800'} uppercase text-left leading-tight`}>{APP_NAME}</h1>
           </Link>
           <div className="hidden md:flex items-center gap-2">
             <span className={isDark ? 'text-slate-300' : 'text-slate-500'}>Welcome back, </span>

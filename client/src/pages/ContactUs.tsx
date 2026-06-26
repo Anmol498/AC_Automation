@@ -101,9 +101,9 @@ const ContactUs: React.FC = () => {
         <div className={`min-h-screen font-sans transition-colors duration-300 ${shell}`}>
             <header className={`h-[76px] border-b px-6 sm:px-8 ${isDark ? 'border-[#202125] bg-[#101112]' : 'border-[#e4e8f0] bg-white'}`}>
                 <div className="mx-auto flex h-full max-w-[1440px] items-center justify-between">
-                    <Link to="/" className="flex items-center gap-5">
+                    <Link to="/" className="flex items-center gap-2 sm:gap-5">
                         <img src="/logo.png" alt={`${APP_NAME} Logo`} className="h-8 w-auto object-contain opacity-75" />
-                        <span className={`text-[22px] font-black uppercase leading-none tracking-[-0.02em] sm:text-[30px] ${isDark ? 'text-white' : 'text-[#111827]'}`}>
+                        <span className={`hidden sm:block text-[22px] font-black uppercase leading-none tracking-[-0.02em] sm:text-[30px] ${isDark ? 'text-white' : 'text-[#111827]'}`}>
                             {APP_NAME}
                         </span>
                     </Link>
@@ -112,11 +112,11 @@ const ContactUs: React.FC = () => {
                         <button
                             type="button"
                             onClick={() => setIsDark(prev => !prev)}
-                            className={`flex h-10 w-10 items-center justify-center rounded-2xl border shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition ${isDark ? 'border-[#24262b] bg-[#1e2025] text-[#f8fafc] hover:bg-[#252830]' : 'border-[#d8deea] bg-[#eef3fb] text-[#126bff] hover:bg-[#e2eaf7]'}`}
+                            className={`flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-xl sm:rounded-2xl border shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition ${isDark ? 'border-[#24262b] bg-[#1e2025] text-[#f8fafc] hover:bg-[#252830]' : 'border-[#d8deea] bg-[#eef3fb] text-[#126bff] hover:bg-[#e2eaf7]'}`}
                             title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
                             aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
                         >
-                            <i className={`fa-solid ${isDark ? 'fa-sun' : 'fa-moon'} text-base`}></i>
+                            <i className={`fa-solid ${isDark ? 'fa-sun' : 'fa-moon'} text-xs sm:text-base`}></i>
                         </button>
                         <Link
                             to="/"
