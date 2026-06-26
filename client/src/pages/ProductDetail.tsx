@@ -791,7 +791,7 @@ const ProductDetail: React.FC = () => {
                         </span>
                     </Link>
 
-                    <div className={`flex items-center gap-1.5 p-1 rounded-full border transition-colors duration-300 sm:border-0 sm:bg-transparent sm:p-0 sm:gap-4 ${isDark ? 'border-[#24262b] bg-[#101112] sm:bg-transparent' : 'border-[#d8deea] bg-[#f0f4fc] sm:bg-transparent'}`}>
+                    <div className={`flex items-center gap-1.5 p-1 sm:p-0 rounded-full border border-solid transition-colors duration-300 sm:border-none sm:bg-transparent sm:gap-4 ${isDark ? 'border-[#24262b] bg-[#101112]' : 'border-[#d8deea] bg-[#f0f4fc]'}`}>
                         <Link
                             to="/"
                             className={`flex h-10 w-10 sm:w-auto items-center justify-center sm:gap-2 rounded-full text-sm font-extrabold transition ${isDark ? 'text-[#126bff] hover:bg-[#202226] sm:border sm:border-[#24262b] sm:bg-[#18191b]' : 'text-[#126bff] hover:bg-[#e2eaf7] sm:border sm:border-[#D7E3FF] sm:bg-white sm:hover:border-[#C7D8FF] sm:hover:bg-[#EEF4FF]'}`}
