@@ -1,5 +1,4 @@
 import nodemailer from 'nodemailer';
-import { google } from 'googleapis';
 import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
@@ -50,6 +49,25 @@ const getSmtpTransporter = () => {
     } as any);
 };
 
+const getGmailAccessToken = async (): Promise<string> => {
+    const res = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+            client_id: process.env.GMAIL_CLIENT_ID || '',
+            client_secret: process.env.GMAIL_CLIENT_SECRET || '',
+            refresh_token: process.env.GMAIL_REFRESH_TOKEN || '',
+            grant_type: 'refresh_token'
+        })
+    });
+    if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`Token refresh failed: ${res.status} - ${errText}`);
+    }
+    const data: any = await res.json();
+    return data.access_token;
+};
+
 /**
  * Send email using the official Google Gmail API (Port 443 - HTTPS)
  * This bypasses SMTP port blocks on shared hosting.
@@ -70,15 +88,7 @@ const sendEmailViaGmailApi = async (
         console.log("DEBUG: CLIENT_SECRET present:", !!process.env.GMAIL_CLIENT_SECRET);
         console.log("DEBUG: REFRESH_TOKEN present:", !!process.env.GMAIL_REFRESH_TOKEN);
 
-        const oauth2Client = new google.auth.OAuth2(
-            process.env.GMAIL_CLIENT_ID,
-            process.env.GMAIL_CLIENT_SECRET
-        );
-        oauth2Client.setCredentials({
-            refresh_token: process.env.GMAIL_REFRESH_TOKEN
-        });
-
-        const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+        const accessToken = await getGmailAccessToken();
 
         // Construct RFC 2822 MIME message
         const utf8Subject = `=?utf-8?B?${Buffer.from(subject).toString('base64')}?=`;
@@ -102,14 +112,22 @@ const sendEmailViaGmailApi = async (
             .replace(/\//g, '_')
             .replace(/=+$/, '');
 
-        const res = await gmail.users.messages.send({
-            userId: 'me',
-            requestBody: {
-                raw: encodedMessage,
+        const response = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json'
             },
+            body: JSON.stringify({ raw: encodedMessage })
         });
 
-        console.log(`DEBUG: Email sent via Gmail API: ${res.data.id}`);
+        if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(`Gmail API send failed: ${response.status} - ${errText}`);
+        }
+
+        const resData: any = await response.json();
+        console.log(`DEBUG: Email sent via Gmail API: ${resData.id}`);
         return { success: true };
     } catch (error: any) {
         console.error("DEBUG: Gmail API Fail:", error);

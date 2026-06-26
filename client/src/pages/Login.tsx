@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { useAuth } from '../context/AppContext';
-import { APP_NAME, API_BASE_URL } from '../constants';
+import { api } from '../lib/api';
+import { APP_NAME } from '../constants';
 
 interface LoginProps {
   isOpen?: boolean;
@@ -47,11 +47,11 @@ const Login: React.FC<LoginProps> = ({ isOpen = true, onClose }) => {
     setIsLoading(true);
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/login`, {
+      const data = await api.post('/login', {
         email: email.trim(),
         password
       }, {
-        withCredentials: true
+        credentials: 'include'
       });
 
       if (rememberMe) {
@@ -60,17 +60,12 @@ const Login: React.FC<LoginProps> = ({ isOpen = true, onClose }) => {
         localStorage.removeItem('satguru_remember_email');
       }
 
-      const data = response.data;
       login(data.user, data.token);
       onClose?.();
       navigate('/dashboard');
     } catch (err: any) {
       console.error('Login error:', err);
-      if (err.response && err.response.data && err.response.data.error) {
-        setError(err.response.data.error);
-      } else {
-        setError(`Connection Error: Unable to reach the server at ${API_BASE_URL}. Ensure your Node.js backend is running.`);
-      }
+      setError(err.message || 'Connection Error: Unable to reach the server. Ensure your Node.js backend is running.');
     } finally {
       setIsLoading(false);
     }

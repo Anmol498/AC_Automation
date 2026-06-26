@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
 import { useAuth, useSettings } from '../context/AppContext';
 import { UserRole } from '../types';
 import UserManagement from './UserManagement';
 import { useOutletContext } from 'react-router-dom';
 import CustomSelect from '../components/CustomSelect';
 import { toast } from 'sonner';
-import { API_BASE_URL } from '../constants';
+import { api } from '../lib/api';
 
 const Settings: React.FC = () => {
     const { token, user } = useAuth();
@@ -129,12 +128,7 @@ const Settings: React.FC = () => {
 
         if (user?.role === UserRole.SUPER_ADMIN) {
             try {
-                const apiUrl = API_BASE_URL;
-                await axios.put(
-                    `${apiUrl}/settings`,
-                    { [key]: value },
-                    { headers: { Authorization: `Bearer ${token}` } }
-                );
+                await api.put('/settings', { [key]: value });
                 toast.success('Preference updated and synced with server.');
             } catch (err) {
                 console.error(`Failed to save setting ${key} to backend:`, err);
@@ -158,21 +152,16 @@ const Settings: React.FC = () => {
             
             // Persist to backend
             try {
-                const apiUrl = API_BASE_URL;
-                await axios.put(
-                    `${apiUrl}/settings`,
-                    { 
-                        mail_transport: tempMailTransport,
-                        company_phone: tempCompanyPhone,
-                        company_email: tempCompanyEmail,
-                        copperPipeLowStockThreshold: tempCopperThreshold,
-                        enableCopperPipeLowStockAlert: tempCopperEnable,
-                        lowStockThreshold: tempThreshold,
-                        enableLowStockAlert: tempEnable,
-                        requireEmailPreview: tempEmailPreview
-                    },
-                    { headers: { Authorization: `Bearer ${token}` } }
-                );
+                await api.put('/settings', { 
+                    mail_transport: tempMailTransport,
+                    company_phone: tempCompanyPhone,
+                    company_email: tempCompanyEmail,
+                    copperPipeLowStockThreshold: tempCopperThreshold,
+                    enableCopperPipeLowStockAlert: tempCopperEnable,
+                    lowStockThreshold: tempThreshold,
+                    enableLowStockAlert: tempEnable,
+                    requireEmailPreview: tempEmailPreview
+                });
             } catch (err) {
                 console.error("Failed to save settings to backend:", err);
             }
@@ -184,15 +173,11 @@ const Settings: React.FC = () => {
     const handleClearLogs = async () => {
         setIsCleaningLogs(true);
         try {
-            const apiUrl = API_BASE_URL;
-            const res = await axios.delete(
-                `${apiUrl}/settings/cleanup-audit-logs?days=${cleanupDays}`,
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
+            await api.delete(`/settings/cleanup-audit-logs?days=${cleanupDays}`);
             toast.success(`Successfully cleared older logs, keeping only the last ${cleanupDays} days.`);
         } catch (err: any) {
             console.error("Failed to clear audit logs:", err);
-            toast.error(err.response?.data?.error || "Failed to clear audit logs.");
+            toast.error(err.message || "Failed to clear audit logs.");
         } finally {
             setIsCleaningLogs(false);
         }
@@ -218,19 +203,13 @@ const Settings: React.FC = () => {
 
         setIsSubmittingPassword(true);
         try {
-            const apiUrl = API_BASE_URL;
-            await axios.put(
-                `${apiUrl}/auth/change-password`,
-                { currentPassword, newPassword },
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
-
+            await api.put('/auth/change-password', { currentPassword, newPassword });
             setPasswordMessage({ text: 'Password changed successfully.', type: 'success' });
             setCurrentPassword('');
             setNewPassword('');
             setConfirmPassword('');
         } catch (err: any) {
-            setPasswordMessage({ text: err.response?.data?.error || 'Failed to change password.', type: 'error' });
+            setPasswordMessage({ text: err.message || 'Failed to change password.', type: 'error' });
         } finally {
             setIsSubmittingPassword(false);
         }

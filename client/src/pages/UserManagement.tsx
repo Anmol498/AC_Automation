@@ -1,20 +1,17 @@
-
 import React, { useState, useEffect } from 'react';
 import { User, UserRole } from '../types';
 import { useAuth } from '../context/AppContext';
 import { useRealtimeListener } from '../components/RealtimeProvider';
-import { API_BASE_URL } from '../constants';
 import { toast } from 'sonner';
 import { useOutletContext } from 'react-router-dom';
 import CustomSelect from '../components/CustomSelect';
-
+import { api } from '../lib/api';
 
 interface UserManagementProps {
   inSettingsView?: boolean;
 }
 
 const UserManagement: React.FC<UserManagementProps> = ({ inSettingsView = false }) => {
-  const { token } = useAuth();
   const { isDark = false } = useOutletContext<{ isDark?: boolean }>() || {};
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -24,17 +21,20 @@ const UserManagement: React.FC<UserManagementProps> = ({ inSettingsView = false 
 
   const fetchUsers = () => {
     setLoading(true);
-    fetch(`${API_BASE_URL}/users`, { headers: { 'Authorization': `Bearer ${token}` } })
-      .then(res => res.json())
+    api.get('/users')
       .then(data => {
         setUsers(Array.isArray(data) ? data : []);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error("Failed to fetch users", err);
         setLoading(false);
       });
   };
 
   useEffect(() => {
     fetchUsers();
-  }, [token]);
+  }, []);
 
   useRealtimeListener('users', fetchUsers);
 
@@ -46,22 +46,13 @@ const UserManagement: React.FC<UserManagementProps> = ({ inSettingsView = false 
       return;
     }
     try {
-      const res = await fetch(`${API_BASE_URL}/users`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(formData),
-      });
-      if (res.ok) {
-        toast.success("User account registered successfully!");
-        setIsModalOpen(false);
-        setFormData({ email: '', password: '', role: UserRole.ADMIN });
-        fetchUsers();
-      } else {
-        const data = await res.json();
-        toast.error(data.error || "Failed to create user");
-      }
-    } catch (err) {
-      toast.error("Network error creating user");
+      await api.post('/users', formData);
+      toast.success("User account registered successfully!");
+      setIsModalOpen(false);
+      setFormData({ email: '', password: '', role: UserRole.ADMIN });
+      fetchUsers();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to create user");
     }
   };
 
@@ -73,19 +64,11 @@ const UserManagement: React.FC<UserManagementProps> = ({ inSettingsView = false 
         label: "Revoke",
         onClick: async () => {
           try {
-            const res = await fetch(`${API_BASE_URL}/users/${id}`, {
-              method: 'DELETE',
-              headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (res.ok) {
-              toast.success("User access revoked successfully!");
-              fetchUsers();
-            } else {
-              const data = await res.json();
-              toast.error(data.error || "Failed to revoke user access");
-            }
-          } catch (err) {
-            toast.error("Network error revoking user access");
+            await api.delete(`/users/${id}`);
+            toast.success("User access revoked successfully!");
+            fetchUsers();
+          } catch (err: any) {
+            toast.error(err.message || "Failed to revoke user access");
           }
         }
       }
@@ -120,19 +103,9 @@ const UserManagement: React.FC<UserManagementProps> = ({ inSettingsView = false 
             <p className="text-slate-500 text-sm">Control who can access the service dashboard.</p>
           </div>
           <div className="flex items-center gap-3 w-full md:w-auto mt-2 md:mt-0">
-            <div className="relative flex-1 group md:hidden">
-              <i className={`fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 group-focus-within:text-blue-500 transition-colors ${isDark ? 'text-zinc-500' : 'text-slate-400'}`}></i>
-              <input
-                type="text"
-                placeholder="Search team members..."
-                className={`pl-11 pr-4 py-3 border-none rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition-all w-full text-sm font-medium shadow-sm ${
-                  isDark ? 'bg-zinc-800 text-zinc-100 placeholder-zinc-500' : 'bg-white text-slate-800 placeholder-slate-400'
-                }`}
-              />
-            </div>
             <button
               onClick={() => setIsModalOpen(true)}
-              className="hidden md:flex px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl items-center gap-2 shadow-lg shadow-blue-500/20 transition-all font-medium shrink-0"
+              className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl items-center gap-2 shadow-lg shadow-blue-500/20 transition-all font-medium shrink-0 flex w-full justify-center md:w-auto"
             >
               <i className="fa-solid fa-user-plus"></i>
               <span>Add User</span>
@@ -145,22 +118,12 @@ const UserManagement: React.FC<UserManagementProps> = ({ inSettingsView = false 
         <div className="space-y-6 animate-in fade-in slide-in-from-top-2 duration-200">
           {inSettingsView && (
             <div className="flex items-center gap-3 w-full md:w-auto mt-2 md:mt-0">
-              <div className="relative flex-1 group">
-                <i className={`fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 group-focus-within:text-blue-500 transition-colors ${isDark ? 'text-zinc-500' : 'text-slate-400'}`}></i>
-                <input
-                  type="text"
-                  placeholder="Search team members..."
-                  className={`pl-11 pr-4 py-3 border-none rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition-all w-full text-sm font-medium shadow-sm ${
-                    isDark ? 'bg-zinc-800 text-zinc-100 placeholder-zinc-500' : 'bg-white text-slate-800 placeholder-slate-400'
-                  }`}
-                />
-              </div>
               <button
                 onClick={() => setIsModalOpen(true)}
-                className="flex w-12 h-12 justify-center p-0 md:px-4 md:py-2.5 md:w-auto md:h-auto bg-blue-600 hover:bg-blue-700 text-white rounded-xl items-center gap-2 shadow-lg shadow-blue-500/20 transition-all font-medium shrink-0"
+                className="flex w-full justify-center py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl items-center gap-2 shadow-lg shadow-blue-500/20 transition-all font-medium shrink-0"
               >
                 <i className="fa-solid fa-user-plus"></i>
-                <span className="hidden md:inline">Add User</span>
+                <span>Add User</span>
               </button>
             </div>
           )}
@@ -169,64 +132,21 @@ const UserManagement: React.FC<UserManagementProps> = ({ inSettingsView = false 
             <div className="text-center p-10"><i className={`fa-solid fa-spinner fa-spin text-2xl ${isDark ? 'text-zinc-500' : 'text-slate-650'}`}></i></div>
           ) : (
             <>
-              {/* Mobile Card View (< md) */}
-              <div className="md:hidden space-y-4">
-                {users.map((user) => (
-                  <div key={user.id} className={`p-5 rounded-3xl shadow-sm border flex flex-col relative overflow-hidden ${
-                    isDark ? 'bg-[var(--color-card-dark)] border-[var(--color-border-dark)]' : 'bg-white border-slate-100'
-                  }`}>
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl shrink-0 ${user.role === UserRole.SUPER_ADMIN ? 'bg-purple-100/50 text-purple-650 font-black' :
-                          user.role === UserRole.TECHNICIAN ? 'bg-emerald-100/50 text-emerald-650 font-black' : 'bg-blue-100/50 text-blue-650 font-black'
-                          }`}>
-                          <i className={`fa-solid ${user.role === UserRole.SUPER_ADMIN ? 'fa-crown text-purple-600' :
-                            user.role === UserRole.TECHNICIAN ? 'fa-screwdriver-wrench text-emerald-600' : 'fa-user-shield text-blue-600'
-                            }`}></i>
-                        </div>
-                        <div>
-                          <h3 className={`font-semibold leading-tight truncate w-48 ${isDark ? 'text-zinc-100' : 'text-slate-900'}`}>{user.email}</h3>
-                          <span className={`inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded tracking-wide uppercase ${
-                            isDark 
-                              ? user.role === UserRole.SUPER_ADMIN ? 'bg-purple-950/50 text-purple-400' :
-                                user.role === UserRole.TECHNICIAN ? 'bg-emerald-950/50 text-emerald-400' : 'bg-blue-950/50 text-blue-400'
-                              : user.role === UserRole.SUPER_ADMIN ? 'bg-purple-50 text-purple-700' :
-                                user.role === UserRole.TECHNICIAN ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-700'
-                          }`}>
-                            {user.role}
-                          </span>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => handleDelete(user.id)}
-                        className={`p-1 transition-colors ${isDark ? 'text-zinc-500 hover:text-red-400' : 'text-slate-400 hover:text-red-500'}`}
-                      >
-                        <i className="fa-solid fa-trash-can"></i>
-                      </button>
-                    </div>
-                    <div className={`mt-4 pt-4 border-t flex justify-between items-center ${isDark ? 'border-zinc-800' : 'border-slate-50'}`}>
-                      <span className={`text-[11px] font-medium uppercase tracking-widest ${isDark ? 'text-zinc-500' : 'text-slate-400'}`}>System Access: Active</span>
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Desktop Grid View (>= md) */}
-              <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {/* Responsive Card/Grid View */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                 {users.map((user) => (
                   <div key={user.id} className={`p-4 rounded-3xl border shadow-sm flex items-center justify-between transition-all hover:shadow-md ${
                     isDark 
                       ? 'bg-[var(--color-card-dark)] border-[var(--color-border-dark)]' 
                       : 'bg-white border-slate-200'
                   }`}>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 min-w-0">
                       <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl shrink-0 ${
                         isDark 
                           ? user.role === UserRole.SUPER_ADMIN ? 'bg-purple-950/40 text-purple-400' :
                             user.role === UserRole.TECHNICIAN ? 'bg-emerald-950/40 text-emerald-400' : 'bg-blue-950/40 text-blue-400'
-                          : user.role === UserRole.SUPER_ADMIN ? 'bg-purple-100 text-purple-650' :
-                            user.role === UserRole.TECHNICIAN ? 'bg-emerald-100 text-emerald-650' : 'bg-blue-100 text-blue-650'
+                          : user.role === UserRole.SUPER_ADMIN ? 'bg-purple-105 text-purple-650' :
+                            user.role === UserRole.TECHNICIAN ? 'bg-emerald-105 text-emerald-650' : 'bg-blue-105 text-blue-650'
                       }`}>
                         <i className={`fa-solid ${
                           user.role === UserRole.SUPER_ADMIN ? 'fa-crown' :
@@ -248,7 +168,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ inSettingsView = false 
                     </div>
                     <button
                       onClick={() => handleDelete(user.id)}
-                      className="text-slate-400 hover:text-red-500 p-2.5 transition-colors rounded-xl hover:bg-slate-100 dark:hover:bg-zinc-800 shrink-0"
+                      className={`text-slate-400 hover:text-red-500 p-2.5 transition-colors rounded-xl shrink-0 hover:bg-slate-100 dark:hover:bg-zinc-800`}
                       title="Remove User"
                     >
                       <i className="fa-solid fa-user-minus"></i>
@@ -256,16 +176,6 @@ const UserManagement: React.FC<UserManagementProps> = ({ inSettingsView = false 
                   </div>
                 ))}
               </div>
-
-              {/* Mobile Floating Action Button */}
-              {!inSettingsView && (
-                <button
-                  onClick={() => setIsModalOpen(true)}
-                  className="md:hidden fixed bottom-[84px] right-6 bg-blue-600 text-white w-14 h-14 rounded-full shadow-lg shadow-blue-500/30 flex items-center justify-center active:scale-95 transition-transform z-40"
-                >
-                  <i className="fa-solid fa-user-plus text-xl"></i>
-                </button>
-              )}
             </>
           )}
         </div>

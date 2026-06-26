@@ -7,10 +7,8 @@ import Pagination from '../components/Pagination';
 import FileViewerModal from '../components/FileViewerModal';
 import { useRealtimeListener } from '../components/RealtimeProvider';
 import CustomSelect from '../components/CustomSelect';
-
-
 import { useAuth, useSettings } from '../context/AppContext';
-import { GoogleGenAI } from '@google/genai';
+import { api } from '../lib/api';
 
 const JobDetail: React.FC = () => {
   const { id } = useParams();
@@ -124,25 +122,14 @@ const JobDetail: React.FC = () => {
   const fetchMaterialLogs = useCallback(async () => {
     setLoadingMaterials(true);
     try {
-      const headers = { 'Authorization': `Bearer ${token}` };
-      const [copperRes, drainRes, remoteRes, othersRes, copperStockRes, acRes, availableAcRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/material/copper?jobId=${id}`, { headers }),
-        fetch(`${API_BASE_URL}/material/drain?jobId=${id}`, { headers }),
-        fetch(`${API_BASE_URL}/material/remote?jobId=${id}`, { headers }),
-        fetch(`${API_BASE_URL}/material/others?jobId=${id}`, { headers }),
-        fetch(`${API_BASE_URL}/inventory/copper`, { headers }),
-        fetch(`${API_BASE_URL}/material/ac-model?jobId=${id}`, { headers }),
-        fetch(`${API_BASE_URL}/inventory/available-models`, { headers })
-      ]);
-
       const [copperData, drainData, remoteData, othersData, copperStockData, acData, availableAcData] = await Promise.all([
-        copperRes.ok ? copperRes.json() : [],
-        drainRes.ok ? drainRes.json() : [],
-        remoteRes.ok ? remoteRes.json() : [],
-        othersRes.ok ? othersRes.json() : [],
-        copperStockRes.ok ? copperStockRes.json() : [],
-        acRes.ok ? acRes.json() : [],
-        availableAcRes.ok ? availableAcRes.json() : []
+        api.get(`/material/copper?jobId=${id}`).catch(() => []),
+        api.get(`/material/drain?jobId=${id}`).catch(() => []),
+        api.get(`/material/remote?jobId=${id}`).catch(() => []),
+        api.get(`/material/others?jobId=${id}`).catch(() => []),
+        api.get('/inventory/copper').catch(() => []),
+        api.get(`/material/ac-model?jobId=${id}`).catch(() => []),
+        api.get('/inventory/available-models').catch(() => [])
       ]);
 
       setCopperLogs(Array.isArray(copperData) ? copperData : []);
@@ -175,7 +162,7 @@ const JobDetail: React.FC = () => {
     } finally {
       setLoadingMaterials(false);
     }
-  }, [id, token]);
+  }, [id]);
   const handleGroupChange = (group: string) => {
     setSelectedCopperGroup(group);
     const firstSizeInGroup = availableCopperSizes.find(item => item.groupName === group);
@@ -218,34 +205,22 @@ const JobDetail: React.FC = () => {
         endpoint = '/material/others';
       }
 
-      const res = await fetch(`${API_BASE_URL}${endpoint}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(body)
-      });
+      await api.post(endpoint, body);
 
-      if (res.ok) {
-        setNotification({ message: 'Material logged successfully', type: 'success' });
-        // Reset specific form fields
-        setCopperSentQty('');
-        setCopperReturnQty('');
-        setDrainUsedQty('');
-        setRemoteUsedQty('');
-        setRemoteType('wired');
-        setOtherDescription('');
-        setOtherQty('');
-        setMaterialDate(getTodayString());
-        // Refresh material list
-        fetchMaterialLogs();
-      } else {
-        const data = await res.json();
-        setNotification({ message: data.error || 'Failed to log material', type: 'error' });
-      }
-    } catch (err) {
-      setNotification({ message: 'Network error logging material', type: 'error' });
+      setNotification({ message: 'Material logged successfully', type: 'success' });
+      // Reset specific form fields
+      setCopperSentQty('');
+      setCopperReturnQty('');
+      setDrainUsedQty('');
+      setRemoteUsedQty('');
+      setRemoteType('wired');
+      setOtherDescription('');
+      setOtherQty('');
+      setMaterialDate(getTodayString());
+      // Refresh material list
+      fetchMaterialLogs();
+    } catch (err: any) {
+      setNotification({ message: err.message || 'Network error logging material', type: 'error' });
     } finally {
       setIsLoggingMaterial(false);
     }
@@ -254,19 +229,11 @@ const JobDetail: React.FC = () => {
   const handleDeleteMaterialLog = async (type: 'copper' | 'drain' | 'remote' | 'ac-model' | 'others', logId: number) => {
     if (!window.confirm('Are you sure you want to delete this material log?')) return;
     try {
-      const res = await fetch(`${API_BASE_URL}/material/${type}/${logId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) {
-        setNotification({ message: 'Log deleted successfully', type: 'success' });
-        fetchMaterialLogs();
-      } else {
-        const data = await res.json();
-        setNotification({ message: data.error || 'Failed to delete log', type: 'error' });
-      }
-    } catch (err) {
-      setNotification({ message: 'Network error deleting log', type: 'error' });
+      await api.delete(`/material/${type}/${logId}`);
+      setNotification({ message: 'Log deleted successfully', type: 'success' });
+      fetchMaterialLogs();
+    } catch (err: any) {
+      setNotification({ message: err.message || 'Network error deleting log', type: 'error' });
     }
   };
 
@@ -274,56 +241,42 @@ const JobDetail: React.FC = () => {
     if (!window.confirm('Are you sure you want to delete this copper tracking entry? This will delete all logged entries for this size.')) return;
     try {
       for (const logId of ids) {
-        await fetch(`${API_BASE_URL}/material/copper/${logId}`, {
-          method: 'DELETE',
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+        await api.delete(`/material/copper/${logId}`);
       }
       setNotification({ message: 'Log deleted successfully', type: 'success' });
       fetchMaterialLogs();
-    } catch (err) {
-      setNotification({ message: 'Network error deleting log', type: 'error' });
+    } catch (err: any) {
+      setNotification({ message: err.message || 'Network error deleting log', type: 'error' });
     }
   };
 
   const fetchData = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/jobs/${id}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const data = await api.get(`/jobs/${id}`);
+      const paymentsData = await api.get(`/jobs/${id}/payments`).catch(() => []);
+
+      setJob(data.job);
+      const phaseList = Array.isArray(data.phases) ? data.phases : [];
+      setPhases(phaseList);
+      
+      // Initialize email status map from database
+      const emailStatusMap: Record<number, 'sent' | 'failed' | 'skipped'> = {};
+      phaseList.forEach((p: any) => {
+        if (p.emailStatus) {
+          emailStatusMap[p.id] = p.emailStatus;
+        }
       });
-      const data = await res.json();
+      setPhaseEmailStatus(emailStatusMap);
 
-      const paymentsRes = await fetch(`${API_BASE_URL}/jobs/${id}/payments`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const paymentsData = paymentsRes.ok ? await paymentsRes.json() : [];
-
-      if (res.ok) {
-        setJob(data.job);
-        const phaseList = Array.isArray(data.phases) ? data.phases : [];
-        setPhases(phaseList);
-        
-        // Initialize email status map from database
-        const emailStatusMap: Record<number, 'sent' | 'failed' | 'skipped'> = {};
-        phaseList.forEach((p: any) => {
-          if (p.emailStatus) {
-            emailStatusMap[p.id] = p.emailStatus;
-          }
-        });
-        setPhaseEmailStatus(emailStatusMap);
-
-        setPayments(Array.isArray(paymentsData) ? paymentsData : []);
-        fetchMaterialLogs();
-      } else {
-        setError(data.error || "Failed to load job details");
-      }
+      setPayments(Array.isArray(paymentsData) ? paymentsData : []);
+      fetchMaterialLogs();
     } catch (err) {
       console.error("Failed to fetch job", err);
       setError("Network error. Please try again.");
     } finally {
       setLoading(false);
     }
-  }, [id, token, fetchMaterialLogs]);
+  }, [id, fetchMaterialLogs]);
 
   useEffect(() => {
     fetchData();
@@ -335,20 +288,11 @@ const JobDetail: React.FC = () => {
     if (!job) return;
     setIsUpdatingPayment(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/jobs/${id}/payment`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ paymentStatus: newStatus }),
-      });
-      if (res.ok) {
-        setJob({ ...job, paymentStatus: newStatus });
-        setNotification({ message: `Payment status updated to ${newStatus}`, type: 'success' });
-      }
-    } catch (err) {
-      setNotification({ message: "Failed to update payment status", type: 'error' });
+      await api.patch(`/jobs/${id}/payment`, { paymentStatus: newStatus });
+      setJob({ ...job, paymentStatus: newStatus });
+      setNotification({ message: `Payment status updated to ${newStatus}`, type: 'success' });
+    } catch (err: any) {
+      setNotification({ message: err.message || "Failed to update payment status", type: 'error' });
     } finally {
       setIsUpdatingPayment(false);
     }
@@ -359,30 +303,18 @@ const JobDetail: React.FC = () => {
     if (!newPaymentAmount || isNaN(Number(newPaymentAmount))) return;
     setIsRecordingPayment(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/jobs/${id}/payments`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          amount: Number(newPaymentAmount),
-          category: newPaymentCategory,
-          paymentMethod: newPaymentMethod,
-          notes: newPaymentNotes
-        }),
+      await api.post(`/jobs/${id}/payments`, {
+        amount: Number(newPaymentAmount),
+        category: newPaymentCategory,
+        paymentMethod: newPaymentMethod,
+        notes: newPaymentNotes
       });
-      if (res.ok) {
-        setNotification({ message: 'Payment recorded successfully', type: 'success' });
-        setNewPaymentAmount('');
-        setNewPaymentNotes('');
-        fetchData();
-      } else {
-        const data = await res.json();
-        setNotification({ message: data.error || 'Failed to record payment', type: 'error' });
-      }
-    } catch (err) {
-      setNotification({ message: "Network error recording payment", type: 'error' });
+      setNotification({ message: 'Payment recorded successfully', type: 'success' });
+      setNewPaymentAmount('');
+      setNewPaymentNotes('');
+      fetchData();
+    } catch (err: any) {
+      setNotification({ message: err.message || "Network error recording payment", type: 'error' });
     } finally {
       setIsRecordingPayment(false);
     }
@@ -392,20 +324,11 @@ const JobDetail: React.FC = () => {
     if (!window.confirm('Are you sure you want to delete this payment record? This action cannot be undone.')) return;
     
     try {
-      const res = await fetch(`${API_BASE_URL}/payments/${paymentId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      if (res.ok) {
-        setNotification({ message: 'Payment deleted successfully', type: 'success' });
-        fetchData(); // Refresh the job and payments data
-      } else {
-        const data = await res.json();
-        setNotification({ message: data.error || 'Failed to delete payment', type: 'error' });
-      }
-    } catch (err) {
-      setNotification({ message: "Network error deleting payment", type: 'error' });
+      await api.delete(`/payments/${paymentId}`);
+      setNotification({ message: 'Payment deleted successfully', type: 'success' });
+      fetchData(); // Refresh the job and payments data
+    } catch (err: any) {
+      setNotification({ message: err.message || "Network error deleting payment", type: 'error' });
     }
   };
 
@@ -423,32 +346,19 @@ const JobDetail: React.FC = () => {
   const handleSaveCosts = async () => {
     setIsSavingCosts(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/jobs/${id}/costs`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(editedCosts),
+      const data = await api.patch(`/jobs/${id}/costs`, editedCosts);
+      setJob({ 
+        ...job, 
+        copperPipingCost: data.copperPipingCost, 
+        outdoorFittingCost: data.outdoorFittingCost, 
+        commissioningCost: data.commissioningCost,
+        equipmentCost: data.equipmentCost,
+        totalCost: data.totalCost 
       });
-      if (res.ok) {
-        const data = await res.json();
-        setJob({ 
-          ...job, 
-          copperPipingCost: data.copperPipingCost, 
-          outdoorFittingCost: data.outdoorFittingCost, 
-          commissioningCost: data.commissioningCost,
-          equipmentCost: data.equipmentCost,
-          totalCost: data.totalCost 
-        });
-        setNotification({ message: 'Financial details updated successfully', type: 'success' });
-        setIsEditingCosts(false);
-      } else {
-        const data = await res.json();
-        setNotification({ message: data.error || 'Failed to update financial details', type: 'error' });
-      }
-    } catch (err) {
-      setNotification({ message: "Network error updating costs", type: 'error' });
+      setNotification({ message: 'Financial details updated successfully', type: 'success' });
+      setIsEditingCosts(false);
+    } catch (err: any) {
+      setNotification({ message: err.message || "Network error updating costs", type: 'error' });
     } finally {
       setIsSavingCosts(false);
     }
@@ -465,37 +375,28 @@ const JobDetail: React.FC = () => {
       setIsProcessing(phaseId);
       setNotification(null);
       try {
-        const response = await fetch(`${API_BASE_URL}/phases/${phaseId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ isCompleted: true, skipEmail: forceSkipEmail }),
-        });
-        const data = await response.json();
-        if (response.ok) {
-          setPhases(prev => prev.map(p =>
-            p.id === phaseId ? { ...p, isCompleted: true, completedAt: new Date().toISOString() } : p
-          ));
-          setJob((prev: any) => ({
-            ...prev,
-            status: data.jobStatus || prev.status,
-            currentPhase: data.currentPhase
-          }));
-          if (forceSkipEmail) {
-            setPhaseEmailStatus(prev => ({ ...prev, [phaseId]: 'skipped' }));
-          } else {
-            setPhaseEmailStatus(prev => ({ ...prev, [phaseId]: data.emailSent ? 'sent' : 'failed' }));
-            if (!data.emailSent) {
-              setNotification({ message: 'Phase completed, but the email failed to send. Please retry or skip.', type: 'error' });
-            } else {
-              setNotification({ message: 'Phase completed and email sent successfully.', type: 'success' });
-            }
-          }
-          setSelectedPhaseId(null);
+        const data = await api.patch(`/phases/${phaseId}`, { isCompleted: true, skipEmail: forceSkipEmail });
+        setPhases(prev => prev.map(p =>
+          p.id === phaseId ? { ...p, isCompleted: true, completedAt: new Date().toISOString() } : p
+        ));
+        setJob((prev: any) => ({
+          ...prev,
+          status: data.jobStatus || prev.status,
+          currentPhase: data.currentPhase
+        }));
+        if (forceSkipEmail) {
+          setPhaseEmailStatus(prev => ({ ...prev, [phaseId]: 'skipped' }));
         } else {
-          setNotification({ message: data.error || 'Failed to update phase', type: 'error' });
+          setPhaseEmailStatus(prev => ({ ...prev, [phaseId]: data.emailSent ? 'sent' : 'failed' }));
+          if (!data.emailSent) {
+            setNotification({ message: 'Phase completed, but the email failed to send. Please retry or skip.', type: 'error' });
+          } else {
+            setNotification({ message: 'Phase completed and email sent successfully.', type: 'success' });
+          }
         }
-      } catch (err) {
-        setNotification({ message: 'Network connection error', type: 'error' });
+        setSelectedPhaseId(null);
+      } catch (err: any) {
+        setNotification({ message: err.message || 'Network connection error', type: 'error' });
       } finally {
         setIsProcessing(null);
       }
@@ -506,34 +407,26 @@ const JobDetail: React.FC = () => {
     setNotification(null);
 
     try {
-      const res = await fetch(`${API_BASE_URL}/phases/${phaseId}/email-preview`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const preview = await res.json();
-      if (res.ok) {
-        setEmailModal(prev => ({
-          ...prev,
-          isLoading: false,
-          to: preview.to,
-          customerName: preview.customerName,
-          subject: preview.subject,
-          greeting: `Hello ${preview.customerName},`,
-          message: preview.message,
-          phaseName: preview.phaseName,
-          jobId: preview.jobId,
-          technician: preview.technician,
-          isFinal: preview.isFinal,
-          isPaymentPhase: preview.isPaymentPhase,
-          paymentAmount: preview.paymentAmount,
-          paymentStatus: preview.paymentStatus
-        }));
-      } else {
-        setEmailModal(prev => ({ ...prev, isOpen: false, isLoading: false }));
-        setNotification({ message: preview.error || 'Failed to load email preview', type: 'error' });
-      }
-    } catch (err) {
+      const preview = await api.get(`/phases/${phaseId}/email-preview`);
+      setEmailModal(prev => ({
+        ...prev,
+        isLoading: false,
+        to: preview.to,
+        customerName: preview.customerName,
+        subject: preview.subject,
+        greeting: `Hello ${preview.customerName},`,
+        message: preview.message,
+        phaseName: preview.phaseName,
+        jobId: preview.jobId,
+        technician: preview.technician,
+        isFinal: preview.isFinal,
+        isPaymentPhase: preview.isPaymentPhase,
+        paymentAmount: preview.paymentAmount,
+        paymentStatus: preview.paymentStatus
+      }));
+    } catch (err: any) {
       setEmailModal(prev => ({ ...prev, isOpen: false, isLoading: false }));
-      setNotification({ message: 'Network error loading preview', type: 'error' });
+      setNotification({ message: err.message || 'Network error loading preview', type: 'error' });
     }
   };
 
@@ -557,43 +450,30 @@ const JobDetail: React.FC = () => {
         }
       }
 
-      const response = await fetch(`${API_BASE_URL}/phases/${emailModal.phaseId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(bodyPayload),
-      });
+      const data = await api.patch(`/phases/${emailModal.phaseId}`, bodyPayload);
 
-      const data = await response.json();
+      setPhases(prev => prev.map(p =>
+        p.id === emailModal.phaseId ? { ...p, isCompleted: true, completedAt: new Date().toISOString() } : p
+      ));
+      setJob((prev: any) => ({
+        ...prev,
+        status: data.jobStatus || prev.status,
+        currentPhase: data.currentPhase
+      }));
 
-      if (response.ok) {
-        setPhases(prev => prev.map(p =>
-          p.id === emailModal.phaseId ? { ...p, isCompleted: true, completedAt: new Date().toISOString() } : p
-        ));
-        setJob((prev: any) => ({
-          ...prev,
-          status: data.jobStatus || prev.status,
-          currentPhase: data.currentPhase
-        }));
-
-        if (skipEmail) {
-          setPhaseEmailStatus(prev => ({ ...prev, [emailModal.phaseId!]: 'skipped' }));
-        } else {
-          setPhaseEmailStatus(prev => ({ ...prev, [emailModal.phaseId!]: data.emailSent ? 'sent' : 'failed' }));
-          if (!data.emailSent) {
-            const errorDetail = data.emailError ? ` (Reason: ${data.emailError})` : '';
-            setNotification({ message: `Phase completed, but the email failed to send${errorDetail}. Please retry or skip.`, type: 'error' });
-          } else {
-            setNotification({ message: 'Phase completed and email sent successfully.', type: 'success' });
-          }
-        }
+      if (skipEmail) {
+        setPhaseEmailStatus(prev => ({ ...prev, [emailModal.phaseId!]: 'skipped' }));
       } else {
-        setNotification({ message: data.error || 'Failed to update phase', type: 'error' });
+        setPhaseEmailStatus(prev => ({ ...prev, [emailModal.phaseId!]: data.emailSent ? 'sent' : 'failed' }));
+        if (!data.emailSent) {
+          const errorDetail = data.emailError ? ` (Reason: ${data.emailError})` : '';
+          setNotification({ message: `Phase completed, but the email failed to send${errorDetail}. Please retry or skip.`, type: 'error' });
+        } else {
+          setNotification({ message: 'Phase completed and email sent successfully.', type: 'success' });
+        }
       }
-    } catch (err) {
-      setNotification({ message: 'Network connection error', type: 'error' });
+    } catch (err: any) {
+      setNotification({ message: err.message || 'Network connection error', type: 'error' });
     } finally {
       setIsProcessing(null);
     }
@@ -606,13 +486,7 @@ const JobDetail: React.FC = () => {
       setPhaseEmailStatus(prev => ({ ...prev, [phaseId]: 'failed' })); // keeps it showing failed while we process, though ideally we'd have a 'retrying' state. We will just use the same logic as the modal for simplicity, but skip UI.
 
       try {
-        const response = await fetch(`${API_BASE_URL}/phases/${phaseId}/resend-email`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({}), // uses default template on backend
-        });
-
-        const data = await response.json();
+        const data = await api.post(`/phases/${phaseId}/resend-email`, {});
         setPhaseEmailStatus(prev => ({ ...prev, [phaseId]: data.emailSent ? 'sent' : 'failed' }));
         if (!data.emailSent) {
           const errorDetail = data.emailError ? ` (Reason: ${data.emailError})` : '';
@@ -620,9 +494,9 @@ const JobDetail: React.FC = () => {
         } else {
           setNotification({ message: 'Email sent successfully!', type: 'success' });
         }
-      } catch (err) {
+      } catch (err: any) {
         setPhaseEmailStatus(prev => ({ ...prev, [phaseId]: 'failed' }));
-        setNotification({ message: 'Network error while retrying email.', type: 'error' });
+        setNotification({ message: err.message || 'Network error while retrying email.', type: 'error' });
       }
       return;
     }
@@ -631,34 +505,26 @@ const JobDetail: React.FC = () => {
     setNotification(null);
 
     try {
-      const res = await fetch(`${API_BASE_URL}/phases/${phaseId}/email-preview`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const preview = await res.json();
-      if (res.ok) {
-        setEmailModal(prev => ({
-          ...prev,
-          isLoading: false,
-          to: preview.to,
-          customerName: preview.customerName,
-          subject: preview.subject,
-          greeting: `Hello ${preview.customerName},`,
-          message: preview.message,
-          phaseName: preview.phaseName,
-          jobId: preview.jobId,
-          technician: preview.technician,
-          isFinal: preview.isFinal,
-          isPaymentPhase: preview.isPaymentPhase,
-          paymentAmount: preview.paymentAmount,
-          paymentStatus: preview.paymentStatus
-        }));
-      } else {
-        setEmailModal(prev => ({ ...prev, isOpen: false, isLoading: false }));
-        setNotification({ message: preview.error || 'Failed to load email preview', type: 'error' });
-      }
-    } catch (err) {
+      const preview = await api.get(`/phases/${phaseId}/email-preview`);
+      setEmailModal(prev => ({
+        ...prev,
+        isLoading: false,
+        to: preview.to,
+        customerName: preview.customerName,
+        subject: preview.subject,
+        greeting: `Hello ${preview.customerName},`,
+        message: preview.message,
+        phaseName: preview.phaseName,
+        jobId: preview.jobId,
+        technician: preview.technician,
+        isFinal: preview.isFinal,
+        isPaymentPhase: preview.isPaymentPhase,
+        paymentAmount: preview.paymentAmount,
+        paymentStatus: preview.paymentStatus
+      }));
+    } catch (err: any) {
       setEmailModal(prev => ({ ...prev, isOpen: false, isLoading: false }));
-      setNotification({ message: 'Network error loading preview', type: 'error' });
+      setNotification({ message: err.message || 'Network error loading preview', type: 'error' });
     }
   };
 
@@ -679,16 +545,7 @@ const JobDetail: React.FC = () => {
         bodyPayload.customPaymentAmount = Number(emailModal.paymentAmount);
       }
 
-      const response = await fetch(`${API_BASE_URL}/phases/${emailModal.phaseId}/resend-email`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(bodyPayload),
-      });
-
-      const data = await response.json();
+      const data = await api.post(`/phases/${emailModal.phaseId}/resend-email`, bodyPayload);
       setPhaseEmailStatus(prev => ({ ...prev, [emailModal.phaseId!]: data.emailSent ? 'sent' : 'failed' }));
       if (!data.emailSent) {
         const errorDetail = data.emailError ? ` (Reason: ${data.emailError})` : '';
@@ -696,9 +553,9 @@ const JobDetail: React.FC = () => {
       } else {
         setNotification({ message: 'Email sent successfully!', type: 'success' });
       }
-    } catch (err) {
+    } catch (err: any) {
       setPhaseEmailStatus(prev => ({ ...prev, [emailModal.phaseId!]: 'failed' }));
-      setNotification({ message: 'Network error while retrying email.', type: 'error' });
+      setNotification({ message: err.message || 'Network error while retrying email.', type: 'error' });
     }
   };
 

@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import axios from 'axios';
 import { useAuth, useSettings } from '../context/AppContext';
 import { useRealtimeListener } from '../components/RealtimeProvider';
-import { API_BASE_URL } from '../constants';
+import { api } from '../lib/api';
 import Pagination from '../components/Pagination';
 import { toast } from 'sonner';
 import CustomSelect from '../components/CustomSelect';
@@ -95,14 +94,11 @@ const InventoryManagement: React.FC = () => {
     const fetchInventory = async () => {
         try {
             setIsLoading(true);
-            const res = await axios.get(`${API_BASE_URL}/inventory`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            setItems(res.data);
+            const data = await api.get('/inventory');
+            setItems(data);
         } catch (err: any) {
             console.error("Inventory Fetch Error:", err);
-            console.error("Error response details:", err.response?.data);
-            setError(err.response?.data?.error || 'Failed to fetch inventory');
+            setError(err.message || 'Failed to fetch inventory');
         } finally {
             setIsLoading(false);
         }
@@ -111,13 +107,12 @@ const InventoryManagement: React.FC = () => {
     const fetchCopperLogs = async () => {
         try {
             setLoadingCopper(true);
-            const headers = { Authorization: `Bearer ${token}` };
             const [stockRes, logsRes] = await Promise.all([
-                axios.get(`${API_BASE_URL}/inventory/copper`, { headers }),
-                axios.get(`${API_BASE_URL}/inventory/copper/logs`, { headers })
+                api.get('/inventory/copper').catch(() => []),
+                api.get('/inventory/copper/logs').catch(() => [])
             ]);
-            setCopperInventoryLogs(stockRes.data);
-            setCopperHistoryLogs(logsRes.data);
+            setCopperInventoryLogs(stockRes);
+            setCopperHistoryLogs(logsRes);
         } catch (err: any) {
             console.error("Failed to fetch copper logs:", err);
         } finally {
@@ -188,10 +183,9 @@ const InventoryManagement: React.FC = () => {
                 onClick: async () => {
                     try {
                         const itemsInGroup = copperInventoryLogs.filter(item => (item.groupName || 'Standard Sizes') === groupName);
-                        const headers = { Authorization: `Bearer ${token}` };
                         
                         for (const item of itemsInGroup) {
-                            await axios.put(`${API_BASE_URL}/inventory/copper/group/${item.id}`, { groupName: 'Standard Sizes' }, { headers });
+                            await api.put(`/inventory/copper/group/${item.id}`, { groupName: 'Standard Sizes' });
                         }
                         
                         const updated = customGroups.filter(grp => grp !== groupName);
@@ -200,7 +194,7 @@ const InventoryManagement: React.FC = () => {
                         toast.success("Group deleted successfully");
                         fetchCopperLogs();
                     } catch (err: any) {
-                        toast.error(err.response?.data?.error || 'Failed to delete group');
+                        toast.error(err.message || 'Failed to delete group');
                     }
                 }
             }
@@ -263,12 +257,11 @@ const InventoryManagement: React.FC = () => {
                 label: "Delete",
                 onClick: async () => {
                     try {
-                        const headers = { Authorization: `Bearer ${token}` };
-                        await axios.delete(`${API_BASE_URL}/inventory/copper/logs/${logId}`, { headers });
+                        await api.delete(`/inventory/copper/logs/${logId}`);
                         toast.success("Copper log entry deleted successfully");
                         fetchCopperLogs();
                     } catch (err: any) {
-                        toast.error(err.response?.data?.error || 'Failed to delete copper log entry');
+                        toast.error(err.message || 'Failed to delete copper log entry');
                     }
                 }
             }
@@ -282,12 +275,11 @@ const InventoryManagement: React.FC = () => {
                 label: "Delete Size",
                 onClick: async () => {
                     try {
-                        const headers = { Authorization: `Bearer ${token}` };
-                        await axios.delete(`${API_BASE_URL}/inventory/copper/${id}`, { headers });
+                        await api.delete(`/inventory/copper/${id}`);
                         toast.success("Copper size deleted successfully");
                         fetchCopperLogs();
                     } catch (err: any) {
-                        toast.error(err.response?.data?.error || 'Failed to delete copper size');
+                        toast.error(err.message || 'Failed to delete copper size');
                     }
                 }
             }
@@ -297,8 +289,6 @@ const InventoryManagement: React.FC = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const headers = { Authorization: `Bearer ${token}` };
-
             if (activeTab === 'Copper') {
                 if (editingCopperItem) {
                     const payload = {
@@ -306,7 +296,7 @@ const InventoryManagement: React.FC = () => {
                         sentQty: Number(copperFormData.sentQty || 0),
                         returnQty: Number(copperFormData.returnQty || 0)
                     };
-                    await axios.put(`${API_BASE_URL}/inventory/copper/${editingCopperItem.id}`, payload, { headers });
+                    await api.put(`/inventory/copper/${editingCopperItem.id}`, payload);
                 } else {
                     const group = copperFormData.groupName || 'Standard Sizes';
                     let sizeVal = copperFormData.size.trim();
@@ -318,18 +308,16 @@ const InventoryManagement: React.FC = () => {
                         totalInStock: Number(copperFormData.totalInStock || 0),
                         groupName: group
                     };
-                    await axios.post(`${API_BASE_URL}/inventory/copper`, payload, { headers });
+                    await api.post('/inventory/copper', payload);
                 }
                 fetchCopperLogs();
                 closeModal();
                 return;
             }
 
-            const apiUrl = `${API_BASE_URL}/inventory`;
-
             if (editingItem) {
                 if (isEditingFullDetails) {
-                    await axios.put(`${apiUrl}/${editingItem.id}`, formData, { headers });
+                    await api.put(`/inventory/${editingItem.id}`, formData);
                 } else {
                     // When editing just stock, we ONLY update the quantity by adding the new amount
                     const updatedData = {
@@ -343,16 +331,16 @@ const InventoryManagement: React.FC = () => {
                         ourPrice: editingItem.ourPrice,
                         salePrice: editingItem.salePrice
                     };
-                    await axios.put(`${apiUrl}/${editingItem.id}`, updatedData, { headers });
+                    await api.put(`/inventory/${editingItem.id}`, updatedData);
                 }
             } else {
-                await axios.post(apiUrl, formData, { headers });
+                await api.post('/inventory', formData);
             }
 
             fetchInventory();
             closeModal();
         } catch (err: any) {
-            toast.error(err.response?.data?.error || 'Failed to save item');
+            toast.error(err.message || 'Failed to save item');
         }
     };
 
@@ -363,17 +351,12 @@ const InventoryManagement: React.FC = () => {
             return;
         }
         try {
-            const apiUrl = `${API_BASE_URL}/inventory/history`;
-
-            const res = await axios.get(apiUrl, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            setHistoryLogs(res.data);
+            const data = await api.get('/inventory/history');
+            setHistoryLogs(data);
             setHistoryPage(1);
             setIsHistoryModalOpen(true);
-
         } catch (err: any) {
-            toast.error(err.response?.data?.error || 'Failed to fetch history');
+            toast.error(err.message || 'Failed to fetch history');
         }
     };
 
@@ -388,9 +371,6 @@ const InventoryManagement: React.FC = () => {
             return;
         }
         try {
-            const apiUrl = `${API_BASE_URL}/inventory/${item.id}`;
-            const headers = { Authorization: `Bearer ${token}` };
-
             const updatedData = {
                 modelName: item.modelName,
                 brand: item.brand,
@@ -403,7 +383,7 @@ const InventoryManagement: React.FC = () => {
                 salePrice: item.salePrice
             };
 
-            await axios.put(apiUrl, updatedData, { headers });
+            await api.put(`/inventory/${item.id}`, updatedData);
 
             // Track for potential undo operations
             setLastSoldItem({
@@ -414,7 +394,7 @@ const InventoryManagement: React.FC = () => {
             toast.success(`${item.modelName} marked as sold`);
             fetchInventory();
         } catch (err: any) {
-            toast.error(err.response?.data?.error || 'Failed to update sold status');
+            toast.error(err.message || 'Failed to update sold status');
         }
     };
 
@@ -424,9 +404,6 @@ const InventoryManagement: React.FC = () => {
         try {
             const itemToRevert = items.find(i => i.id === lastSoldItem.id);
             if (!itemToRevert) return;
-
-            const apiUrl = `${API_BASE_URL}/inventory/${lastSoldItem.id}`;
-            const headers = { Authorization: `Bearer ${token}` };
 
             const revertedData = {
                 modelName: itemToRevert.modelName,
@@ -440,12 +417,12 @@ const InventoryManagement: React.FC = () => {
                 salePrice: itemToRevert.salePrice
             };
 
-            await axios.put(apiUrl, revertedData, { headers });
+            await api.put(`/inventory/${lastSoldItem.id}`, revertedData);
             setLastSoldItem(null);
             toast.success("Action undone successfully");
             fetchInventory();
         } catch (err: any) {
-            toast.error(err.response?.data?.error || 'Failed to undo action');
+            toast.error(err.message || 'Failed to undo action');
         }
     };
 
@@ -457,15 +434,11 @@ const InventoryManagement: React.FC = () => {
                 label: "Delete",
                 onClick: async () => {
                     try {
-                        const apiUrl = `${API_BASE_URL}/inventory/${id}`;
-
-                        await axios.delete(apiUrl, {
-                            headers: { Authorization: `Bearer ${token}` }
-                        });
+                        await api.delete(`/inventory/${id}`);
                         toast.success("Item deleted successfully!");
                         fetchInventory();
                     } catch (err: any) {
-                        toast.error(err.response?.data?.error || 'Failed to delete item');
+                        toast.error(err.message || 'Failed to delete item');
                     }
                 }
             }
@@ -517,12 +490,11 @@ const InventoryManagement: React.FC = () => {
             const dragData = JSON.parse(dataStr) as { id: number; size: string };
             const { id } = dragData;
             
-            const headers = { Authorization: `Bearer ${token}` };
-            await axios.put(`${API_BASE_URL}/inventory/copper/group/${id}`, { groupName: targetGroup }, { headers });
+            await api.put(`/inventory/copper/group/${id}`, { groupName: targetGroup });
             fetchCopperLogs();
         } catch (err: any) {
             console.error("Failed to move size group:", err);
-            toast.error(err.response?.data?.error || 'Failed to move size group.');
+            toast.error(err.message || 'Failed to move size group.');
         }
     };
 

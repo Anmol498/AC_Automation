@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
 import { useAuth } from '../context/AppContext';
-import { API_BASE_URL } from '../constants';
+import { api } from '../lib/api';
 import { Skeleton } from '../components/ui/Skeleton';
 import { useRealtimeListener } from '../components/RealtimeProvider';
 import CustomMonthPicker from '../components/CustomMonthPicker';
@@ -539,10 +539,7 @@ const Dashboard: React.FC = () => {
   }, [revenueStats, startMonth, endMonth]);
 
   const fetchStats = useCallback(() => {
-    fetch(`${API_BASE_URL}/stats`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-      .then(res => res.json())
+    api.get('/stats')
       .then(data => {
         const isTech = user?.role === 'technician';
         const statsArray = [];
@@ -576,7 +573,7 @@ const Dashboard: React.FC = () => {
         console.error("Dashboard error:", err);
         setLoading(false);
       });
-  }, [token, user]);
+  }, [user]);
 
   useEffect(() => {
     fetchStats();

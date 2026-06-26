@@ -2,13 +2,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
 import { Customer, Job } from '../types';
 import { useAuth } from '../context/AppContext';
-import { API_BASE_URL } from '../constants';
 import Pagination from '../components/Pagination';
 import FileViewerModal from '../components/FileViewerModal';
 import CustomDatePicker from '../components/CustomDatePicker';
 import CustomSelect from '../components/CustomSelect';
 import { toast } from 'sonner';
 import { useRealtimeListener } from '../components/RealtimeProvider';
+import { api } from '../lib/api';
+import { useDebounce } from '../hooks/useDebounce';
+import { API_BASE_URL } from '../constants';
 
 const CustomerList: React.FC = () => {
   const { token } = useAuth();
@@ -45,10 +47,7 @@ const CustomerList: React.FC = () => {
 
   const fetchCustomerJobs = (customerId: number) => {
     setLoadingJobs(true);
-    fetch(`${API_BASE_URL}/jobs?customerId=${customerId}`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-      .then(res => res.json())
+    api.get(`/jobs?customerId=${customerId}`)
       .then(data => {
         setCustomerJobs(Array.isArray(data) ? data : []);
       })
@@ -57,10 +56,7 @@ const CustomerList: React.FC = () => {
   };
 
   const fetchTechnicians = () => {
-    fetch(`${API_BASE_URL}/technicians`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-      .then(res => res.json())
+    api.get('/technicians')
       .then(data => setTechnicians(Array.isArray(data) ? data : []))
       .catch(err => console.error("Failed to fetch technicians:", err));
   };
@@ -85,50 +81,28 @@ const CustomerList: React.FC = () => {
         equipmentCost: newJobFormData.equipmentCost
       };
 
-      const res = await fetch(`${API_BASE_URL}/jobs`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json', 
-          'Authorization': `Bearer ${token}` 
-        },
-        body: JSON.stringify(payload),
+      await api.post('/jobs', payload);
+      toast.success("Job scheduled successfully!");
+      setIsAddingJob(false);
+      setNewJobFormData({
+        jobType: 'Installation',
+        technician: '',
+        startDate: new Date().toISOString().split('T')[0],
+        copperPipingCost: 0,
+        outdoorFittingCost: 0,
+        commissioningCost: 0,
+        equipmentCost: 0
       });
-
-      if (res.ok) {
-        toast.success("Job scheduled successfully!");
-        setIsAddingJob(false);
-        setNewJobFormData({
-          jobType: 'Installation',
-          technician: '',
-          startDate: new Date().toISOString().split('T')[0],
-          copperPipingCost: 0,
-          outdoorFittingCost: 0,
-          commissioningCost: 0,
-          equipmentCost: 0
-        });
-        fetchCustomerJobs(selectedCustomer.id);
-      } else {
-        const errData = await res.json().catch(() => ({}));
-        toast.error(`Failed to schedule job: ${errData.error || res.statusText}`);
-      }
+      fetchCustomerJobs(selectedCustomer.id);
     } catch (err: any) {
-      toast.error("Network error: " + err.message);
+      toast.error(err.message || "Failed to schedule job");
     }
   };
 
   const fetchCustomers = (search = '') => {
     setLoading(true);
-    const url = search
-      ? `${API_BASE_URL}/customers?search=${encodeURIComponent(search)}`
-      : `${API_BASE_URL}/customers`;
-
-    fetch(url, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-      .then(res => {
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-        return res.json();
-      })
+    const params = search ? { search } : undefined;
+    api.get('/customers', { params })
       .then(data => {
         setCustomers(Array.isArray(data) ? data : []);
       })
@@ -140,13 +114,11 @@ const CustomerList: React.FC = () => {
       });
   };
 
-  useEffect(() => {
-    const delayDebounceFn = setTimeout(() => {
-      fetchCustomers(searchQuery);
-    }, 300);
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
-    return () => clearTimeout(delayDebounceFn);
-  }, [searchQuery, token]);
+  useEffect(() => {
+    fetchCustomers(debouncedSearchQuery);
+  }, [debouncedSearchQuery]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -191,8 +163,8 @@ const CustomerList: React.FC = () => {
 
     const saveCustomer = async () => {
       try {
-        const url = editingId ? `${API_BASE_URL}/customers/${editingId}` : `${API_BASE_URL}/customers`;
-        const method = editingId ? 'PUT' : 'POST';
+        const endpoint = editingId ? `/customers/${editingId}` : '/customers';
+        const method = editingId ? 'put' : 'post';
 
         const payload = new FormData();
         payload.append('name', formData.name);
@@ -202,26 +174,17 @@ const CustomerList: React.FC = () => {
         if (drawingFile) payload.append('drawing', drawingFile);
         if (quotationFile) payload.append('quotation', quotationFile);
 
-        const res = await fetch(url, {
-          method,
-          headers: { 'Authorization': `Bearer ${token}` },
-          body: payload,
-        });
-
-        if (res.ok) {
-          toast.success("Customer details saved successfully!");
-          setFormData({ name: '', email: '', phone: '', address: '' });
-          setDrawingFile(null);
-          setQuotationFile(null);
-          setEditingId(null);
-          setIsModalOpen(false);
-          fetchCustomers();
-        } else {
-          const errData = await res.json().catch(() => ({}));
-          toast.error(`Failed to save customer: ${errData.error || res.statusText}`);
-        }
+        await api[method](endpoint, payload);
+        
+        toast.success("Customer details saved successfully!");
+        setFormData({ name: '', email: '', phone: '', address: '' });
+        setDrawingFile(null);
+        setQuotationFile(null);
+        setEditingId(null);
+        setIsModalOpen(false);
+        fetchCustomers();
       } catch (err: any) {
-        toast.error("Network error: " + err.message);
+        toast.error(err.message || "Failed to save customer");
       }
     };
 
@@ -241,18 +204,11 @@ const CustomerList: React.FC = () => {
 
   const handleDelete = async (id: number) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/customers/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) {
-        toast.success("Customer profile deleted successfully!");
-        fetchCustomers();
-      } else {
-        toast.error("Failed to delete customer");
-      }
-    } catch (err) {
-      toast.error("Network error deleting customer");
+      await api.delete(`/customers/${id}`);
+      toast.success("Customer profile deleted successfully!");
+      fetchCustomers();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete customer");
     }
   };
 

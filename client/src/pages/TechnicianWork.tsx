@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { API_BASE_URL } from '../constants';
 import { useAuth } from '../context/AppContext';
+import { api } from '../lib/api';
 import { useRealtimeListener } from '../components/RealtimeProvider';
 import { toast } from 'sonner';
 import { useOutletContext } from 'react-router-dom';
@@ -40,10 +39,8 @@ export default function TechnicianWork() {
     const fetchLogs = async () => {
         setIsLoading(true);
         try {
-            const res = await axios.get(`${API_BASE_URL}/technician-work`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            setLogs(res.data);
+            const data = await api.get('/technician-work');
+            setLogs(data);
         } catch (err) {
             console.error('Failed to fetch work logs', err);
         } finally {
@@ -63,9 +60,7 @@ export default function TechnicianWork() {
             return;
         }
         try {
-            await axios.post(`${API_BASE_URL}/technician-work`, {
-                ...newRow
-            }, { headers: { 'Authorization': `Bearer ${token}` } });
+            await api.post('/technician-work', newRow);
             toast.success('Technician work entry added successfully!');
             setNewRow({ date: new Date().toISOString().split('T')[0], work_description: '', qty: '1', remarks: '', address: '' });
             setShowNewRow(false);
@@ -89,9 +84,7 @@ export default function TechnicianWork() {
     const handleSaveEdit = async () => {
         if (!editingId) return;
         try {
-            await axios.put(`${API_BASE_URL}/technician-work/${editingId}`, editForm, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            await api.put(`/technician-work/${editingId}`, editForm);
             toast.success('Technician work entry updated successfully!');
             setEditingId(null);
             fetchLogs();
@@ -111,9 +104,7 @@ export default function TechnicianWork() {
                 label: "Delete",
                 onClick: async () => {
                     try {
-                        await axios.delete(`${API_BASE_URL}/technician-work/${id}`, {
-                            headers: { 'Authorization': `Bearer ${token}` }
-                        });
+                        await api.delete(`/technician-work/${id}`);
                         toast.success("Entry deleted successfully!");
                         fetchLogs();
                     } catch (err) {

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
-import { APP_NAME, API_BASE_URL } from '../constants';
+import { api } from '../lib/api';
+import { APP_NAME } from '../constants';
 import { useAuth, useSettings } from '../context/AppContext';
 import CustomSelect from '../components/CustomSelect';
 
@@ -71,14 +71,11 @@ const ContactUs: React.FC = () => {
         setError('');
 
         try {
-            await axios.post(`${API_BASE_URL}/contact`, formData);
+            await api.post('/contact', formData);
             setIsSuccess(true);
             setFormData({ name: '', email: '', phone: '', subject: '', message: '' });
         } catch (err: any) {
-            const errorData = err.response?.data;
-            const msg = errorData?.error || 'Something went wrong. Please try again.';
-            const details = errorData?.details ? ` (Reason: ${errorData.details})` : '';
-            setError(`${msg}${details}`);
+            setError(err.message || 'Something went wrong. Please try again.');
         } finally {
             setIsSubmitting(false);
         }

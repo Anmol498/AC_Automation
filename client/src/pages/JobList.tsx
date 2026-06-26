@@ -5,11 +5,12 @@ import * as XLSX from 'xlsx';
 import { Job, Customer } from '../types';
 import { useAuth } from '../context/AppContext';
 import { useRealtimeListener } from '../components/RealtimeProvider';
-import { API_BASE_URL } from '../constants';
 import Pagination from '../components/Pagination';
 import CustomDatePicker from '../components/CustomDatePicker';
 import CustomSelect from '../components/CustomSelect';
 import { toast } from 'sonner';
+import { api } from '../lib/api';
+import { useDebounce } from '../hooks/useDebounce';
 
 
 const JobList: React.FC = () => {
@@ -54,12 +55,8 @@ const JobList: React.FC = () => {
 
   const fetchJobs = (search = '') => {
     setLoading(true);
-    const url = search
-      ? `${API_BASE_URL}/jobs?search=${encodeURIComponent(search)}`
-      : `${API_BASE_URL}/jobs`;
-
-    fetch(url, { headers: { 'Authorization': `Bearer ${token}` } })
-      .then(res => res.json())
+    const params = search ? { search } : undefined;
+    api.get('/jobs', { params })
       .then(data => {
         setJobs(Array.isArray(data) ? data : []);
         setLoading(false);
@@ -70,13 +67,11 @@ const JobList: React.FC = () => {
       });
   };
 
-  useEffect(() => {
-    const delayDebounceFn = setTimeout(() => {
-      fetchJobs(searchQuery);
-    }, 300);
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
-    return () => clearTimeout(delayDebounceFn);
-  }, [searchQuery, token]);
+  useEffect(() => {
+    fetchJobs(debouncedSearchQuery);
+  }, [debouncedSearchQuery]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -108,14 +103,14 @@ const JobList: React.FC = () => {
 
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/customers`, { headers: { 'Authorization': `Bearer ${token}` } })
-      .then(res => res.json())
-      .then(data => setCustomers(Array.isArray(data) ? data : []));
+    api.get('/customers')
+      .then(data => setCustomers(Array.isArray(data) ? data : []))
+      .catch(err => console.error("Error loading customers", err));
 
-    fetch(`${API_BASE_URL}/technicians`, { headers: { 'Authorization': `Bearer ${token}` } })
-      .then(res => res.json())
-      .then(data => setTechnicians(Array.isArray(data) ? data : []));
-  }, [token]);
+    api.get('/technicians')
+      .then(data => setTechnicians(Array.isArray(data) ? data : []))
+      .catch(err => console.error("Error loading technicians", err));
+  }, []);
 
   const handleSchedule = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,31 +120,23 @@ const JobList: React.FC = () => {
     }
 
     try {
-      const res = await fetch(`${API_BASE_URL}/jobs`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(formData),
+      await api.post('/jobs', formData);
+      toast.success("Job workflow scheduled successfully");
+      setIsModalOpen(false);
+      setFormData({
+        customerId: '',
+        jobType: 'Installation',
+        technician: '',
+        startDate: new Date().toISOString().split('T')[0],
+        copperPipingCost: 0,
+        outdoorFittingCost: 0,
+        commissioningCost: 0,
+        equipmentCost: 0
       });
-      if (res.ok) {
-        toast.success("Job workflow scheduled successfully");
-        setIsModalOpen(false);
-        setFormData({
-          customerId: '',
-          jobType: 'Installation',
-          technician: '',
-          startDate: new Date().toISOString().split('T')[0],
-          copperPipingCost: 0,
-          outdoorFittingCost: 0,
-          commissioningCost: 0,
-          equipmentCost: 0
-        });
-        fetchJobs();
-      } else {
-        toast.error("Failed to schedule job workflow");
-      }
-    } catch (err) {
+      fetchJobs();
+    } catch (err: any) {
       console.error(err);
-      toast.error("Failed to schedule job workflow");
+      toast.error(err.message || "Failed to schedule job workflow");
     }
   };
 
@@ -160,19 +147,12 @@ const JobList: React.FC = () => {
         label: "Delete",
         onClick: async () => {
           try {
-            const res = await fetch(`${API_BASE_URL}/jobs/${id}`, {
-              method: 'DELETE',
-              headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (res.ok) {
-              toast.success("Job workflow deleted successfully");
-              fetchJobs();
-            } else {
-              toast.error("Failed to delete job workflow");
-            }
-          } catch (err) {
+            await api.delete(`/jobs/${id}`);
+            toast.success("Job workflow deleted successfully");
+            fetchJobs();
+          } catch (err: any) {
             console.error(err);
-            toast.error("Failed to delete job workflow");
+            toast.error(err.message || "Failed to delete job workflow");
           }
         }
       }
@@ -183,7 +163,7 @@ const JobList: React.FC = () => {
     try {
       // First fetch all payments to calculate due balance
       const allPaymentsRes = await Promise.all(
-        jobs.map(job => fetch(`${API_BASE_URL}/jobs/${job.id}/payments`, { headers: { 'Authorization': `Bearer ${token}` } }).then(res => res.json()))
+        jobs.map(job => api.get(`/jobs/${job.id}/payments`).catch(() => []))
       );
 
       const exportData = jobs.map((job, index) => {

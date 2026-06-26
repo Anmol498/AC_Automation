@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import axios from 'axios';
-import { API_BASE_URL } from '../constants';
 import { useAuth } from '../context/AppContext';
+import { api } from '../lib/api';
 import { useRealtimeListener } from '../components/RealtimeProvider';
 import Pagination from '../components/Pagination';
 import { toast } from 'sonner';
@@ -48,10 +47,8 @@ export default function DailyWork() {
     const fetchLogs = async () => {
         setIsLoading(true);
         try {
-            const res = await axios.get(`${API_BASE_URL}/daily-work`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            setLogs(res.data);
+            const data = await api.get('/daily-work');
+            setLogs(data);
         } catch (err) {
             console.error('Failed to fetch daily work logs', err);
         } finally {
@@ -71,9 +68,7 @@ export default function DailyWork() {
             return;
         }
         try {
-            await axios.post(`${API_BASE_URL}/daily-work`, {
-                ...newRow
-            }, { headers: { 'Authorization': `Bearer ${token}` } });
+            await api.post('/daily-work', newRow);
             toast.success('Daily work entry added successfully!');
             setNewRow({ date: new Date().toISOString().split('T')[0], work_description: '', qty: '1', technician: '', remarks: '', address: '' });
             setShowNewRow(false);
@@ -98,9 +93,7 @@ export default function DailyWork() {
     const handleSaveEdit = async () => {
         if (!editingId) return;
         try {
-            await axios.put(`${API_BASE_URL}/daily-work/${editingId}`, editForm, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            await api.put(`/daily-work/${editingId}`, editForm);
             toast.success('Daily work entry updated successfully!');
             setEditingId(null);
             fetchLogs();
@@ -120,9 +113,7 @@ export default function DailyWork() {
                 label: "Delete",
                 onClick: async () => {
                     try {
-                        await axios.delete(`${API_BASE_URL}/daily-work/${id}`, {
-                            headers: { 'Authorization': `Bearer ${token}` }
-                        });
+                        await api.delete(`/daily-work/${id}`);
                         toast.success("Entry deleted successfully!");
                         fetchLogs();
                     } catch (err) {

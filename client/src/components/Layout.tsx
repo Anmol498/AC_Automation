@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
 import { useAuth } from '../context/AppContext';
 import { UserRole } from '../types';
 import { APP_NAME } from '../constants';
@@ -220,20 +219,13 @@ const Layout: React.FC = () => {
           </div>
         </header>
 
-        {/* Page Content */}
         <div className="flex-1 p-4 md:p-6 w-full max-w-full overflow-x-hidden">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={location.pathname}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.15 }}
-              className="w-full h-full"
-            >
-              <Outlet context={{ isDark, toggleTheme }} />
-            </motion.div>
-          </AnimatePresence>
+          <div
+            key={location.pathname}
+            className="w-full h-full animate-in fade-in slide-in-from-bottom-2 duration-200"
+          >
+            <Outlet context={{ isDark, toggleTheme }} />
+          </div>
         </div>
       </main>
 

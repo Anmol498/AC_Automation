@@ -1,6 +1,5 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import axios from 'axios';
 import { Toaster } from 'sonner';
 import { AuthState, User, UserRole } from './types';
 import Login from './pages/Login';
@@ -20,9 +19,7 @@ import TechnicianWork from './pages/TechnicianWork';
 import ScrollToTop from './components/ScrollToTop';
 import { RealtimeProvider } from './components/RealtimeProvider';
 import { AuthContext, SettingsContext } from './context/AppContext';
-import { API_BASE_URL } from './constants';
-
-axios.defaults.withCredentials = true;
+import { api } from './lib/api';
 
 export { useAuth, useSettings } from './context/AppContext';
 
@@ -79,9 +76,9 @@ const App: React.FC = () => {
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        const res = await axios.get(`${API_BASE_URL}/config`);
-        if (res.data.company_phone) setCompanyPhoneState(res.data.company_phone);
-        if (res.data.company_email) setCompanyEmailState(res.data.company_email);
+        const data = await api.get('/config');
+        if (data.company_phone) setCompanyPhoneState(data.company_phone);
+        if (data.company_email) setCompanyEmailState(data.company_email);
       } catch (err) {
         console.error("Failed to fetch public config:", err);
       }
@@ -93,32 +90,30 @@ const App: React.FC = () => {
     if (auth.isAuthenticated && auth.user?.role === UserRole.SUPER_ADMIN) {
       const fetchSettings = async () => {
         try {
-          const res = await axios.get(`${API_BASE_URL}/settings`, {
-            headers: { Authorization: `Bearer ${auth.token}` }
-          });
-          if (res.data.mail_transport) {
-            setMailTransportState(res.data.mail_transport);
+          const data = await api.get('/settings');
+          if (data.mail_transport) {
+            setMailTransportState(data.mail_transport);
           }
-          if (res.data.company_phone) {
-            setCompanyPhoneState(res.data.company_phone);
+          if (data.company_phone) {
+            setCompanyPhoneState(data.company_phone);
           }
-          if (res.data.company_email) {
-            setCompanyEmailState(res.data.company_email);
+          if (data.company_email) {
+            setCompanyEmailState(data.company_email);
           }
-          if (res.data.copperPipeLowStockThreshold !== undefined) {
-            setCopperPipeLowStockThresholdState(Number(res.data.copperPipeLowStockThreshold));
+          if (data.copperPipeLowStockThreshold !== undefined) {
+            setCopperPipeLowStockThresholdState(Number(data.copperPipeLowStockThreshold));
           }
-          if (res.data.enableCopperPipeLowStockAlert !== undefined) {
-            setEnableCopperPipeLowStockAlertState(res.data.enableCopperPipeLowStockAlert === 'true' || res.data.enableCopperPipeLowStockAlert === true);
+          if (data.enableCopperPipeLowStockAlert !== undefined) {
+            setEnableCopperPipeLowStockAlertState(data.enableCopperPipeLowStockAlert === 'true' || data.enableCopperPipeLowStockAlert === true);
           }
-          if (res.data.lowStockThreshold !== undefined) {
-            setLowStockThresholdState(Number(res.data.lowStockThreshold));
+          if (data.lowStockThreshold !== undefined) {
+            setLowStockThresholdState(Number(data.lowStockThreshold));
           }
-          if (res.data.enableLowStockAlert !== undefined) {
-            setEnableLowStockAlertState(res.data.enableLowStockAlert === 'true' || res.data.enableLowStockAlert === true);
+          if (data.enableLowStockAlert !== undefined) {
+            setEnableLowStockAlertState(data.enableLowStockAlert === 'true' || data.enableLowStockAlert === true);
           }
-          if (res.data.requireEmailPreview !== undefined) {
-            setRequireEmailPreviewState(res.data.requireEmailPreview === 'true' || res.data.requireEmailPreview === true);
+          if (data.requireEmailPreview !== undefined) {
+            setRequireEmailPreviewState(data.requireEmailPreview === 'true' || data.requireEmailPreview === true);
           }
         } catch (err) {
           console.error("Failed to fetch backend settings:", err);
@@ -172,7 +167,7 @@ const App: React.FC = () => {
   };
 
   const logout = () => {
-    axios.post(`${API_BASE_URL}/auth/logout`).catch(err => {
+    api.post('/auth/logout').catch(err => {
       console.error("Logout API failed:", err);
     });
     setAuth({ user: null, token: null, isAuthenticated: false });
@@ -187,104 +182,13 @@ const App: React.FC = () => {
     loginRef.current = login;
   });
 
-  // Configure global interceptors for axios and fetch to catch 401/403 (token expiration)
+  // Token refresh logic is handled inside lib/api.ts. Global page reload on auth logout:
   useEffect(() => {
-    // 1. Axios Interceptor
-    let isRefreshing = false;
-    let refreshSubscribers: ((token: string) => void)[] = [];
-
-    const subscribeTokenRefresh = (cb: (token: string) => void) => {
-      refreshSubscribers.push(cb);
+    const handleAuthLogout = () => {
+      setAuth({ user: null, token: null, isAuthenticated: false });
     };
-
-    const onRefreshed = (token: string) => {
-      refreshSubscribers.forEach((cb) => cb(token));
-      refreshSubscribers = [];
-    };
-
-    const axiosInterceptor = axios.interceptors.response.use(
-      (response) => response,
-      async (error) => {
-        const originalRequest = error.config;
-        if (error.response && error.response.status === 401 && !originalRequest._retry) {
-          // Do not attempt to refresh tokens for auth/refresh or login calls themselves
-          if (originalRequest.url?.includes('/auth/refresh') || originalRequest.url?.endsWith('/login')) {
-            if (originalRequest.url?.includes('/auth/refresh')) {
-              logoutRef.current();
-            }
-            return Promise.reject(error);
-          }
-
-          if (isRefreshing) {
-            return new Promise((resolve) => {
-              subscribeTokenRefresh((token) => {
-                originalRequest.headers['Authorization'] = `Bearer ${token}`;
-                resolve(axios(originalRequest));
-              });
-            });
-          }
-
-          originalRequest._retry = true;
-          isRefreshing = true;
-
-          try {
-            const res = await axios.post(`${API_BASE_URL}/auth/refresh`, {}, { withCredentials: true });
-            const { token, user } = res.data;
-            loginRef.current(user, token);
-            isRefreshing = false;
-            onRefreshed(token);
-            originalRequest.headers['Authorization'] = `Bearer ${token}`;
-            return axios(originalRequest);
-          } catch (refreshError) {
-            isRefreshing = false;
-            logoutRef.current();
-            return Promise.reject(refreshError);
-          }
-        }
-        return Promise.reject(error);
-      }
-    );
-
-    // 2. Fetch Interceptor
-    const originalFetch = window.fetch;
-    window.fetch = async (...args) => {
-      try {
-        let response = await originalFetch(...args);
-        const urlStr = args[0].toString();
-        if (
-          (response.status === 401 || response.status === 403) && 
-          !urlStr.includes('/auth/refresh') && 
-          !urlStr.endsWith('/login')
-        ) {
-          const isAuthed = getSafeAuth().isAuthenticated;
-          if (isAuthed) {
-            try {
-              const refreshRes = await axios.post(`${API_BASE_URL}/auth/refresh`, {}, { withCredentials: true });
-              const { token, user } = refreshRes.data;
-              loginRef.current(user, token);
-              
-              const [resource, config] = args;
-              const newConfig = { ...(config || {}) };
-              newConfig.headers = {
-                ...(newConfig.headers || {}),
-                'Authorization': `Bearer ${token}`
-              };
-              response = await originalFetch(resource, newConfig);
-            } catch (refreshErr) {
-              logoutRef.current();
-            }
-          }
-        }
-        return response;
-      } catch (err) {
-        throw err;
-      }
-    };
-
-    return () => {
-      axios.interceptors.response.eject(axiosInterceptor);
-      window.fetch = originalFetch;
-    };
+    window.addEventListener('auth-logout', handleAuthLogout);
+    return () => window.removeEventListener('auth-logout', handleAuthLogout);
   }, []);
 
   // Fix: Made children optional to resolve TypeScript errors where 'children' was reported missing in JSX
