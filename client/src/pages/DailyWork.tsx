@@ -56,7 +56,7 @@ interface CopperHistoryLog {
 }
 
 export default function DailyWork() {
-    const { token } = useAuth();
+    const { token, user } = useAuth();
     const { isDark = false } = useOutletContext<{ isDark?: boolean }>() || {};
     const [searchParams, setSearchParams] = useSearchParams();
     
@@ -64,6 +64,9 @@ export default function DailyWork() {
     const [activeTab, setActiveTab] = useState<'Daily-Work' | 'Cash-flow' | 'Inventory-logs' | 'Copper-logs'>(() => {
         const tab = searchParams.get('tab');
         if (tab && ['Daily-Work', 'Cash-flow', 'Inventory-logs', 'Copper-logs'].includes(tab)) {
+            if (tab === 'Cash-flow' && user?.role !== 'superadmin') {
+                return 'Daily-Work';
+            }
             return tab as any;
         }
         return 'Daily-Work';
@@ -72,9 +75,13 @@ export default function DailyWork() {
     useEffect(() => {
         const tab = searchParams.get('tab');
         if (tab && ['Daily-Work', 'Cash-flow', 'Inventory-logs', 'Copper-logs'].includes(tab)) {
-            setActiveTab(tab as any);
+            if (tab === 'Cash-flow' && user?.role !== 'superadmin') {
+                setActiveTab('Daily-Work');
+            } else {
+                setActiveTab(tab as any);
+            }
         }
-    }, [searchParams]);
+    }, [searchParams, user]);
 
     const handleTabChange = (tab: 'Daily-Work' | 'Cash-flow' | 'Inventory-logs' | 'Copper-logs') => {
         setActiveTab(tab);
@@ -267,15 +274,19 @@ export default function DailyWork() {
     // Load everything on mount / tab mount
     useEffect(() => {
         fetchDailyLogs();
-        fetchCashLogs();
+        if (user?.role === 'superadmin') {
+            fetchCashLogs();
+        }
         fetchInventoryLogs();
         fetchCopperLogs();
-    }, [token]);
+    }, [token, user]);
 
     // Realtime listeners
     useRealtimeListener('work', () => {
         fetchDailyLogs();
-        fetchCashLogs();
+        if (user?.role === 'superadmin') {
+            fetchCashLogs();
+        }
     });
 
     useRealtimeListener('inventory', () => {
@@ -621,16 +632,18 @@ export default function DailyWork() {
                     >
                         Daily Work
                     </button>
-                    <button
-                        className={`flex-1 py-4 px-3 text-sm font-bold text-center transition-colors min-w-[120px] ${
-                            activeTab === 'Cash-flow'
-                                ? isDark ? 'text-blue-400 border-b-2 border-blue-500 bg-blue-950/20' : 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50'
-                                : isDark ? 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
-                        }`}
-                        onClick={() => handleTabChange('Cash-flow')}
-                    >
-                        Cash Flow
-                    </button>
+                    {user?.role === 'superadmin' && (
+                        <button
+                            className={`flex-1 py-4 px-3 text-sm font-bold text-center transition-colors min-w-[120px] ${
+                                activeTab === 'Cash-flow'
+                                    ? isDark ? 'text-blue-400 border-b-2 border-blue-500 bg-blue-950/20' : 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50'
+                                    : isDark ? 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                            }`}
+                            onClick={() => handleTabChange('Cash-flow')}
+                        >
+                            Cash Flow
+                        </button>
+                    )}
                     <button
                         className={`flex-1 py-4 px-3 text-sm font-bold text-center transition-colors min-w-[120px] ${
                             activeTab === 'Inventory-logs'

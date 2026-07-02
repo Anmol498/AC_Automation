@@ -2,7 +2,7 @@ import express from 'express';
 import pool from '../config/db.js';
 import { validate } from '../middleware/validate.js';
 import { dailyWorkSchema, technicianWorkSchema } from '../schemas/work.js';
-import { authenticateToken, isAdminOrSuperAdmin } from '../middleware/auth.js';
+import { authenticateToken, isAdminOrSuperAdmin, isSuperAdmin } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -162,7 +162,7 @@ router.delete('/technician-work/:id', authenticateToken, async (req, res) => {
 });
 
 // --- CASH FLOW LOGS ---
-router.get('/cash-flow', authenticateToken, async (req, res) => {
+router.get('/cash-flow', authenticateToken, isSuperAdmin, async (req, res) => {
   try {
     const [rows] = await pool.execute('SELECT * FROM cash_flow ORDER BY date DESC, id DESC');
     res.json(rows);
@@ -171,7 +171,7 @@ router.get('/cash-flow', authenticateToken, async (req, res) => {
   }
 });
 
-router.post('/cash-flow', authenticateToken, isAdminOrSuperAdmin, async (req, res) => {
+router.post('/cash-flow', authenticateToken, isSuperAdmin, async (req, res) => {
   try {
     const { date, received, from_source, expenditure, on_source, sent_home } = req.body;
     const finalDate = date || new Date().toISOString().split('T')[0];
@@ -190,7 +190,7 @@ router.post('/cash-flow', authenticateToken, isAdminOrSuperAdmin, async (req, re
   }
 });
 
-router.put('/cash-flow/:id', authenticateToken, isAdminOrSuperAdmin, async (req, res) => {
+router.put('/cash-flow/:id', authenticateToken, isSuperAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { date, received, from_source, expenditure, on_source, sent_home } = req.body;
@@ -210,7 +210,7 @@ router.put('/cash-flow/:id', authenticateToken, isAdminOrSuperAdmin, async (req,
   }
 });
 
-router.delete('/cash-flow/:id', authenticateToken, isAdminOrSuperAdmin, async (req, res) => {
+router.delete('/cash-flow/:id', authenticateToken, isSuperAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     await pool.execute('DELETE FROM cash_flow WHERE id = ?', [id]);
