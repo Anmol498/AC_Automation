@@ -6,6 +6,7 @@ import { useRealtimeListener } from '../components/RealtimeProvider';
 import Pagination from '../components/Pagination';
 import { toast } from 'sonner';
 import CustomDatePicker from '../components/CustomDatePicker';
+import { createPortal } from 'react-dom';
 
 interface DailyWorkLog {
     id: number;
@@ -100,6 +101,16 @@ export default function DailyWork() {
     const [copperSearch, setCopperSearch] = useState('');
     const [isCopperSearchExpanded, setIsCopperSearchExpanded] = useState(false);
     const copperSearchRef = useRef<HTMLInputElement>(null);
+
+    // --- Download Modal states ---
+    const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
+    const [downloadTab, setDownloadTab] = useState<'Daily-Work' | 'Cash-flow' | 'Inventory-logs' | 'Copper-logs' | null>(null);
+    const [downloadStartDate, setDownloadStartDate] = useState(() => {
+        const d = new Date();
+        d.setDate(d.getDate() - 30);
+        return d.toISOString().split('T')[0];
+    });
+    const [downloadEndDate, setDownloadEndDate] = useState(() => new Date().toISOString().split('T')[0]);
 
     const itemsPerPage = 10;
 
@@ -333,76 +344,114 @@ export default function DailyWork() {
     const totalCopperPages = Math.ceil(filteredCopperLogs.length / itemsPerPage);
     const paginatedCopperLogs = filteredCopperLogs.slice((copperPage - 1) * itemsPerPage, copperPage * itemsPerPage);
 
-    // --- CSV EXPORTS ---
-    const exportDailyCSV = () => {
-        if (!filteredDailyLogs.length) {
-            toast.error('No data to export.');
-            return;
-        }
-        const headers = ['Date', 'Work Description', 'Qty', 'Technician', 'Address', 'Remarks'];
-        const rows = filteredDailyLogs.map(log => [
-            new Date(log.date).toLocaleDateString(),
-            `"${(log.work_description || '').replace(/"/g, '""')}"`,
-            `"${(log.qty || '0').replace(/"/g, '""')}"`,
-            `"${(log.technician || '').replace(/"/g, '""')}"`,
-            `"${(log.address || '').replace(/"/g, '""')}"`,
-            `"${(log.remarks || '').replace(/"/g, '""')}"`
-        ]);
-        triggerCSVDownload(headers, rows, 'Daily_Work_Logs');
+    // --- DOWNLOAD DATE RANGE FLOW ---
+    const openDownloadModal = (tab: 'Daily-Work' | 'Cash-flow' | 'Inventory-logs' | 'Copper-logs') => {
+        setDownloadTab(tab);
+        const d = new Date();
+        d.setDate(d.getDate() - 30);
+        setDownloadStartDate(d.toISOString().split('T')[0]);
+        setDownloadEndDate(new Date().toISOString().split('T')[0]);
+        setIsDownloadModalOpen(true);
     };
 
-    const exportCashCSV = () => {
-        if (!filteredCashLogs.length) {
-            toast.error('No data to export.');
+    const handleDownloadRange = () => {
+        if (!downloadStartDate || !downloadEndDate) {
+            toast.error('Please specify both start and end dates.');
             return;
         }
-        const headers = ['Date', 'Received', 'From Source', 'Expenditure', 'On Source', 'Sent Home', 'Balance'];
-        const rows = filteredCashLogs.map(log => [
-            new Date(log.date).toLocaleDateString(),
-            log.received,
-            `"${(log.from_source || '').replace(/"/g, '""')}"`,
-            log.expenditure,
-            `"${(log.on_source || '').replace(/"/g, '""')}"`,
-            log.sent_home,
-            log.balance
-        ]);
-        triggerCSVDownload(headers, rows, 'Cash_Flow_Logs');
-    };
+        if (new Date(downloadStartDate) > new Date(downloadEndDate)) {
+            toast.error('Start date cannot be after end date.');
+            return;
+        }
 
-    const exportInventoryCSV = () => {
-        if (!filteredInventoryLogs.length) {
-            toast.error('No data to export.');
-            return;
-        }
-        const headers = ['Date/Time', 'Product Model', 'Brand', 'User', 'Action', 'Customer', 'Change', 'Available Stock'];
-        const rows = filteredInventoryLogs.map(log => [
-            `${new Date(log.createdAt).toLocaleDateString()} ${new Date(log.createdAt).toLocaleTimeString()}`,
-            `"${(log.modelName || 'Unknown').replace(/"/g, '""')}"`,
-            log.brand || '',
-            log.userEmail,
-            log.actionType,
-            log.customerName ? `"${log.customerName.replace(/"/g, '""')}"` : '-',
-            log.quantityChange,
-            log.newQuantity
-        ]);
-        triggerCSVDownload(headers, rows, 'Inventory_History_Logs');
-    };
+        const start = new Date(downloadStartDate);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(downloadEndDate);
+        end.setHours(23, 59, 59, 999);
 
-    const exportCopperCSV = () => {
-        if (!filteredCopperLogs.length) {
-            toast.error('No data to export.');
-            return;
+        if (downloadTab === 'Daily-Work') {
+            const filtered = dailyLogs.filter(log => {
+                const logDate = new Date(log.date);
+                return logDate >= start && logDate <= end;
+            });
+            if (!filtered.length) {
+                toast.error('No logs found in the selected date range.');
+                return;
+            }
+            const headers = ['Date', 'Work Description', 'Qty', 'Technician', 'Address', 'Remarks'];
+            const rows = filtered.map(log => [
+                new Date(log.date).toLocaleDateString(),
+                `"${(log.work_description || '').replace(/"/g, '""')}"`,
+                `"${(log.qty || '0').replace(/"/g, '""')}"`,
+                `"${(log.technician || '').replace(/"/g, '""')}"`,
+                `"${(log.address || '').replace(/"/g, '""')}"`,
+                `"${(log.remarks || '').replace(/"/g, '""')}"`
+            ]);
+            triggerCSVDownload(headers, rows, `Daily_Work_Logs_from_${downloadStartDate}_to_${downloadEndDate}`);
+        } else if (downloadTab === 'Cash-flow') {
+            const filtered = cashLogs.filter(log => {
+                const logDate = new Date(log.date);
+                return logDate >= start && logDate <= end;
+            });
+            if (!filtered.length) {
+                toast.error('No logs found in the selected date range.');
+                return;
+            }
+            const headers = ['Date', 'Received', 'From Source', 'Expenditure', 'On Source', 'Sent Home', 'Balance'];
+            const rows = filtered.map(log => [
+                new Date(log.date).toLocaleDateString(),
+                log.received,
+                `"${(log.from_source || '').replace(/"/g, '""')}"`,
+                log.expenditure,
+                `"${(log.on_source || '').replace(/"/g, '""')}"`,
+                log.sent_home,
+                log.balance
+            ]);
+            triggerCSVDownload(headers, rows, `Cash_Flow_Logs_from_${downloadStartDate}_to_${downloadEndDate}`);
+        } else if (downloadTab === 'Inventory-logs') {
+            const filtered = inventoryLogs.filter(log => {
+                const logDate = new Date(log.createdAt);
+                return logDate >= start && logDate <= end;
+            });
+            if (!filtered.length) {
+                toast.error('No logs found in the selected date range.');
+                return;
+            }
+            const headers = ['Date/Time', 'Product Model', 'Brand', 'User', 'Action', 'Customer', 'Change', 'Available Stock'];
+            const rows = filtered.map(log => [
+                `${new Date(log.createdAt).toLocaleDateString()} ${new Date(log.createdAt).toLocaleTimeString()}`,
+                `"${(log.modelName || 'Unknown').replace(/"/g, '""')}"`,
+                log.brand || '',
+                log.userEmail,
+                log.actionType,
+                log.customerName ? `"${log.customerName.replace(/"/g, '""')}"` : '-',
+                log.quantityChange,
+                log.newQuantity
+            ]);
+            triggerCSVDownload(headers, rows, `Inventory_History_Logs_from_${downloadStartDate}_to_${downloadEndDate}`);
+        } else if (downloadTab === 'Copper-logs') {
+            const filtered = copperLogs.filter(log => {
+                const logDate = new Date(log.date);
+                return logDate >= start && logDate <= end;
+            });
+            if (!filtered.length) {
+                toast.error('No logs found in the selected date range.');
+                return;
+            }
+            const headers = ['Date', 'Pipe Size', 'Origin', 'Sent Qty (ft)', 'Returned Qty (ft)', 'Net Used (ft)'];
+            const rows = filtered.map(log => [
+                new Date(log.date).toLocaleDateString(),
+                `${log.size}"`,
+                log.origin,
+                log.sentQty,
+                log.returnQty,
+                (Number(log.sentQty || 0) - Number(log.returnQty || 0)).toFixed(1)
+            ]);
+            triggerCSVDownload(headers, rows, `Copper_History_Logs_from_${downloadStartDate}_to_${downloadEndDate}`);
         }
-        const headers = ['Date', 'Pipe Size', 'Origin', 'Sent Qty (ft)', 'Returned Qty (ft)', 'Net Used (ft)'];
-        const rows = filteredCopperLogs.map(log => [
-            new Date(log.date).toLocaleDateString(),
-            `${log.size}"`,
-            log.origin,
-            log.sentQty,
-            log.returnQty,
-            (Number(log.sentQty || 0) - Number(log.returnQty || 0)).toFixed(1)
-        ]);
-        triggerCSVDownload(headers, rows, 'Copper_History_Logs');
+
+        setIsDownloadModalOpen(false);
+        toast.success('Download completed successfully!');
     };
 
     const triggerCSVDownload = (headers: string[], rows: any[][], fileNamePrefix: string) => {
@@ -414,7 +463,7 @@ export default function DailyWork() {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.setAttribute('href', url);
-        link.setAttribute('download', `${fileNamePrefix}_${new Date().toISOString().split('T')[0]}.csv`);
+        link.setAttribute('download', `${fileNamePrefix}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -511,8 +560,8 @@ export default function DailyWork() {
                                     )}
                                 </div>
                                 <div className="flex gap-2 shrink-0">
-                                    <button onClick={exportDailyCSV} disabled={filteredDailyLogs.length === 0} className={`px-4 py-2 border font-bold text-xs rounded-lg transition-all flex items-center gap-2 disabled:opacity-50 ${isDark ? 'bg-[#242427] text-emerald-400 border-emerald-950/40 hover:bg-emerald-900/20' : 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100'}`}>
-                                        <i className="fa-solid fa-file-csv"></i> Export CSV
+                                    <button onClick={() => openDownloadModal('Daily-Work')} disabled={dailyLogs.length === 0} className={`px-4 py-2 border font-bold text-xs rounded-lg transition-all flex items-center gap-2 disabled:opacity-50 ${isDark ? 'bg-[#242427] text-blue-400 border-blue-950/40 hover:bg-blue-900/20' : 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100'}`}>
+                                        <i className="fa-solid fa-download"></i> Download
                                     </button>
                                     <button onClick={() => setShowNewDailyRow(true)} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition-all shadow-md shadow-blue-500/20 flex items-center gap-2">
                                         <i className="fa-solid fa-plus"></i> Add Entry
@@ -604,7 +653,7 @@ export default function DailyWork() {
                                                             <button onClick={handleSaveDailyEdit} className={`w-7 h-7 rounded-lg transition-colors flex items-center justify-center ${isDark ? 'bg-green-950/30 text-green-450 hover:bg-green-900/40 text-green-400' : 'bg-green-100 text-green-600 hover:bg-green-200'}`} title="Save">
                                                                 <i className="fa-solid fa-check text-xs"></i>
                                                             </button>
-                                                            <button onClick={() => setEditingDailyId(null)} className={`w-7 h-7 rounded-lg transition-colors flex items-center justify-center ${isDark ? 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`} title="Cancel">
+                                                            <button onClick={() => setEditingDailyId(null)} className={`w-7 h-7 rounded-lg transition-colors flex items-center justify-center ${isDark ? 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700' : 'bg-slate-100 text-slate-550 hover:bg-slate-200'}`} title="Cancel">
                                                                 <i className="fa-solid fa-xmark text-xs"></i>
                                                             </button>
                                                         </div>
@@ -620,7 +669,7 @@ export default function DailyWork() {
                                                     <td className={`p-3 border-r italic whitespace-normal break-words ${isDark ? 'text-zinc-400 border-zinc-800' : 'text-slate-650 border-slate-100'}`}>{log.remarks || <span className={isDark ? 'text-zinc-600' : 'text-slate-305 text-slate-300'}>—</span>}</td>
                                                     <td className="p-3 text-center">
                                                         <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                            <button onClick={() => handleStartDailyEdit(log)} className={`w-7 h-7 rounded-lg transition-colors flex items-center justify-center ${isDark ? 'bg-zinc-800 text-zinc-400 hover:bg-blue-950/40 hover:text-blue-400' : 'bg-slate-100 text-slate-500 hover:bg-blue-100 hover:text-blue-600'}`} title="Edit">
+                                                            <button onClick={() => handleStartDailyEdit(log)} className={`w-7 h-7 rounded-lg transition-colors flex items-center justify-center ${isDark ? 'bg-zinc-800 text-zinc-400 hover:bg-blue-950/40 hover:text-blue-400' : 'bg-slate-100 text-slate-550 hover:bg-blue-100 hover:text-blue-600'}`} title="Edit">
                                                                 <i className="fa-solid fa-pen text-xs"></i>
                                                             </button>
                                                             <button onClick={() => handleDeleteDaily(log.id)} className={`w-7 h-7 rounded-lg transition-colors flex items-center justify-center ${isDark ? 'bg-zinc-800 text-zinc-500 hover:bg-red-950/40 hover:text-red-400' : 'bg-slate-100 text-slate-400 hover:bg-red-100 hover:text-red-500'}`} title="Delete">
@@ -688,8 +737,8 @@ export default function DailyWork() {
                                     )}
                                 </div>
                                 <div className="flex gap-2 shrink-0">
-                                    <button onClick={exportCashCSV} disabled={filteredCashLogs.length === 0} className={`px-4 py-2 border font-bold text-xs rounded-lg transition-all flex items-center gap-2 disabled:opacity-50 ${isDark ? 'bg-[#242427] text-emerald-400 border-emerald-950/40 hover:bg-emerald-900/20' : 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100'}`}>
-                                        <i className="fa-solid fa-file-csv"></i> Export CSV
+                                    <button onClick={() => openDownloadModal('Cash-flow')} disabled={cashLogs.length === 0} className={`px-4 py-2 border font-bold text-xs rounded-lg transition-all flex items-center gap-2 disabled:opacity-50 ${isDark ? 'bg-[#242427] text-blue-400 border-blue-950/40 hover:bg-blue-900/20' : 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100'}`}>
+                                        <i className="fa-solid fa-download"></i> Download
                                     </button>
                                     <button onClick={() => setShowNewCashRow(true)} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition-all shadow-md shadow-blue-500/20 flex items-center gap-2">
                                         <i className="fa-solid fa-plus"></i> Add Entry
@@ -805,7 +854,7 @@ export default function DailyWork() {
                                                     <td className={`p-3 border-r font-black text-right ${log.balance >= 0 ? (isDark ? 'text-emerald-400' : 'text-emerald-700') : (isDark ? 'text-red-400' : 'text-red-700')} ${isDark ? 'border-zinc-800' : 'border-slate-100'}`}>₹{Number(log.balance).toLocaleString()}</td>
                                                     <td className="p-3 text-center">
                                                         <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                            <button onClick={() => handleStartCashEdit(log)} className={`w-7 h-7 rounded-lg transition-colors flex items-center justify-center ${isDark ? 'bg-zinc-800 text-zinc-400 hover:bg-blue-950/40 hover:text-blue-400' : 'bg-slate-100 text-slate-550 hover:bg-blue-100 hover:text-blue-600'}`} title="Edit">
+                                                            <button onClick={() => handleStartCashEdit(log)} className={`w-7 h-7 rounded-lg transition-colors flex items-center justify-center ${isDark ? 'bg-zinc-800 text-zinc-400 hover:bg-blue-950/40 hover:text-blue-450' : 'bg-slate-100 text-slate-550 hover:bg-blue-100 hover:text-blue-600'}`} title="Edit">
                                                                 <i className="fa-solid fa-pen text-xs"></i>
                                                             </button>
                                                             <button onClick={() => handleDeleteCash(log.id)} className={`w-7 h-7 rounded-lg transition-colors flex items-center justify-center ${isDark ? 'bg-zinc-800 text-zinc-500 hover:bg-red-950/40 hover:text-red-400' : 'bg-slate-100 text-slate-400 hover:bg-red-100 hover:text-red-500'}`} title="Delete">
@@ -823,7 +872,7 @@ export default function DailyWork() {
                                             <td colSpan={9} className="p-12 text-center">
                                                 <div className="space-y-3">
                                                     <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mx-auto ${isDark ? 'bg-zinc-800' : 'bg-slate-100'}`}>
-                                                        <i className={`fa-solid fa-search text-2xl ${isDark ? 'text-zinc-600' : 'text-slate-300'}`}></i>
+                                                        <i className={`fa-solid fa-search text-2xl ${isDark ? 'text-zinc-650 text-zinc-600' : 'text-slate-300'}`}></i>
                                                     </div>
                                                     <p className={`font-medium text-sm ${isDark ? 'text-zinc-500' : 'text-slate-400'}`}>No cash flow logs found.</p>
                                                 </div>
@@ -872,8 +921,8 @@ export default function DailyWork() {
                                         </div>
                                     )}
                                 </div>
-                                <button onClick={exportInventoryCSV} disabled={filteredInventoryLogs.length === 0} className={`px-4 py-2 border font-bold text-xs rounded-lg transition-all flex items-center gap-2 disabled:opacity-50 ${isDark ? 'bg-[#242427] text-emerald-400 border-emerald-950/40 hover:bg-emerald-900/20' : 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100'}`}>
-                                    <i className="fa-solid fa-file-csv"></i> Export CSV
+                                <button onClick={() => openDownloadModal('Inventory-logs')} disabled={inventoryLogs.length === 0} className={`px-4 py-2 border font-bold text-xs rounded-lg transition-all flex items-center gap-2 disabled:opacity-50 ${isDark ? 'bg-[#242427] text-blue-400 border-blue-950/40 hover:bg-blue-900/20' : 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100'}`}>
+                                    <i className="fa-solid fa-download"></i> Download
                                 </button>
                             </div>
                         </div>
@@ -898,7 +947,7 @@ export default function DailyWork() {
 
                                     {!isInventoryLoading && paginatedInventoryLogs.map(log => (
                                         <tr key={log.id} className={`transition-colors ${isDark ? 'hover:bg-zinc-800/20' : 'hover:bg-slate-50'}`}>
-                                            <td className="px-6 py-4 whitespace-nowrap text-slate-600">
+                                            <td className="px-6 py-4 whitespace-nowrap text-slate-650">
                                                 <div className={`font-semibold ${isDark ? 'text-zinc-200' : 'text-slate-800'}`}>{new Date(log.createdAt).toLocaleDateString('en-GB')}</div>
                                                 <div className={`text-xs ${isDark ? 'text-zinc-500' : 'text-slate-400'}`}>{new Date(log.createdAt).toLocaleTimeString('en-US')}</div>
                                             </td>
@@ -934,7 +983,7 @@ export default function DailyWork() {
                                                     {log.quantityChange > 0 ? '+' : ''}{log.quantityChange}
                                                 </span>
                                             </td>
-                                            <td className={`px-6 py-4 whitespace-nowrap text-center font-semibold ${isDark ? 'text-zinc-300' : 'text-slate-700'}`}>
+                                            <td className={`px-6 py-4 whitespace-nowrap text-center font-semibold ${isDark ? 'text-zinc-300' : 'text-slate-750 text-slate-700'}`}>
                                                 {log.newQuantity}
                                             </td>
                                         </tr>
@@ -989,8 +1038,8 @@ export default function DailyWork() {
                                         </div>
                                     )}
                                 </div>
-                                <button onClick={exportCopperCSV} disabled={filteredCopperLogs.length === 0} className={`px-4 py-2 border font-bold text-xs rounded-lg transition-all flex items-center gap-2 disabled:opacity-50 ${isDark ? 'bg-[#242427] text-emerald-400 border-emerald-950/40 hover:bg-emerald-900/20' : 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100'}`}>
-                                    <i className="fa-solid fa-file-csv"></i> Export CSV
+                                <button onClick={() => openDownloadModal('Copper-logs')} disabled={copperLogs.length === 0} className={`px-4 py-2 border font-bold text-xs rounded-lg transition-all flex items-center gap-2 disabled:opacity-50 ${isDark ? 'bg-[#242427] text-blue-400 border-blue-950/40 hover:bg-blue-900/20' : 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100'}`}>
+                                    <i className="fa-solid fa-download"></i> Download
                                 </button>
                             </div>
                         </div>
@@ -1017,7 +1066,7 @@ export default function DailyWork() {
                                         return (
                                             <tr key={`${log.origin || 'warehouse'}-${log.id}`} className={`transition-colors ${isDark ? 'hover:bg-zinc-800/20' : 'hover:bg-slate-50'}`}>
                                                 <td className="px-6 py-4 whitespace-nowrap">
-                                                    <div className={`font-semibold ${isDark ? 'text-zinc-200' : 'text-slate-800'}`}>{log.date}</div>
+                                                    <div className={`font-semibold ${isDark ? 'text-zinc-200' : 'text-slate-850 text-slate-800'}`}>{log.date}</div>
                                                 </td>
                                                 <td className={`px-6 py-4 whitespace-nowrap font-bold ${isDark ? 'text-zinc-200' : 'text-slate-700'}`}>
                                                     {log.size}"
@@ -1058,6 +1107,65 @@ export default function DailyWork() {
                     </div>
                 )}
             </div>
+
+            {/* Date Range Selector Modal for CSV Download */}
+            {isDownloadModalOpen && createPortal(
+                <div className="fixed top-0 left-0 w-screen h-screen z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-hidden" style={{ margin: 0 }}>
+                    <div className={`rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col border ${
+                        isDark ? 'bg-[#242427] border-zinc-800 text-zinc-100' : 'bg-white border-slate-200 text-slate-800'
+                    }`}>
+                        {/* Header */}
+                        <div className={`p-5 border-b flex justify-between items-center ${
+                            isDark ? 'bg-[#1e1e21] border-zinc-800' : 'bg-slate-50 border-slate-100'
+                        }`}>
+                            <h3 className="font-bold text-sm tracking-tight flex items-center gap-2">
+                                <i className="fa-solid fa-download text-blue-500"></i> Download {downloadTab?.replace('-', ' ')} Logs
+                            </h3>
+                            <button onClick={() => setIsDownloadModalOpen(false)} className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
+                                isDark ? 'hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200' : 'hover:bg-slate-100 text-slate-400 hover:text-slate-600'
+                            }`}>
+                                <i className="fa-solid fa-xmark text-xs"></i>
+                            </button>
+                        </div>
+                        {/* Body */}
+                        <div className="p-6 space-y-4">
+                            <p className={`text-xs ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>
+                                Select a date range to filter and download the logs in CSV format.
+                            </p>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className={`text-[10px] uppercase font-bold tracking-wider ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>Start Date</label>
+                                    <CustomDatePicker value={downloadStartDate} onChange={setDownloadStartDate} isDark={isDark} placeholder="From..." />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className={`text-[10px] uppercase font-bold tracking-wider ${isDark ? 'text-zinc-400' : 'text-slate-550 text-slate-500'}`}>End Date</label>
+                                    <CustomDatePicker value={downloadEndDate} onChange={setDownloadEndDate} isDark={isDark} placeholder="To..." />
+                                </div>
+                            </div>
+                        </div>
+                        {/* Footer */}
+                        <div className={`p-4 border-t flex justify-end gap-2.5 ${
+                            isDark ? 'bg-[#1e1e21] border-zinc-800' : 'bg-slate-50 border-slate-100'
+                        }`}>
+                            <button
+                                onClick={() => setIsDownloadModalOpen(false)}
+                                className={`px-4 py-2 border rounded-lg font-bold text-xs transition-colors ${
+                                    isDark ? 'bg-zinc-850 hover:bg-zinc-800 text-zinc-300 border-zinc-700/60' : 'bg-white hover:bg-slate-50 text-slate-600 border-slate-200'
+                                }`}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleDownloadRange}
+                                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition-colors shadow-md shadow-blue-500/10 flex items-center gap-1.5"
+                            >
+                                <i className="fa-solid fa-download"></i> Download
+                            </button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
         </div>
     );
 }
