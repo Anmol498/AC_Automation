@@ -9,12 +9,13 @@ import { useRealtimeListener } from '../components/RealtimeProvider';
 import CustomSelect from '../components/CustomSelect';
 import { useAuth, useSettings } from '../context/AppContext';
 import { api } from '../lib/api';
+import { AnimatedNotificationButton } from '../components/AnimatedNotificationButton';
 
 const JobDetail: React.FC = () => {
   const { id } = useParams();
   const { isDark = false } = useOutletContext<{ isDark?: boolean }>() || {};
   const { token, user } = useAuth();
-  const { requireEmailPreview } = useSettings();
+  const { requireEmailPreview, whatsappEnabled } = useSettings();
   const [job, setJob] = useState<any>(null);
   const [phases, setPhases] = useState<JobPhase[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -23,7 +24,58 @@ const JobDetail: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState<number | null>(null);
   const [isUpdatingPayment, setIsUpdatingPayment] = useState(false);
   const [notification, setNotification] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
-  const [phaseEmailStatus, setPhaseEmailStatus] = useState<Record<number, 'sent' | 'failed' | 'skipped'>>({});
+  const [phaseEmailStatus, setPhaseEmailStatus] = useState<Record<number, 'sent' | 'failed' | 'skipped' | 'read' | 'delivered'>>({});
+  const [phaseWhatsappStatus, setPhaseWhatsappStatus] = useState<Record<number, 'sent' | 'failed' | 'skipped' | 'read' | 'delivered'>>({});
+  const [emailAnimStates, setEmailAnimStates] = useState<Record<number, 'idle' | 'filling' | 'rippling' | 'resolving' | 'completed'>>({});
+  const [whatsappAnimStates, setWhatsappAnimStates] = useState<Record<number, 'idle' | 'filling' | 'rippling' | 'resolving' | 'completed'>>({});
+  const [expandedCompletedPhases, setExpandedCompletedPhases] = useState<Record<number, boolean>>({});
+  const [justCompletedPhases, setJustCompletedPhases] = useState<Set<number>>(new Set());
+
+  const startEmailFilling = (phaseId: number) => {
+    setEmailAnimStates(prev => ({ ...prev, [phaseId]: 'filling' }));
+  };
+
+  const resolveEmailSuccess = (phaseId: number) => {
+    setEmailAnimStates(prev => ({ ...prev, [phaseId]: 'rippling' }));
+    
+    setTimeout(() => {
+      setEmailAnimStates(prev => ({ ...prev, [phaseId]: 'resolving' }));
+    }, 400);
+
+    setTimeout(() => {
+      setEmailAnimStates(prev => ({ ...prev, [phaseId]: 'completed' }));
+      setTimeout(() => {
+        setEmailAnimStates(prev => ({ ...prev, [phaseId]: 'idle' }));
+      }, 1000);
+    }, 600);
+  };
+
+  const cancelEmailAnimation = (phaseId: number) => {
+    setEmailAnimStates(prev => ({ ...prev, [phaseId]: 'idle' }));
+  };
+
+  const startWhatsappFilling = (phaseId: number) => {
+    setWhatsappAnimStates(prev => ({ ...prev, [phaseId]: 'filling' }));
+  };
+
+  const resolveWhatsappSuccess = (phaseId: number) => {
+    setWhatsappAnimStates(prev => ({ ...prev, [phaseId]: 'rippling' }));
+    
+    setTimeout(() => {
+      setWhatsappAnimStates(prev => ({ ...prev, [phaseId]: 'resolving' }));
+    }, 400);
+
+    setTimeout(() => {
+      setWhatsappAnimStates(prev => ({ ...prev, [phaseId]: 'completed' }));
+      setTimeout(() => {
+        setWhatsappAnimStates(prev => ({ ...prev, [phaseId]: 'idle' }));
+      }, 1000);
+    }, 600);
+  };
+
+  const cancelWhatsappAnimation = (phaseId: number) => {
+    setWhatsappAnimStates(prev => ({ ...prev, [phaseId]: 'idle' }));
+  };
   const [selectedPhaseId, setSelectedPhaseId] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [activeFile, setActiveFile] = useState<{ url: string, name: string } | null>(null);
@@ -64,6 +116,12 @@ const JobDetail: React.FC = () => {
     isPaymentPhase: boolean;
     paymentAmount: number | string;
     paymentStatus: string;
+    sendWhatsApp: boolean;
+    sendEmail: boolean;
+    mode: 'email' | 'whatsapp';
+    whatsappTemplate: string;
+    customDate: string;
+    customTxt: string;
   }>({
     isOpen: false,
     isLoading: false,
@@ -80,8 +138,25 @@ const JobDetail: React.FC = () => {
     isFinal: false,
     isPaymentPhase: false,
     paymentAmount: '',
-    paymentStatus: ''
+    paymentStatus: '',
+    sendWhatsApp: true,
+    sendEmail: true,
+    mode: 'email',
+    whatsappTemplate: 'Phase-Complete',
+    customDate: '',
+    customTxt: ''
   });
+
+  const [previewTab, setPreviewTab] = useState<'email' | 'whatsapp'>('email');
+  const [waTemplates, setWaTemplates] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (whatsappEnabled) {
+      api.get('/whatsapp/templates')
+        .then(data => setWaTemplates(data || []))
+        .catch(err => console.error('Failed to fetch templates:', err));
+    }
+  }, [whatsappEnabled]);
 
   // Material tracking state
   const [activeMaterialTab, setActiveMaterialTab] = useState<'copper' | 'drain' | 'remote' | 'ac' | 'others'>('copper');
@@ -259,14 +334,19 @@ const JobDetail: React.FC = () => {
       const phaseList = Array.isArray(data.phases) ? data.phases : [];
       setPhases(phaseList);
       
-      // Initialize email status map from database
-      const emailStatusMap: Record<number, 'sent' | 'failed' | 'skipped'> = {};
+      // Initialize email & whatsapp status maps from database
+      const emailStatusMap: Record<number, 'sent' | 'failed' | 'skipped' | 'read' | 'delivered'> = {};
+      const whatsappStatusMap: Record<number, 'sent' | 'failed' | 'skipped' | 'read' | 'delivered'> = {};
       phaseList.forEach((p: any) => {
         if (p.emailStatus) {
           emailStatusMap[p.id] = p.emailStatus;
         }
+        if (p.whatsappStatus) {
+          whatsappStatusMap[p.id] = p.whatsappStatus;
+        }
       });
       setPhaseEmailStatus(emailStatusMap);
+      setPhaseWhatsappStatus(whatsappStatusMap);
 
       setPayments(Array.isArray(paymentsData) ? paymentsData : []);
       fetchMaterialLogs();
@@ -364,50 +444,32 @@ const JobDetail: React.FC = () => {
     }
   };
 
-  // Opens the email preview modal, or directly completes if preview is disabled
+  // Opens the email preview modal to let user choose notifications to send
   const handleMarkComplete = async (phaseId: number, directSkipEmail = false) => {
     const phase = phases.find(p => p.id === phaseId);
     if (!phase || !job) return;
 
-    const forceSkipEmail = directSkipEmail || user?.role === 'technician';
-
-    if (!requireEmailPreview || user?.role === 'technician') {
-      setIsProcessing(phaseId);
-      setNotification(null);
-      try {
-        const data = await api.patch(`/phases/${phaseId}`, { isCompleted: true, skipEmail: forceSkipEmail });
-        setPhases(prev => prev.map(p =>
-          p.id === phaseId ? { ...p, isCompleted: true, completedAt: new Date().toISOString() } : p
-        ));
-        setJob((prev: any) => ({
-          ...prev,
-          status: data.jobStatus || prev.status,
-          currentPhase: data.currentPhase
-        }));
-        if (forceSkipEmail) {
-          setPhaseEmailStatus(prev => ({ ...prev, [phaseId]: 'skipped' }));
-        } else {
-          setPhaseEmailStatus(prev => ({ ...prev, [phaseId]: data.emailSent ? 'sent' : 'failed' }));
-          if (!data.emailSent) {
-            setNotification({ message: 'Phase completed, but the email failed to send. Please retry or skip.', type: 'error' });
-          } else {
-            setNotification({ message: 'Phase completed and email sent successfully.', type: 'success' });
-          }
-        }
-        setSelectedPhaseId(null);
-      } catch (err: any) {
-        setNotification({ message: err.message || 'Network connection error', type: 'error' });
-      } finally {
-        setIsProcessing(null);
-      }
-      return;
-    }
-
-    setEmailModal(prev => ({ ...prev, isOpen: true, isLoading: true, phaseId, isRetry: false }));
+    setEmailModal(prev => ({ 
+      ...prev, 
+      isOpen: true, 
+      isLoading: true, 
+      phaseId, 
+      isRetry: false,
+      sendEmail: true,
+      sendWhatsApp: false,
+      mode: 'email'
+    }));
+    setPreviewTab('email');
     setNotification(null);
 
     try {
-      const preview = await api.get(`/phases/${phaseId}/email-preview`);
+      const [preview, templatesData] = await Promise.all([
+        api.get(`/phases/${phaseId}/email-preview`),
+        whatsappEnabled ? api.get('/whatsapp/templates') : Promise.resolve([])
+      ]);
+      if (templatesData) {
+        setWaTemplates(templatesData);
+      }
       setEmailModal(prev => ({
         ...prev,
         isLoading: false,
@@ -430,6 +492,108 @@ const JobDetail: React.FC = () => {
     }
   };
 
+  // Opens the WhatsApp preview modal
+  const handleMarkCompleteWhatsApp = async (phaseId: number, isRetry = false) => {
+    const phase = phases.find(p => p.id === phaseId);
+    if (!phase || !job) return;
+
+    setEmailModal(prev => ({ 
+      ...prev, 
+      isOpen: true, 
+      isLoading: true, 
+      phaseId, 
+      isRetry,
+      sendEmail: false,
+      sendWhatsApp: true,
+      mode: 'whatsapp'
+    }));
+    setPreviewTab('whatsapp');
+    setNotification(null);
+
+    try {
+      const [preview, templatesData] = await Promise.all([
+        api.get(`/phases/${phaseId}/email-preview`),
+        whatsappEnabled ? api.get('/whatsapp/templates') : Promise.resolve([])
+      ]);
+      if (templatesData) {
+        setWaTemplates(templatesData);
+      }
+      setEmailModal(prev => ({
+        ...prev,
+        isLoading: false,
+        to: preview.to,
+        customerName: preview.customerName,
+        subject: preview.subject,
+        greeting: `Hello ${preview.customerName},`,
+        message: preview.message,
+        phaseName: preview.phaseName,
+        jobId: preview.jobId,
+        technician: preview.technician,
+        isFinal: preview.isFinal,
+        isPaymentPhase: preview.isPaymentPhase,
+        paymentAmount: preview.paymentAmount,
+        paymentStatus: preview.paymentStatus,
+        whatsappTemplate: preview.isPaymentPhase && Number(preview.paymentAmount) > 0 ? 'Phase-Complete-Payment' : 'Phase-Complete'
+      }));
+    } catch (err: any) {
+      setEmailModal(prev => ({ ...prev, isOpen: false, isLoading: false }));
+      setNotification({ message: err.message || 'Network error loading preview', type: 'error' });
+    }
+  };
+
+  const handleDirectComplete = async (phaseId: number, options: { sendWhatsApp: boolean; skipEmail: boolean; silentComplete?: boolean }) => {
+    setIsProcessing(phaseId);
+    setNotification(null);
+    setEmailModal(prev => ({ ...prev, isOpen: false }));
+    try {
+      const payload: any = { 
+        isCompleted: true, 
+        skipEmail: options.skipEmail, 
+        sendWhatsApp: options.sendWhatsApp,
+        silentComplete: options.silentComplete
+      };
+      if (options.sendWhatsApp) {
+        payload.whatsappTemplate = emailModal.whatsappTemplate;
+        payload.customDate = emailModal.customDate;
+        payload.customTxt = emailModal.customTxt;
+        if (emailModal.whatsappTemplate === 'Phase-Complete-Payment') {
+          payload.customPaymentAmount = emailModal.paymentAmount ? Number(emailModal.paymentAmount) : 0;
+        }
+      }
+      const data = await api.patch(`/phases/${phaseId}`, payload);
+      setPhases(prev => prev.map(p =>
+        p.id === phaseId ? { ...p, isCompleted: true, completedAt: new Date().toISOString() } : p
+      ));
+      setJustCompletedPhases(prev => new Set(prev).add(phaseId));
+      setJob((prev: any) => ({
+        ...prev,
+        status: data.jobStatus || prev.status,
+        currentPhase: data.currentPhase
+      }));
+      setPhaseEmailStatus(prev => ({ 
+        ...prev, 
+        [phaseId]: options.silentComplete ? undefined : (options.skipEmail ? 'skipped' : (data.emailSent ? 'sent' : 'failed')) 
+      }));
+      setPhaseWhatsappStatus(prev => ({ 
+        ...prev, 
+        [phaseId]: options.silentComplete ? undefined : (options.sendWhatsApp ? (data.whatsappSent ? 'sent' : 'failed') : 'skipped') 
+      }));
+      
+      const waMessage = options.sendWhatsApp 
+        ? (data.whatsappSent ? ' and WhatsApp notification sent successfully.' : ' (WhatsApp failed to send).') 
+        : '';
+      setNotification({ 
+        message: `Phase completed successfully${waMessage}`, 
+        type: 'success' 
+      });
+      setSelectedPhaseId(null);
+    } catch (err: any) {
+      setNotification({ message: err.message || 'Network connection error', type: 'error' });
+    } finally {
+      setIsProcessing(null);
+    }
+  };
+
   // Completes the phase and sends the (possibly edited) email
   const handleConfirmComplete = async (skipEmail = false) => {
     if (!emailModal.phaseId || !job) return;
@@ -438,7 +602,15 @@ const JobDetail: React.FC = () => {
     setEmailModal(prev => ({ ...prev, isOpen: false }));
 
     try {
-      const bodyPayload: any = { isCompleted: true };
+      const bodyPayload: any = { 
+        isCompleted: true,
+        sendWhatsApp: emailModal.sendWhatsApp
+      };
+      if (emailModal.sendWhatsApp) {
+        bodyPayload.whatsappTemplate = emailModal.whatsappTemplate;
+        bodyPayload.customDate = emailModal.customDate;
+        bodyPayload.customTxt = emailModal.customTxt;
+      }
       if (skipEmail) {
         bodyPayload.skipEmail = true;
       } else {
@@ -472,6 +644,7 @@ const JobDetail: React.FC = () => {
           setNotification({ message: 'Phase completed and email sent successfully.', type: 'success' });
         }
       }
+      setPhaseWhatsappStatus(prev => ({ ...prev, [emailModal.phaseId!]: emailModal.sendWhatsApp ? (data.whatsappSent ? 'sent' : 'failed') : 'skipped' }));
     } catch (err: any) {
       setNotification({ message: err.message || 'Network connection error', type: 'error' });
     } finally {
@@ -484,24 +657,28 @@ const JobDetail: React.FC = () => {
     if (!requireEmailPreview) {
       setNotification(null);
       setPhaseEmailStatus(prev => ({ ...prev, [phaseId]: 'failed' })); // keeps it showing failed while we process, though ideally we'd have a 'retrying' state. We will just use the same logic as the modal for simplicity, but skip UI.
+      startEmailFilling(phaseId);
 
       try {
         const data = await api.post(`/phases/${phaseId}/resend-email`, {});
         setPhaseEmailStatus(prev => ({ ...prev, [phaseId]: data.emailSent ? 'sent' : 'failed' }));
         if (!data.emailSent) {
+          cancelEmailAnimation(phaseId);
           const errorDetail = data.emailError ? ` (Reason: ${data.emailError})` : '';
           setNotification({ message: `Email failed to send again${errorDetail}. Please check your settings or skip.`, type: 'error' });
         } else {
+          resolveEmailSuccess(phaseId);
           setNotification({ message: 'Email sent successfully!', type: 'success' });
         }
       } catch (err: any) {
+        cancelEmailAnimation(phaseId);
         setPhaseEmailStatus(prev => ({ ...prev, [phaseId]: 'failed' }));
         setNotification({ message: err.message || 'Network error while retrying email.', type: 'error' });
       }
       return;
     }
 
-    setEmailModal(prev => ({ ...prev, isOpen: true, isLoading: true, phaseId, isRetry: true }));
+    setEmailModal(prev => ({ ...prev, isOpen: true, isLoading: true, phaseId, isRetry: true, mode: 'email', sendEmail: true, sendWhatsApp: false }));
     setNotification(null);
 
     try {
@@ -532,8 +709,10 @@ const JobDetail: React.FC = () => {
   const handleResendEmail = async () => {
     if (!emailModal.phaseId || !job) return;
 
+    const phaseId = emailModal.phaseId;
     setEmailModal(prev => ({ ...prev, isOpen: false }));
-    setPhaseEmailStatus(prev => ({ ...prev, [emailModal.phaseId!]: undefined as any }));
+    setPhaseEmailStatus(prev => ({ ...prev, [phaseId]: undefined as any }));
+    startEmailFilling(phaseId);
 
     try {
       const bodyPayload: any = {
@@ -548,22 +727,72 @@ const JobDetail: React.FC = () => {
       const data = await api.post(`/phases/${emailModal.phaseId}/resend-email`, bodyPayload);
       setPhaseEmailStatus(prev => ({ ...prev, [emailModal.phaseId!]: data.emailSent ? 'sent' : 'failed' }));
       if (!data.emailSent) {
+        cancelEmailAnimation(phaseId);
         const errorDetail = data.emailError ? ` (Reason: ${data.emailError})` : '';
         setNotification({ message: `Email failed to send again${errorDetail}. Please check your settings or skip.`, type: 'error' });
       } else {
+        resolveEmailSuccess(phaseId);
         setNotification({ message: 'Email sent successfully!', type: 'success' });
       }
     } catch (err: any) {
+      cancelEmailAnimation(phaseId);
       setPhaseEmailStatus(prev => ({ ...prev, [emailModal.phaseId!]: 'failed' }));
       setNotification({ message: err.message || 'Network error while retrying email.', type: 'error' });
     }
   };
 
-  // Skip email formally (hides retry buttons)
-  const handleSkipEmail = async (phaseId: number) => {
-    // In our simplified system, we simply mark it skipped on frontend 
-    // without hitting the backend, so the retry UI disappears.
-    setPhaseEmailStatus(prev => ({ ...prev, [phaseId]: 'skipped' }));
+  // Skip notifications for a completed phase (calls backend and updates status to skipped)
+  const handleSkipNotificationsForPhase = async (phaseId: number) => {
+    setIsProcessing(phaseId);
+    try {
+      await api.patch(`/phases/${phaseId}`, { isCompleted: true, skipEmail: true });
+      setPhaseEmailStatus(prev => ({ ...prev, [phaseId]: 'skipped' }));
+      setPhaseWhatsappStatus(prev => ({ ...prev, [phaseId]: 'skipped' }));
+      setNotification({ message: 'Notifications skipped for this phase.', type: 'success' });
+    } catch (err: any) {
+      setNotification({ message: err.message || 'Error skipping notifications', type: 'error' });
+    } finally {
+      setIsProcessing(null);
+    }
+  };
+
+  // Send WhatsApp for an already-completed phase (with customized template/payment from modal)
+  const handleSendWhatsAppCompleted = async () => {
+    if (!emailModal.phaseId || !job) return;
+
+    const phaseId = emailModal.phaseId;
+    setIsProcessing(phaseId);
+    setEmailModal(prev => ({ ...prev, isOpen: false }));
+    setNotification(null);
+    startWhatsappFilling(phaseId);
+
+    try {
+      const payload: any = {
+        isCompleted: true,
+        whatsappTemplate: emailModal.whatsappTemplate,
+        customDate: emailModal.customDate,
+        customTxt: emailModal.customTxt
+      };
+      if (emailModal.whatsappTemplate === 'Phase-Complete-Payment') {
+        payload.customPaymentAmount = emailModal.paymentAmount ? Number(emailModal.paymentAmount) : 0;
+      }
+      const data = await api.post(`/phases/${emailModal.phaseId}/send-whatsapp`, payload);
+      setPhaseWhatsappStatus(prev => ({ ...prev, [emailModal.phaseId!]: data.whatsappSent ? 'sent' : 'failed' }));
+      if (data.whatsappSent) {
+        resolveWhatsappSuccess(phaseId);
+        setNotification({ message: 'WhatsApp message sent successfully!', type: 'success' });
+      } else {
+        cancelWhatsappAnimation(phaseId);
+        const errorDetail = data.whatsappError ? ` (Reason: ${data.whatsappError})` : '';
+        setNotification({ message: `WhatsApp failed to send${errorDetail}. Please check connection or retry.`, type: 'error' });
+      }
+    } catch (err: any) {
+      cancelWhatsappAnimation(phaseId);
+      setPhaseWhatsappStatus(prev => ({ ...prev, [emailModal.phaseId!]: 'failed' }));
+      setNotification({ message: err.message || 'Network error while sending WhatsApp.', type: 'error' });
+    } finally {
+      setIsProcessing(null);
+    }
   };
 
   if (loading) return <div className="p-10 text-center"><i className="fa-solid fa-spinner fa-spin text-2xl text-blue-600"></i></div>;
@@ -610,6 +839,60 @@ const JobDetail: React.FC = () => {
     }
     return acc;
   }, []);
+
+  const getWhatsAppPreviewText = () => {
+    const customer = emailModal.customerName || 'Customer';
+    const address = job?.customerAddress || 'Customer Address';
+    const phase = emailModal.phaseName || 'Current Phase';
+    const technician = emailModal.technician ? emailModal.technician.split('@')[0] : 'Assigned Technician';
+    const outstanding = String(emailModal.paymentAmount || '0');
+    const customDate = emailModal.customDate || '';
+    const customTxt = emailModal.customTxt || '';
+
+    // Find the template from waTemplates
+    const template = waTemplates.find(t => t.name === emailModal.whatsappTemplate);
+    
+    let header = `Hello ${customer},`;
+    let footer = `Thank you for choosing Satguru Engineers. 🙏`;
+    let body = '';
+
+    if (template) {
+      header = template.header || '';
+      body = template.body || '';
+      footer = template.footer || '';
+
+      // Helper to replace variables case-insensitively
+      const replaceVar = (text: string, varName: string, value: string) => {
+        const regex = new RegExp(`\\{\\{${varName}\\}\\}`, 'gi');
+        return text.replace(regex, value);
+      };
+
+      // Perform replacements
+      header = replaceVar(header, 'customer', customer);
+      header = replaceVar(header, 'Customer', customer);
+
+      body = replaceVar(body, 'customer', customer);
+      body = replaceVar(body, 'Customer', customer);
+      body = replaceVar(body, 'Adress', address);
+      body = replaceVar(body, 'Address', address);
+      body = replaceVar(body, 'phase', phase);
+      body = replaceVar(body, 'technician', technician);
+      body = replaceVar(body, 'outstanding', outstanding);
+      body = replaceVar(body, 'date', customDate);
+      body = replaceVar(body, 'txt', customTxt);
+
+      footer = replaceVar(footer, 'customer', customer);
+      footer = replaceVar(footer, 'Customer', customer);
+    } else {
+      // Fallback
+      const isPayment = emailModal.whatsappTemplate === 'Phase-Complete-Payment';
+      body = isPayment 
+        ? `Your installation for ${address} has been updated.\n\n✅ Phase Completed: ${phase}\n👷 Technician: ${technician}\n\nThis phase has been completed successfully by our team.\n\n💰 Payment Due: ₹${outstanding}\n\nIf you have any questions or notice anything pending, simply reply to this message. We'll be happy to assist you.`
+        : `Your installation for ${address} has been updated.\n\n✅ Phase Completed: ${phase}\n👷 Technician: ${technician}\n\nThis phase has been completed successfully by our team.\n\nIf you have any questions or notice anything pending, simply reply to this message. We'll be happy to assist you.`;
+    }
+
+    return { header, body, footer };
+  };
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
@@ -1258,7 +1541,7 @@ const JobDetail: React.FC = () => {
                   <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center">
                     Total Cost
                     {isUnpaid && (
-                      <span className="text-[10px] font-bold bg-red-105 dark:bg-red-950/40 text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded border border-red-200 dark:border-red-900/50 uppercase ml-2 tracking-normal">Unpaid</span>
+                      <span className="text-[10px] font-bold bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded border border-red-200 dark:border-red-900/50 uppercase ml-2 tracking-normal">Unpaid</span>
                     )}
                   </span>
                   <span className="text-base font-bold text-slate-800 dark:text-slate-100">₹{Number(job.totalCost || 0).toLocaleString()}</span>
@@ -1281,7 +1564,7 @@ const JobDetail: React.FC = () => {
                       <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center">
                         Total Equipment
                         {isEquipUnpaid && (
-                          <span className="text-[10px] font-bold bg-red-105 dark:bg-red-950/40 text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded border border-red-200 dark:border-red-900/50 uppercase ml-2 tracking-normal">Unpaid</span>
+                          <span className="text-[10px] font-bold bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded border border-red-200 dark:border-red-900/50 uppercase ml-2 tracking-normal">Unpaid</span>
                         )}
                       </span>
                       <span className="text-base font-bold text-slate-850 dark:text-slate-100">₹{Number(job.equipmentCost || 0).toLocaleString()}</span>
@@ -1380,7 +1663,7 @@ const JobDetail: React.FC = () => {
               {isPaymentHistoryOpen && (
                 <div className="p-3 border-t border-slate-200 dark:border-border-dark space-y-2.5 max-h-36 overflow-y-auto bg-white dark:bg-transparent">
                   {payments.map(p => (
-                    <div key={p.id} className="bg-slate-50 dark:bg-slate-850 p-2.5 rounded-lg border border-slate-105 dark:border-slate-800 flex justify-between items-center text-xs group relative">
+                    <div key={p.id} className="bg-slate-50 dark:bg-slate-850 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800 flex justify-between items-center text-xs group relative">
                       <div className="flex flex-col gap-0.5">
                         <span className="font-bold text-slate-800 dark:text-slate-100">₹{Number(p.amount).toLocaleString()}</span>
                         <div className="flex items-center gap-1 text-[9px] text-slate-400 dark:text-slate-500 font-medium">
@@ -1393,7 +1676,7 @@ const JobDetail: React.FC = () => {
                       {user?.role === 'superadmin' && (
                         <button 
                           onClick={() => handleDeletePayment(p.id)}
-                          className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-355 hover:text-red-500 hover:bg-red-500/10 transition-all opacity-0 group-hover:opacity-100"
+                          className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-500/10 transition-all opacity-0 group-hover:opacity-100"
                           title="Delete Payment"
                         >
                           <i className="fa-solid fa-trash-can text-xs"></i>
@@ -1417,141 +1700,283 @@ const JobDetail: React.FC = () => {
           </button>
         </div>
 
-        <div className="border border-slate-200 dark:border-border-dark rounded-xl overflow-hidden bg-slate-50/20 dark:bg-transparent flex flex-col divide-y divide-slate-100 dark:divide-border-dark">
-          {paginatedPhases.map((phase, idx) => (
-            <div key={phase.id} className={`p-4 flex items-center justify-between gap-4 transition-all ${phase.isCompleted ? 'bg-emerald-50/5 dark:bg-emerald-950/5' : 'hover:bg-slate-50 dark:hover:bg-background-dark/40 group'}`}>
+        <div className="flex flex-col gap-3">
+          {/* Stacked completed phases at top (excludes just-completed this session) */}
+          {(() => {
+            const stackedPhases = [...phases.filter(p => p.isCompleted && !justCompletedPhases.has(p.id))].reverse();
+            if (stackedPhases.length === 0) return null;
+            const allExpanded = stackedPhases.every(p => expandedCompletedPhases[p.id]);
+
+            const toggleAll = () => {
+              if (allExpanded) {
+                setExpandedCompletedPhases({});
+              } else {
+                const newState: Record<number, boolean> = {};
+                stackedPhases.forEach(p => { newState[p.id] = true; });
+                setExpandedCompletedPhases(newState);
+              }
+            };
+
+            return (
+              <div className="mb-1">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="h-px flex-1 bg-slate-200 dark:bg-border-dark"></div>
+                  <button 
+                    onClick={toggleAll}
+                    className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors cursor-pointer flex items-center gap-1.5"
+                  >
+                    Completed ({stackedPhases.length}/{phases.length})
+                    <i className={`ph ph-caret-down text-[8px] transition-transform duration-200 ${allExpanded ? 'rotate-180' : ''}`}></i>
+                  </button>
+                  <div className="h-px flex-1 bg-slate-200 dark:bg-border-dark"></div>
+                </div>
+                <div className="relative">
+                  {stackedPhases.map((phase, i) => {
+                    const isExpanded = expandedCompletedPhases[phase.id];
+                    
+                    return (
+                      <div
+                        key={phase.id}
+                        className="transition-all duration-300 ease-in-out"
+                        style={{
+                          marginTop: i === 0 ? '0px' : (allExpanded || expandedCompletedPhases[stackedPhases[i - 1]?.id] ? '6px' : '-32px'),
+                          zIndex: stackedPhases.length - i,
+                          position: 'relative',
+                        }}
+                      >
+                        <div className={`border rounded-xl overflow-hidden transition-all duration-300 ${isExpanded 
+                          ? 'border-emerald-500/30 bg-white dark:bg-card-dark shadow-lg shadow-emerald-500/5' 
+                          : 'border-slate-200 dark:border-border-dark bg-white dark:bg-card-dark hover:shadow-md'
+                        }`}>
+                          <button
+                            onClick={i === 0 ? toggleAll : (() => setExpandedCompletedPhases(prev => ({ ...prev, [phase.id]: !prev[phase.id] })))}
+                            className="w-full px-4 py-2.5 flex items-center justify-between gap-3 cursor-pointer hover:bg-slate-50/50 dark:hover:bg-background-dark/30 transition-colors"
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] shrink-0 bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400">
+                                <i className="ph ph-check font-bold"></i>
+                              </div>
+                              <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 truncate">{phase.phaseName}</span>
+                              {phase.completedAt && (
+                                <span className="text-[10px] text-emerald-600/70 dark:text-emerald-400/70 font-medium shrink-0 hidden sm:inline">
+                                  {new Date(phase.completedAt).toLocaleDateString()}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              {!isExpanded && (
+                                <div className="flex items-center gap-1.5">
+                                  {/* Email Status Indicator */}
+                                  {phaseEmailStatus[phase.id] === 'skipped' && phaseWhatsappStatus[phase.id] === 'skipped' && (
+                                    <span className="text-[9px] text-slate-400 dark:text-slate-500 italic">skipped</span>
+                                  )}
+                                  {phaseEmailStatus[phase.id] === 'sent' && (
+                                    <div className="w-5 h-5 flex items-center justify-center rounded-full bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200/50 dark:border-blue-900/30" title="Email sent">
+                                      <svg className="w-2.5 h-2.5 text-blue-600 dark:text-blue-400" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" /></svg>
+                                    </div>
+                                  )}
+                                  {phaseEmailStatus[phase.id] === 'failed' && (
+                                    <div className="w-5 h-5 flex items-center justify-center rounded-full bg-red-50 dark:bg-red-950/20 border border-red-200/50 dark:border-red-900/30" title="Email failed">
+                                      <i className="fa-solid fa-envelope text-[10px] text-red-500"></i>
+                                    </div>
+                                  )}
+
+                                  {/* WhatsApp Status Indicator */}
+                                  {phaseWhatsappStatus[phase.id] === 'read' && (
+                                    <div className="w-5 h-5 flex items-center justify-center rounded-full bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200/50 dark:border-emerald-900/30" title="WhatsApp read">
+                                      <svg className="w-3 h-3 text-[#34B7F1]" viewBox="0 0 24 24"><path d="M2 13l4 4L16 7" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" /><path d="M8 13l4 4L22 7" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" /></svg>
+                                    </div>
+                                  )}
+                                  {phaseWhatsappStatus[phase.id] === 'delivered' && (
+                                    <div className="w-5 h-5 flex items-center justify-center rounded-full bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200/50 dark:border-emerald-900/30" title="WhatsApp delivered">
+                                      <svg className="w-3 h-3 text-slate-400" viewBox="0 0 24 24"><path d="M2 13l4 4L16 7" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" /><path d="M8 13l4 4L22 7" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" /></svg>
+                                    </div>
+                                  )}
+                                  {phaseWhatsappStatus[phase.id] === 'sent' && (
+                                    <div className="w-5 h-5 flex items-center justify-center rounded-full bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200/50 dark:border-emerald-900/30" title="WhatsApp sent">
+                                      <svg className="w-3 h-3 text-slate-400" viewBox="0 0 24 24"><path d="M4 13l4 4L18 7" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" /></svg>
+                                    </div>
+                                  )}
+                                  {phaseWhatsappStatus[phase.id] === 'failed' && (
+                                    <div className="w-5 h-5 flex items-center justify-center rounded-full bg-red-50 dark:bg-red-950/20 border border-red-200/50 dark:border-red-900/30" title="WhatsApp failed">
+                                      <i className="fa-brands fa-whatsapp text-[10px] text-red-500"></i>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                              <i className={`ph ph-caret-down text-slate-400 text-xs transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}></i>
+                            </div>
+                          </button>
+
+                          {isExpanded && (
+                            <div className="px-4 pb-3 pt-1 border-t border-slate-100 dark:border-border-dark/50 flex items-center justify-between gap-4 animate-in fade-in duration-200">
+                              <div className="flex items-center gap-2">
+                                {phase.completedAt && (
+                                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+                                    <i className="ph ph-circle-wavy-check"></i> Finished {new Date(phase.completedAt).toLocaleDateString()}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                {phaseEmailStatus[phase.id] !== 'skipped' && (
+                                  <AnimatedNotificationButton
+                                    channel="email"
+                                    status={phaseEmailStatus[phase.id]}
+                                    onClick={() => handleRetryEmail(phase.id)}
+                                    isProcessing={isProcessing === phase.id}
+                                    animState={emailAnimStates[phase.id] || 'idle'}
+                                  />
+                                )}
+                                {whatsappEnabled && phaseWhatsappStatus[phase.id] !== 'skipped' && (
+                                  <AnimatedNotificationButton
+                                    channel="whatsapp"
+                                    status={phaseWhatsappStatus[phase.id]}
+                                    onClick={() => handleMarkCompleteWhatsApp(phase.id, true)}
+                                    isProcessing={isProcessing === phase.id}
+                                    animState={whatsappAnimStates[phase.id] || 'idle'}
+                                  />
+                                )}
+                                {((!phaseEmailStatus[phase.id] || phaseEmailStatus[phase.id] === 'failed') && 
+                                  (!whatsappEnabled || !phaseWhatsappStatus[phase.id] || phaseWhatsappStatus[phase.id] === 'failed')) && (
+                                  <button
+                                    onClick={() => handleSkipNotificationsForPhase(phase.id)}
+                                    disabled={isProcessing === phase.id}
+                                    className="px-2.5 py-1.5 bg-white dark:bg-[#18181b] border border-slate-200 dark:border-border-dark text-[10px] font-bold text-slate-500 dark:text-slate-400 hover:border-red-400 hover:text-red-500 rounded-xl transition-all cursor-pointer"
+                                    title="Skip notifications"
+                                  >
+                                    SKIP
+                                  </button>
+                                )}
+                                {phaseEmailStatus[phase.id] === 'skipped' && (!whatsappEnabled || phaseWhatsappStatus[phase.id] === 'skipped') && (
+                                  <span className="text-[10px] text-slate-400 dark:text-slate-500 italic">Notifications skipped</span>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Remaining phases in original order: just-completed (with buttons) + incomplete (with COMPLETE) */}
+          {phases.filter(p => !p.isCompleted || justCompletedPhases.has(p.id)).map((phase) => {
+            const originalIdx = phases.findIndex(p => p.id === phase.id);
+            const isJustCompleted = justCompletedPhases.has(phase.id);
+            return (
+            <div key={phase.id} className={`p-4 flex items-center justify-between gap-4 transition-all border rounded-xl ${isJustCompleted 
+              ? 'border-emerald-500/30 bg-emerald-50/5 dark:bg-emerald-950/5' 
+              : 'border-slate-200 dark:border-border-dark bg-white dark:bg-card-dark/25 hover:bg-slate-50 dark:hover:bg-background-dark/40 group'}`}>
               <div className="flex items-center gap-4">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black transition-all shrink-0 border ${phase.isCompleted
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black transition-all shrink-0 border ${isJustCompleted
                   ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
                   : 'bg-slate-100 dark:bg-[#18181b] border-slate-200 dark:border-border-dark text-slate-400 dark:text-slate-500'
-                  }`}>
-                  {phase.isCompleted ? <i className="ph ph-check font-bold"></i> : (currentPage - 1) * itemsPerPage + idx + 1}
+                }`}>
+                  {isJustCompleted ? <i className="ph ph-check font-bold"></i> : originalIdx + 1}
                 </div>
                 <div className="flex flex-col">
-                  <span className={`text-sm font-semibold ${phase.isCompleted ? 'text-slate-800 dark:text-slate-200' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200'}`}>{phase.phaseName}</span>
-                  {phase.completedAt && (
+                  <span className={`text-sm font-semibold ${isJustCompleted ? 'text-slate-800 dark:text-slate-200' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200'}`}>{phase.phaseName}</span>
+                  {isJustCompleted && phase.completedAt && (
                     <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1 mt-0.5">
                       <i className="ph ph-circle-wavy-check"></i> Finished {new Date(phase.completedAt).toLocaleDateString()}
                     </span>
                   )}
                 </div>
               </div>
-
-              <div>
-                {!phase.isCompleted ? (
-                  requireEmailPreview ? (
-                    <button
-                      onClick={() => handleMarkComplete(phase.id)}
-                      disabled={isProcessing === phase.id}
-                      className="px-3 py-1.5 bg-white dark:bg-[#18181b] border border-slate-200 dark:border-border-dark text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-300 hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg transition-all disabled:opacity-50 shrink-0"
-                    >
-                      {isProcessing === phase.id ? <i className="fa-solid fa-circle-notch fa-spin"></i> : 'Complete'}
-                    </button>
-                  ) : selectedPhaseId === phase.id ? (
-                    <div className="flex gap-2 shrink-0 animate-in fade-in slide-in-from-right-2 duration-300">
-                      <button
-                        onClick={() => handleMarkComplete(phase.id, false)}
-                        disabled={isProcessing === phase.id}
-                        className="px-2.5 py-1.5 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900 text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 rounded-lg transition-all disabled:opacity-50 shrink-0"
-                        title="Complete phase and send default email"
-                      >
-                        {isProcessing === phase.id ? <i className="fa-solid fa-circle-notch fa-spin"></i> : <><i className="ph ph-paper-plane mr-1 font-bold"></i> Mail</>}
-                      </button>
-                      <button
-                        onClick={() => handleMarkComplete(phase.id, true)}
-                        disabled={isProcessing === phase.id}
-                        className="px-2.5 py-1.5 bg-slate-50 dark:bg-[#18181b] border border-slate-200 dark:border-border-dark text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 hover:bg-slate-100 rounded-lg transition-all disabled:opacity-50 shrink-0"
-                        title="Complete phase without sending email"
-                      >
-                        {isProcessing === phase.id ? <i className="ph ph-fast-forward mr-1 font-bold"></i> : <><i className="ph ph-fast-forward mr-1 font-bold"></i> Skip</>}
-                      </button>
-                      <button
-                        onClick={() => setSelectedPhaseId(null)}
-                        disabled={isProcessing === phase.id}
-                        className="px-2 border border-transparent text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
-                        title="Cancel"
-                      >
-                        <i className="ph ph-x font-bold"></i>
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => setSelectedPhaseId(phase.id)}
-                      className="px-3 py-1.5 bg-white dark:bg-[#18181b] border border-slate-200 dark:border-border-dark text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-300 hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg transition-all shrink-0"
-                    >
-                      Complete
-                    </button>
-                  )
-                ) : (
-                  <div className="flex items-center gap-2 shrink-0">
-                    {phaseEmailStatus[phase.id] === 'failed' ? (
-                      <div className="flex gap-2 animate-in fade-in slide-in-from-right-2 duration-300">
-                        <button
-                          onClick={() => handleRetryEmail(phase.id)}
-                          className="px-2.5 py-1.5 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 hover:bg-blue-100 rounded-lg transition-all shrink-0"
-                          title="Retry sending the email notification"
-                        >
-                          <i className="fa-solid fa-rotate-right mr-1"></i> Retry
-                        </button>
-                        <button
-                          onClick={() => handleSkipEmail(phase.id)}
-                          className="px-2.5 py-1.5 bg-slate-50 dark:bg-[#18181b] border border-slate-200 dark:border-border-dark text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 hover:bg-slate-100 rounded-lg transition-all shrink-0"
-                          title="Skip sending for now"
-                        >
-                          <i className="ph ph-fast-forward mr-1 font-bold"></i> Skip
-                        </button>
-                      </div>
-                    ) : phaseEmailStatus[phase.id] === 'skipped' ? (
-                      <span className="text-[9px] bg-slate-50 dark:bg-[#18181b] text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-border-dark px-2 py-1 rounded-lg font-bold flex items-center gap-1">
-                        <i className="ph ph-fast-forward"></i> Skipped
-                      </span>
-                    ) : (
-                      <button
+              <div className="flex items-center gap-1.5 shrink-0">
+                {isJustCompleted ? (
+                  <>
+                    {/* Email button */}
+                    {phaseEmailStatus[phase.id] !== 'skipped' && (
+                      <AnimatedNotificationButton
+                        channel="email"
+                        status={phaseEmailStatus[phase.id]}
                         onClick={() => handleRetryEmail(phase.id)}
-                        className="w-8 h-8 flex items-center justify-center text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 hover:shadow-inner rounded-full transition-all"
-                        title="Resend Notification"
+                        isProcessing={isProcessing === phase.id}
+                        animState={emailAnimStates[phase.id] || 'idle'}
+                      />
+                    )}
+                    {/* WhatsApp button */}
+                    {whatsappEnabled && phaseWhatsappStatus[phase.id] !== 'skipped' && (
+                      <AnimatedNotificationButton
+                        channel="whatsapp"
+                        status={phaseWhatsappStatus[phase.id]}
+                        onClick={() => handleMarkCompleteWhatsApp(phase.id, true)}
+                        isProcessing={isProcessing === phase.id}
+                        animState={whatsappAnimStates[phase.id] || 'idle'}
+                      />
+                    )}
+                    {/* Skip button */}
+                    {((!phaseEmailStatus[phase.id] || phaseEmailStatus[phase.id] === 'failed') && 
+                      (!whatsappEnabled || !phaseWhatsappStatus[phase.id] || phaseWhatsappStatus[phase.id] === 'failed')) && (
+                      <button
+                        onClick={() => handleSkipNotificationsForPhase(phase.id)}
+                        disabled={isProcessing === phase.id}
+                        className="px-2.5 py-1.5 bg-white dark:bg-[#18181b] border border-slate-200 dark:border-border-dark text-[10px] font-bold text-slate-500 dark:text-slate-400 hover:border-red-400 hover:text-red-500 rounded-xl transition-all cursor-pointer"
+                        title="Skip notifications"
                       >
-                        <i className="ph ph-paper-plane text-sm"></i>
+                        SKIP
                       </button>
                     )}
-                  </div>
+                    {phaseEmailStatus[phase.id] === 'skipped' && (!whatsappEnabled || phaseWhatsappStatus[phase.id] === 'skipped') && (
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500 italic">Notifications skipped</span>
+                    )}
+                  </>
+                ) : (
+                  <button
+                    onClick={() => handleDirectComplete(phase.id, { sendWhatsApp: false, skipEmail: true, silentComplete: true })}
+                    disabled={isProcessing === phase.id}
+                    className="px-3 py-1.5 bg-white dark:bg-[#18181b] border border-slate-200 dark:border-border-dark text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-350 hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 rounded-xl transition-all disabled:opacity-50 shrink-0 cursor-pointer"
+                    title="Complete phase"
+                  >
+                    {isProcessing === phase.id ? <i className="fa-solid fa-circle-notch fa-spin"></i> : 'COMPLETE'}
+                  </button>
                 )}
               </div>
             </div>
-          ))}
+          );
+          })}
         </div>
-
-        <Pagination
-          isDark={isDark}
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={setCurrentPage}
-        />
       </div>
 
       {/* Email Preview Modal */}
       {emailModal.isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#151619]/60 backdrop-blur-sm p-4" onClick={() => setEmailModal(prev => ({ ...prev, isOpen: false }))}>
           <div
-            className="bg-white dark:bg-card-dark border border-slate-200 dark:border-border-dark rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
+            className={`bg-white dark:bg-card-dark border border-slate-200 dark:border-border-dark rounded-2xl shadow-2xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 ${
+              emailModal.mode === 'whatsapp' ? 'max-w-4xl' : 'max-w-5xl'
+            }`}
             onClick={e => e.stopPropagation()}
           >
             {emailModal.isLoading ? (
               <div className="p-16 flex flex-col items-center justify-center gap-4 text-slate-400">
                 <i className="fa-solid fa-circle-notch fa-spin text-3xl text-blue-500"></i>
-                <p className="text-sm font-medium">Loading email preview…</p>
+                <p className="text-sm font-medium">Loading preview…</p>
               </div>
             ) : (
               <>
                 {/* Modal Header */}
                 <div className="flex items-center justify-between p-5 border-b border-slate-200 dark:border-border-dark bg-white dark:bg-card-dark">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-blue-100 dark:bg-background-dark/30 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center">
-                      <i className="fa-solid fa-envelope-open-text"></i>
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                      emailModal.mode === 'whatsapp' 
+                        ? 'bg-emerald-100 dark:bg-emerald-950/20 text-emerald-605 dark:text-emerald-400'
+                        : 'bg-blue-100 dark:bg-background-dark/30 text-blue-600 dark:text-blue-400'
+                    }`}>
+                      <i className={emailModal.mode === 'whatsapp' ? 'fa-brands fa-whatsapp text-lg' : 'fa-solid fa-envelope-open-text'}></i>
                     </div>
                     <div>
-                      <h2 className="text-lg font-bold text-slate-900 dark:text-white">Email Preview</h2>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">Review and edit before sending to {emailModal.customerName}</p>
+                      <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                        {emailModal.mode === 'whatsapp' ? 'WhatsApp Notification Preview' : 'Email Preview'}
+                      </h2>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {emailModal.mode === 'whatsapp' 
+                          ? `Review WhatsApp message details for ${emailModal.customerName}`
+                          : `Review and edit before sending to ${emailModal.customerName}`}
+                      </p>
                     </div>
                   </div>
                   <button
@@ -1562,8 +1987,173 @@ const JobDetail: React.FC = () => {
                   </button>
                 </div>
 
-                {/* Side-by-side: Form + Live Preview */}
-                <div className="flex flex-col lg:flex-row flex-1 overflow-y-auto">
+                {emailModal.mode === 'whatsapp' ? (
+                  /* WhatsApp Only Preview Layout */
+                  <div className="p-6 flex flex-col md:flex-row gap-6 overflow-y-auto max-h-[75vh]">
+                    {/* Left Column - Controls */}
+                    <div className="w-full md:w-[320px] flex flex-col gap-4 shrink-0">
+                      <div className="flex flex-wrap gap-2">
+                        <span className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400">
+                          <i className="fa-brands fa-whatsapp mr-1"></i> Job #{emailModal.jobId}
+                        </span>
+                        <span className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full bg-slate-100 dark:bg-[#18181b] text-slate-600 dark:text-slate-300">
+                          <i className="fa-solid fa-gear mr-1"></i> {emailModal.phaseName}
+                        </span>
+                      </div>
+
+                      <div className="flex flex-col gap-4 p-4 rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50/50 dark:bg-[#18181b]/50">
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-zinc-400">
+                            Notification Template
+                          </label>
+                          <select
+                            value={emailModal.whatsappTemplate}
+                            onChange={(e) => setEmailModal(prev => ({ 
+                              ...prev, 
+                              whatsappTemplate: e.target.value as any
+                            }))}
+                            className="w-full px-3 py-2 rounded-lg border text-xs outline-none transition-all bg-white dark:bg-[#18181b] border-slate-200 dark:border-zinc-800 text-slate-800 dark:text-zinc-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20"
+                          >
+                            {waTemplates.length > 0 ? (
+                              waTemplates.map((t: any) => (
+                                <option key={t.id || t.name} value={t.name}>
+                                  {t.name}
+                                </option>
+                              ))
+                            ) : (
+                              <>
+                                <option value="Phase-Complete">Phase-Complete (Standard)</option>
+                                <option value="Phase-Complete-Payment">Phase-Complete-Payment (Payment)</option>
+                              </>
+                            )}
+                          </select>
+                        </div>
+
+                        {(() => {
+                          const selectedTemplateObj = waTemplates.find(t => t.name === emailModal.whatsappTemplate);
+                          const templateTextCombined = selectedTemplateObj 
+                            ? `${selectedTemplateObj.header || ''} ${selectedTemplateObj.body || ''} ${selectedTemplateObj.footer || ''}`.toLowerCase()
+                            : '';
+                          const hasOutstandingVar = templateTextCombined.includes('{{outstanding}}') || emailModal.whatsappTemplate === 'Phase-Complete-Payment';
+                          const hasDateVar = templateTextCombined.includes('{{date}}');
+                          const hasTxtVar = templateTextCombined.includes('{{txt}}');
+                          return (
+                            <>
+                              {hasOutstandingVar && (
+                                <div className="flex flex-col gap-1.5 animate-in fade-in duration-200">
+                                  <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-zinc-400">
+                                    Payment Amount (₹)
+                                  </label>
+                                  <input
+                                    type="number"
+                                    value={emailModal.paymentAmount}
+                                    onChange={(e) => setEmailModal(prev => ({ ...prev, paymentAmount: e.target.value }))}
+                                    className="w-full px-3 py-2 rounded-lg border text-xs outline-none transition-all bg-white dark:bg-[#18181b] border-slate-200 dark:border-zinc-800 text-slate-800 dark:text-zinc-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20"
+                                    placeholder="Enter payment amount"
+                                  />
+                                </div>
+                              )}
+                              {hasDateVar && (
+                                <div className="flex flex-col gap-1.5 animate-in fade-in duration-200">
+                                  <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-zinc-400">
+                                    Date (date)
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={emailModal.customDate}
+                                    onChange={(e) => setEmailModal(prev => ({ ...prev, customDate: e.target.value }))}
+                                    className="w-full px-3 py-2 rounded-lg border text-xs outline-none transition-all bg-white dark:bg-[#18181b] border-slate-200 dark:border-zinc-800 text-slate-800 dark:text-zinc-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20"
+                                    placeholder="e.g. 05-07-2026 or Friday"
+                                  />
+                                </div>
+                              )}
+                              {hasTxtVar && (
+                                <div className="flex flex-col gap-1.5 animate-in fade-in duration-200">
+                                  <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-zinc-400">
+                                    Custom Text (txt)
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={emailModal.customTxt}
+                                    onChange={(e) => setEmailModal(prev => ({ ...prev, customTxt: e.target.value }))}
+                                    className="w-full px-3 py-2 rounded-lg border text-xs outline-none transition-all bg-white dark:bg-[#18181b] border-slate-200 dark:border-zinc-800 text-slate-800 dark:text-zinc-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20"
+                                    placeholder="Enter custom text for template"
+                                  />
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </div>
+                    </div>
+
+                    {/* Right Column - Chat Preview & Actions */}
+                    <div className="flex-1 flex flex-col gap-5 justify-between min-h-[380px] md:min-h-0">
+                      <div className={`rounded-xl shadow-sm border p-4 flex flex-col gap-3 ${
+                        isDark ? 'bg-zinc-950/40 border-zinc-800' : 'bg-slate-100 border-slate-200'
+                      }`} style={{
+                        backgroundImage: isDark 
+                          ? 'radial-gradient(circle, rgba(16,185,129,0.03) 1px, transparent 1px)' 
+                          : 'radial-gradient(circle, rgba(16,185,129,0.08) 1px, transparent 1px)',
+                        backgroundSize: '16px 16px'
+                      }}>
+                        {/* Simulated WhatsApp chat header */}
+                        <div className="flex items-center gap-2 pb-3 mb-1 border-b border-slate-200 dark:border-zinc-800/80">
+                          <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-white shrink-0 text-xs font-bold">
+                            SE
+                          </div>
+                          <div>
+                            <p className="text-xs font-black text-slate-900 dark:text-zinc-100 m-0">Satguru Engineers</p>
+                            <p className="text-[9px] text-emerald-500 font-semibold uppercase tracking-wider m-0">Official Business Account</p>
+                          </div>
+                        </div>
+
+                        {/* Chat bubble */}
+                        <div className="flex items-start">
+                          {(() => {
+                            const waMsg = getWhatsAppPreviewText();
+                            return (
+                              <div className={`p-3.5 rounded-2xl max-w-[88%] text-xs shadow-sm relative leading-relaxed whitespace-pre-wrap ${
+                                isDark 
+                                  ? 'bg-[#054735] text-zinc-100 border border-[#0d5c47] rounded-tl-none' 
+                                  : 'bg-[#d9fdd3] text-slate-800 rounded-tl-none'
+                              }`}>
+                                <p className="font-extrabold text-emerald-600 dark:text-emerald-350 mb-1">{waMsg.header}</p>
+                                <p className="font-medium">{waMsg.body}</p>
+                                <p className="text-[10px] text-slate-400 dark:text-emerald-450/60 mt-2 italic pt-1.5 border-t border-emerald-500/10">{waMsg.footer}</p>
+                                <div className="text-[8px] text-slate-450 dark:text-emerald-450/45 absolute bottom-1 right-2 flex items-center gap-0.5 select-none font-bold">
+                                  <span>{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                  <i className="fa-solid fa-check-double text-sky-400"></i>
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200 dark:border-border-dark mt-auto">
+                        <button
+                          type="button"
+                          onClick={() => setEmailModal(prev => ({ ...prev, isOpen: false }))}
+                          className="px-5 py-2.5 text-xs font-bold text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-background-dark rounded-xl transition-all cursor-pointer border-0 bg-transparent"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => emailModal.isRetry ? handleSendWhatsAppCompleted() : handleDirectComplete(emailModal.phaseId!, { sendWhatsApp: true, skipEmail: true })}
+                          className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all shadow-lg hover:shadow-xl flex items-center gap-2 cursor-pointer border-0"
+                        >
+                          <i className="fa-brands fa-whatsapp text-sm"></i> {emailModal.isRetry ? 'Send WhatsApp' : 'Send WhatsApp & Complete'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {/* Side-by-side: Form + Live Preview */}
+                    <div className="flex flex-col lg:flex-row flex-1 overflow-y-auto">
                   {/* Left: Email Form */}
                   <div className="flex-1 p-5 space-y-4 border-r border-slate-200 dark:border-border-dark bg-white dark:bg-card-dark">
                     {/* Badges */}
@@ -1586,6 +2176,8 @@ const JobDetail: React.FC = () => {
                       )}
                     </div>
 
+
+
                     <div className="space-y-1.5">
                       <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">To</label>
                       <div className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 dark:bg-[#18181b] border border-slate-200 dark:border-border-dark rounded-xl text-sm text-slate-700 dark:text-slate-300">
@@ -1596,53 +2188,56 @@ const JobDetail: React.FC = () => {
 
                     {/* Subject */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-555 dark:text-slate-400 uppercase tracking-wider">Subject</label>
+                      <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Subject</label>
                       <input
                         type="text"
                         value={emailModal.subject}
                         onChange={e => setEmailModal(prev => ({ ...prev, subject: e.target.value }))}
-                        className="w-full px-4 py-2.5 bg-white dark:bg-[#18181b] rounded-xl border border-slate-200 dark:border-border-dark text-sm text-slate-800 dark:text-slate-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+                        className="w-full px-4 py-2.5 rounded-xl border text-sm outline-none transition-all bg-white dark:bg-[#18181b] border-slate-200 dark:border-border-dark text-slate-800 dark:text-slate-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                       />
                     </div>
 
                     {/* Greeting */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-555 dark:text-slate-400 uppercase tracking-wider">Greeting</label>
+                      <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Greeting</label>
                       <input
                         type="text"
                         value={emailModal.greeting}
                         onChange={e => setEmailModal(prev => ({ ...prev, greeting: e.target.value }))}
-                        className="w-full px-4 py-2.5 bg-white dark:bg-[#18181b] rounded-xl border border-slate-200 dark:border-border-dark text-sm text-slate-800 dark:text-slate-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+                        className="w-full px-4 py-2.5 rounded-xl border text-sm outline-none transition-all bg-white dark:bg-[#18181b] border-slate-200 dark:border-border-dark text-slate-800 dark:text-slate-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                       />
                     </div>
 
                     {/* Message Body */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-555 dark:text-slate-400 uppercase tracking-wider">Message</label>
+                      <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Message</label>
                       <textarea
                         value={emailModal.message}
                         onChange={e => setEmailModal(prev => ({ ...prev, message: e.target.value }))}
                         rows={6}
-                        className="w-full px-4 py-3 bg-white dark:bg-[#18181b] rounded-xl border border-slate-200 dark:border-border-dark text-sm text-slate-800 dark:text-slate-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all resize-none leading-relaxed"
+                        className="w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all resize-none leading-relaxed bg-white dark:bg-[#18181b] border-slate-200 dark:border-border-dark text-slate-800 dark:text-slate-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                       />
                     </div>
 
                     {/* Payment Amount */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-555 dark:text-slate-400 uppercase tracking-wider">Payment Amount (₹)</label>
+                      <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Payment Amount (₹)</label>
                       <input
                         type="number"
                         value={emailModal.paymentAmount}
                         onChange={e => setEmailModal(prev => ({ ...prev, paymentAmount: e.target.value }))}
-                        className="w-full px-4 py-2.5 bg-white dark:bg-[#18181b] rounded-xl border border-slate-200 dark:border-border-dark text-sm text-slate-800 dark:text-slate-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+                        className="w-full px-4 py-2.5 rounded-xl border text-sm outline-none transition-all bg-white dark:bg-[#18181b] border-slate-200 dark:border-border-dark text-slate-800 dark:text-slate-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                       />
                     </div>
                   </div>
 
                   {/* Right: Live Preview */}
-                  <div className="flex-1 p-5 bg-slate-50 dark:bg-background-dark/20">
-                    <label className="text-xs font-bold text-slate-505 dark:text-slate-400 uppercase tracking-wider block mb-2">Live Preview</label>
-                    <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                  <div className="flex-1 p-5 bg-slate-50 dark:bg-background-dark/20 animate-in fade-in duration-200 flex flex-col">
+                    <div className="flex items-center justify-between mb-4">
+                      <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Live Preview</label>
+                    </div>
+
+                    <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm flex-1 bg-white">
                       <div className="bg-blue-600 text-white px-5 py-3 text-center">
                         <p className="font-bold text-sm">Satguru Engineers Service Update</p>
                       </div>
@@ -1662,7 +2257,7 @@ const JobDetail: React.FC = () => {
                         )}
                         <p className="text-xs text-slate-400 pt-2">Thank you for choosing Satguru Engineers.</p>
                       </div>
-                      <div className="bg-slate-55 px-5 py-2.5 text-center border-t border-slate-100">
+                      <div className="bg-slate-50 px-5 py-2.5 text-center border-t border-slate-100">
                         <p className="text-[10px] text-slate-400">&copy; {new Date().getFullYear()} Satguru Engineers.</p>
                       </div>
                     </div>
@@ -1670,37 +2265,34 @@ const JobDetail: React.FC = () => {
                 </div>
 
                 {/* Modal Actions */}
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-5 border-t border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-card-dark rounded-b-2xl">
-                  {emailModal.isRetry ? (
-                    <div></div> // Empty div to keep the flex layout balanced
-                  ) : (
-                    <button
-                      onClick={() => handleConfirmComplete(true)}
-                      className="px-4 py-2.5 text-xs font-bold text-slate-555 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-background-dark rounded-xl transition-all order-2 sm:order-1"
-                    >
-                      <i className="fa-solid fa-forward mr-1.5"></i> Complete Without Email
-                    </button>
-                  )}
-                  <div className="flex items-center gap-2 order-1 sm:order-2">
-                    <button
-                      onClick={() => setEmailModal(prev => ({ ...prev, isOpen: false }))}
-                      className="px-5 py-2.5 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-background-dark rounded-xl transition-all"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={() => emailModal.isRetry ? handleResendEmail() : handleConfirmComplete(false)}
-                      className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-all shadow-lg hover:shadow-xl flex items-center gap-2"
-                    >
-                      <i className="fa-solid fa-paper-plane"></i> {emailModal.isRetry ? 'Resend Email' : 'Send & Complete Phase'}
-                    </button>
-                  </div>
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 p-5 border-t border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-card-dark rounded-b-2xl">
+                  <button
+                    type="button"
+                    onClick={() => setEmailModal(prev => ({ ...prev, isOpen: false }))}
+                    className="px-5 py-2.5 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-background-dark rounded-xl transition-all cursor-pointer border-0 bg-transparent font-bold"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => emailModal.isRetry ? handleResendEmail() : handleConfirmComplete(false)}
+                    className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-all shadow-lg hover:shadow-xl flex items-center gap-2 cursor-pointer border-0 font-bold"
+                  >
+                    {emailModal.isRetry ? (
+                      <><i className="fa-solid fa-paper-plane"></i> Resend Notification</>
+                    ) : (
+                      <><i className="fa-solid fa-circle-check"></i> Send Email & Complete</>
+                    )}
+                  </button>
                 </div>
               </>
             )}
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </div>
+    </div>
+  )}
+
       {activeFile && (
         <FileViewerModal 
           url={activeFile.url} 
@@ -1746,7 +2338,7 @@ const JobDetail: React.FC = () => {
                     ) : (
                       <div className="grid grid-cols-3 gap-3 pl-3">
                         {groupedCopperLogs.map((log: any) => (
-                          <div key={log.size} className="bg-slate-50 dark:bg-background-dark/40 border border-slate-150 dark:border-slate-800/60 p-3 rounded-xl flex flex-col items-center">
+                          <div key={log.size} className="bg-slate-50 dark:bg-background-dark/40 border border-slate-100 dark:border-slate-800/60 p-3 rounded-xl flex flex-col items-center">
                             <span className="text-[10px] font-bold text-slate-500 mb-1">{log.size}"</span>
                             <span className="text-xs font-bold text-blue-600 dark:text-blue-400">{Number(log.usedQty).toFixed(1)}</span>
                           </div>
@@ -1764,7 +2356,7 @@ const JobDetail: React.FC = () => {
                       {drainLogs.length === 0 ? (
                         <p className="text-xs text-slate-400 dark:text-slate-500 italic">No drain pipe logs found.</p>
                       ) : (
-                        <div className="bg-slate-50 dark:bg-background-dark/40 border border-slate-150 dark:border-slate-800/60 p-3 rounded-xl flex justify-between items-center max-w-sm">
+                        <div className="bg-slate-50 dark:bg-background-dark/40 border border-slate-100 dark:border-slate-800/60 p-3 rounded-xl flex justify-between items-center max-w-sm">
                           <span className="text-xs font-semibold">Total Used</span>
                           <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
                             {drainLogs.reduce((sum, log) => sum + Number(log.usedQty || 0), 0).toFixed(2)} ft
@@ -1790,7 +2382,7 @@ const JobDetail: React.FC = () => {
                             return acc;
                           }, {})
                         ).map(([type, qty]) => (
-                          <div key={type} className="bg-slate-50 dark:bg-background-dark/40 border border-slate-150 dark:border-slate-800/60 p-3 rounded-xl flex justify-between items-center capitalize">
+                          <div key={type} className="bg-slate-50 dark:bg-background-dark/40 border border-slate-100 dark:border-slate-800/60 p-3 rounded-xl flex justify-between items-center capitalize">
                             <span className="text-xs font-semibold">{type}</span>
                             <span className="text-xs font-bold text-purple-600 dark:text-purple-400">{(qty as number)} pcs</span>
                           </div>
@@ -1812,7 +2404,7 @@ const JobDetail: React.FC = () => {
                     ) : (
                       <div className="space-y-2 pl-3">
                         {acLogs.map((log: any) => (
-                          <div key={log.id} className="bg-slate-50 dark:bg-background-dark/40 border border-slate-150 dark:border-slate-800/60 p-3 rounded-xl flex justify-between items-center">
+                          <div key={log.id} className="bg-slate-50 dark:bg-background-dark/40 border border-slate-100 dark:border-slate-800/60 p-3 rounded-xl flex justify-between items-center">
                             <span className="text-xs font-semibold">{log.description}</span>
                             <span className="text-[10px] text-slate-400 dark:text-slate-500">{log.date}</span>
                           </div>
@@ -1841,9 +2433,9 @@ const JobDetail: React.FC = () => {
                             return acc;
                           }, {})
                         ).map((item: any) => (
-                          <div key={item.description} className="bg-slate-50 dark:bg-background-dark/40 border border-slate-150 dark:border-slate-800/60 p-3 rounded-xl flex justify-between items-center">
+                          <div key={item.description} className="bg-slate-50 dark:bg-background-dark/40 border border-slate-100 dark:border-slate-800/60 p-3 rounded-xl flex justify-between items-center">
                             <span className="text-xs font-semibold">{item.description}</span>
-                            <span className="text-xs font-bold text-slate-605 dark:text-slate-400 bg-slate-100 dark:bg-[#18181b] px-2 py-0.5 rounded-md font-bold">Qty: {item.qty}</span>
+                            <span className="text-xs font-bold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-[#18181b] px-2 py-0.5 rounded-md font-bold">Qty: {item.qty}</span>
                           </div>
                         ))}
                       </div>
@@ -1857,7 +2449,7 @@ const JobDetail: React.FC = () => {
             <div className="p-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 flex justify-end rounded-b-2xl">
               <button
                 onClick={() => setIsSummaryOpen(false)}
-                className="px-5 py-2 text-xs font-bold text-slate-650 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all"
+                className="px-5 py-2 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all"
               >
                 Close
               </button>

@@ -24,6 +24,7 @@ import jobRoutes from './routes/jobs.js';
 import inventoryRoutes from './routes/inventory.js';
 import workRoutes from './routes/work.js';
 import materialRoutes from './routes/materials.js';
+import whatsappRoutes from './routes/whatsapp.js';
 
 dotenv.config();
 
@@ -249,6 +250,7 @@ app.use('/api', jobRoutes);
 app.use('/api', inventoryRoutes);
 app.use('/api', workRoutes);
 app.use('/api', materialRoutes);
+app.use('/api', whatsappRoutes);
 
 // Centralized Express Error Handler
 app.use((err: any, req: any, res: any, next: any) => {

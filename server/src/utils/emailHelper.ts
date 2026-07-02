@@ -44,6 +44,11 @@ export async function getFromEmail(connectionOrPool: any): Promise<string> {
     : (process.env.EMAIL_USER || 'contact@satguruengineers.com');
 }
 
+export function cleanPhaseName(name: string): string {
+  if (!name) return '';
+  return name.replace(/\s*\(payment\)\s*/gi, ' ').trim();
+}
+
 export function getPaymentPhaseAmount(
   phaseName: string,
   jobType: string,
@@ -133,21 +138,22 @@ export const sendPhaseNotification = async (
   costs: { copperPipingCost: number; outdoorFittingCost: number; commissioningCost: number }
 ) => {
   const { amount } = getPaymentPhaseAmount(phaseName, jobType, costs);
+  const cleanedPhaseName = cleanPhaseName(phaseName);
   let paymentBlock = '';
   if (amount !== null && amount > 0) {
-    paymentBlock = buildPaymentBlock(phaseName, amount, paymentStatus);
+    paymentBlock = buildPaymentBlock(cleanedPhaseName, amount, paymentStatus);
   }
 
   if (isFinal) {
     paymentBlock += buildCompletionBlock(paymentStatus);
   }
 
-  const subject = isFinal ? `Final Project Completion: Job #${jobId}` : `Update: Job #${jobId} - ${phaseName} Completed`;
+  const subject = isFinal ? `Final Project Completion: Job #${jobId}` : `Update: Job #${jobId} - ${cleanedPhaseName} Completed`;
   const innerHtml = `
     <p>Hello <strong>${customerName}</strong>,</p>
     <p>We're writing to let you know that a key milestone in your <strong>${jobType}</strong> has been successfully completed:</p>
     <div style="background-color: #f8fafc; border-left: 4px solid #2563eb; padding: 16px; margin: 20px 0;">
-      <p style="margin: 0; font-weight: bold; color: #2563eb;">Completed: ${phaseName}</p>
+      <p style="margin: 0; font-weight: bold; color: #2563eb;">Completed: ${cleanedPhaseName}</p>
       <p style="margin: 4px 0 0 0; font-size: 12px; color: #64748b;">Job ID: #${jobId} | Technician: ${technician}</p>
     </div>
     

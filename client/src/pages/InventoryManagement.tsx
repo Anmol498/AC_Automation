@@ -684,7 +684,7 @@ const InventoryManagement: React.FC = () => {
                 <div className="w-full">
                     <table className="w-full text-left text-sm block sm:table table-fixed">
                         <thead className={`hidden sm:table-header-group uppercase text-[10px] sm:text-xs font-semibold border-b ${
-                            isDark ? 'bg-[#1e1e21] text-zinc-400 border-zinc-855 border-zinc-800' : 'bg-slate-50 text-slate-600 border-slate-200'
+                            isDark ? 'bg-[#1e1e21] text-zinc-400 border-zinc-800' : 'bg-slate-50 text-slate-600 border-slate-200'
                         }`}>
                             <tr>
                                 <th className="px-3 py-3 w-auto whitespace-nowrap">Model Name</th>

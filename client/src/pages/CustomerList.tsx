@@ -11,6 +11,7 @@ import { useRealtimeListener } from '../components/RealtimeProvider';
 import { api } from '../lib/api';
 import { useDebounce } from '../hooks/useDebounce';
 import { API_BASE_URL } from '../constants';
+import { ImagesBadge } from '../components/ui/images-badge';
 
 const CustomerList: React.FC = () => {
   const { token } = useAuth();
@@ -27,6 +28,7 @@ const CustomerList: React.FC = () => {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [activeFile, setActiveFile] = useState<{ url: string, name: string } | null>(null);
+  const [fileModalCustomer, setFileModalCustomer] = useState<Customer | null>(null);
   const itemsPerPage = 10;
 
   // Clickable Row / Jobs State
@@ -96,6 +98,34 @@ const CustomerList: React.FC = () => {
       fetchCustomerJobs(selectedCustomer.id);
     } catch (err: any) {
       toast.error(err.message || "Failed to schedule job");
+    }
+  };
+
+  const handleFileReupload = async (type: 'drawing' | 'quotation', file: File) => {
+    if (!fileModalCustomer) return;
+    
+    const loadingToastId = toast.loading(`Uploading new ${type}...`);
+    try {
+      const payload = new FormData();
+      payload.append('name', fileModalCustomer.name);
+      payload.append('email', fileModalCustomer.email || '');
+      payload.append('phone', fileModalCustomer.phone || '');
+      payload.append('address', fileModalCustomer.address || '');
+      
+      if (type === 'drawing') {
+        payload.append('drawing', file);
+      } else {
+        payload.append('quotation', file);
+      }
+
+      const updatedCustomer = await api.put(`/customers/${fileModalCustomer.id}`, payload);
+      
+      // Update local state
+      setCustomers(prev => prev.map(c => c.id === fileModalCustomer.id ? updatedCustomer : c));
+      setFileModalCustomer(updatedCustomer);
+      toast.success(`${type === 'drawing' ? 'Drawing' : 'Quotation'} uploaded successfully!`, { id: loadingToastId });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to upload file", { id: loadingToastId });
     }
   };
 
@@ -426,28 +456,15 @@ const CustomerList: React.FC = () => {
                           <p className={`text-[10px] truncate ${isDark ? 'text-zinc-500' : 'text-slate-400'}`} title={c.phone}>{c.phone}</p>
                         </td>
                         <td className={`text-xs truncate ${isDark ? 'text-zinc-350' : 'text-slate-600'}`} title={c.address}>{c.address || <span className="text-slate-400 italic">No Address</span>}</td>
-                        <td className="px-6 py-4">
-                          <div className="flex flex-col gap-1 overflow-hidden">
-                            {c.drawingUrl ? (
-                              <button 
-                                onClick={(e) => { e.stopPropagation(); setActiveFile({ url: `${API_BASE_URL}${c.drawingUrl}`, name: `${c.name}_Drawing.${c.drawingUrl?.split('.').pop()}` }); }}
-                                className={`text-[10px] font-bold hover:underline inline-flex items-center gap-1 cursor-pointer align-left text-left justify-start truncate w-full ${
-                                  isDark ? 'text-emerald-400' : 'text-emerald-600'
-                                }`}
-                              >
-                                <i className="fa-solid fa-file-image shrink-0"></i> <span className="truncate">Drawing</span>
-                              </button>
-                            ) : <span className={`text-[10px] italic ${isDark ? 'text-zinc-600' : 'text-slate-300'}`}>No drawing</span>}
-                            {c.quotationUrl ? (
-                              <button 
-                                onClick={(e) => { e.stopPropagation(); setActiveFile({ url: `${API_BASE_URL}${c.quotationUrl}`, name: `${c.name}_Quotation.${c.quotationUrl?.split('.').pop()}` }); }}
-                                className={`text-[10px] font-bold hover:underline inline-flex items-center gap-1 cursor-pointer align-left text-left justify-start truncate w-full ${
-                                  isDark ? 'text-blue-400' : 'text-blue-600'
-                                }`}
-                              >
-                                <i className="fa-solid fa-file-pdf shrink-0"></i> <span className="truncate">Quotation</span>
-                              </button>
-                            ) : <span className={`text-[10px] italic ${isDark ? 'text-zinc-600' : 'text-slate-300'}`}>No quotation</span>}
+                        <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex justify-center w-full">
+                            <ImagesBadge
+                              onClick={() => setFileModalCustomer(c)}
+                              hasDrawing={!!c.drawingUrl}
+                              hasQuotation={!!c.quotationUrl}
+                              drawingUrl={c.drawingUrl ? `${API_BASE_URL}${c.drawingUrl}` : undefined}
+                              quotationUrl={c.quotationUrl ? `${API_BASE_URL}${c.quotationUrl}` : undefined}
+                            />
                           </div>
                         </td>
                         <td className="px-6 py-4 text-right">
@@ -485,19 +502,71 @@ const CustomerList: React.FC = () => {
               <input type="email" placeholder="Email" className={`w-full p-2.5 border rounded-lg ${isDark ? 'bg-[#18181b] border-zinc-800 text-white placeholder-zinc-500' : 'border-slate-200'}`} value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
               <input placeholder="Phone" className={`w-full p-2.5 border rounded-lg ${isDark ? 'bg-[#18181b] border-zinc-800 text-white placeholder-zinc-500' : 'border-slate-200'}`} value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} />
               <textarea placeholder="Address" className={`w-full p-2.5 border rounded-lg ${isDark ? 'bg-[#18181b] border-zinc-800 text-white placeholder-zinc-500' : 'border-slate-200'}`} rows={3} value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} required />
-              <div className={`space-y-3 p-4 rounded-xl border ${
-                isDark ? 'bg-zinc-800/40 border-zinc-800' : 'bg-slate-50 border-slate-200'
-              }`}>
-                <div>
-                  <label className={`block text-xs font-bold mb-1 pl-1 ${isDark ? 'text-zinc-400' : 'text-slate-600'}`}>Drawing</label>
-                  <input type="file" className="text-sm p-1 w-full outline-none" onChange={e => setDrawingFile(e.target.files ? e.target.files[0] : null)} />
-                  {editingId && <span className="text-[9px] text-slate-400 pl-1 italic">Leave empty to keep existing drawing</span>}
+              <div className="grid grid-cols-2 gap-4 pb-2">
+                {/* Drawing Upload */}
+                <div className="flex flex-col items-center relative">
+                  <span className={`text-xs font-bold mb-1.5 ${isDark ? 'text-zinc-400' : 'text-slate-600'}`}>Drawing</span>
+                  <div className="uiverse-upload-container">
+                    <label className="uiverse-custom-file-upload">
+                      <input 
+                        type="file" 
+                        onChange={e => setDrawingFile(e.target.files ? e.target.files[0] : null)} 
+                      />
+                    </label>
+                    <div className="uiverse-upload-folder pointer-events-none">
+                      <div className="uiverse-folder-front">
+                        <div className="uiverse-folder-cover"></div>
+                      </div>
+                      <div className="uiverse-folder-back">
+                        <div className="uiverse-folder-tip"></div>
+                        <div className="uiverse-folder-cover"></div>
+                      </div>
+                    </div>
+                  </div>
+                  {drawingFile ? (
+                    <span className="text-[10px] text-emerald-500 font-semibold mt-1 truncate max-w-[120px] text-center animate-fadeIn" title={drawingFile.name}>
+                      {drawingFile.name}
+                    </span>
+                  ) : (
+                    editingId ? (
+                      <span className="text-[8px] text-slate-400 mt-1 italic text-center leading-tight">Keep existing</span>
+                    ) : (
+                      <span className="text-[8px] text-slate-400 mt-1 italic text-center leading-tight">Empty</span>
+                    )
+                  )}
                 </div>
-                <div className={`h-px w-full ${isDark ? 'bg-zinc-800' : 'bg-slate-200'}`} />
-                <div>
-                  <label className={`block text-xs font-bold mb-1 pl-1 ${isDark ? 'text-zinc-400' : 'text-slate-600'}`}>Quotation</label>
-                  <input type="file" className="text-sm p-1 w-full outline-none" onChange={e => setQuotationFile(e.target.files ? e.target.files[0] : null)} />
-                  {editingId && <span className="text-[9px] text-slate-400 pl-1 italic">Leave empty to keep existing quotation</span>}
+
+                {/* Quotation Upload */}
+                <div className="flex flex-col items-center relative">
+                  <span className={`text-xs font-bold mb-1.5 ${isDark ? 'text-zinc-400' : 'text-slate-600'}`}>Quotation</span>
+                  <div className="uiverse-upload-container">
+                    <label className="uiverse-custom-file-upload">
+                      <input 
+                        type="file" 
+                        onChange={e => setQuotationFile(e.target.files ? e.target.files[0] : null)} 
+                      />
+                    </label>
+                    <div className="uiverse-upload-folder pointer-events-none">
+                      <div className="uiverse-folder-front">
+                        <div className="uiverse-folder-cover"></div>
+                      </div>
+                      <div className="uiverse-folder-back">
+                        <div className="uiverse-folder-tip"></div>
+                        <div className="uiverse-folder-cover"></div>
+                      </div>
+                    </div>
+                  </div>
+                  {quotationFile ? (
+                    <span className="text-[10px] text-emerald-500 font-semibold mt-1 truncate max-w-[120px] text-center animate-fadeIn" title={quotationFile.name}>
+                      {quotationFile.name}
+                    </span>
+                  ) : (
+                    editingId ? (
+                      <span className="text-[8px] text-slate-400 mt-1 italic text-center leading-tight">Keep existing</span>
+                    ) : (
+                      <span className="text-[8px] text-slate-400 mt-1 italic text-center leading-tight">Empty</span>
+                    )
+                  )}
                 </div>
               </div>
               <div className="flex gap-3 pt-2">
@@ -782,6 +851,154 @@ const CustomerList: React.FC = () => {
               >
                 Close Details
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {fileModalCustomer && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className={`rounded-2xl w-full max-w-md p-6 shadow-2xl border ${
+            isDark ? 'bg-[#242427] border-zinc-800 text-zinc-100' : 'bg-white border-slate-100 text-slate-800'
+          }`}>
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <h3 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-800'}`}>Manage Files</h3>
+                <p className="text-xs text-slate-400 dark:text-zinc-500">{fileModalCustomer.name}</p>
+              </div>
+              <button 
+                type="button"
+                onClick={() => setFileModalCustomer(null)}
+                className={`p-1.5 rounded-lg transition-colors ${
+                  isDark ? 'hover:bg-zinc-800 text-zinc-400 hover:text-white' : 'hover:bg-slate-100 text-slate-400 hover:text-slate-600'
+                }`}
+              >
+                <i className="fa-solid fa-xmark text-lg"></i>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Drawing Section */}
+              <div className={`p-4 rounded-xl border ${
+                isDark ? 'bg-zinc-800/20 border-zinc-800' : 'bg-slate-50 border-slate-200'
+              }`}>
+                <div className="flex justify-between items-center mb-3">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">Drawing</span>
+                  {fileModalCustomer.drawingUrl ? (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                      Uploaded
+                    </span>
+                  ) : (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-slate-500/10 text-slate-400 border border-slate-500/20">
+                      Not Available
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap gap-2 items-center">
+                  {fileModalCustomer.drawingUrl ? (
+                    <>
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          setActiveFile({ 
+                            url: `${API_BASE_URL}${fileModalCustomer.drawingUrl}`, 
+                            name: `${fileModalCustomer.name}_Drawing.${fileModalCustomer.drawingUrl?.split('.').pop()}` 
+                          });
+                          setFileModalCustomer(null);
+                        }}
+                        className="text-xs py-1.5 px-3 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 font-semibold rounded-lg flex items-center gap-1 transition-all"
+                      >
+                        <i className="fa-solid fa-eye text-[10px]"></i> View File
+                      </button>
+                      <a 
+                        href={`${API_BASE_URL}${fileModalCustomer.drawingUrl}`}
+                        download={`${fileModalCustomer.name}_Drawing.${fileModalCustomer.drawingUrl?.split('.').pop()}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs py-1.5 px-3 bg-[#2554E8]/10 hover:bg-[#2554E8]/20 text-[#2554E8] dark:text-blue-400 font-semibold rounded-lg flex items-center gap-1 transition-all"
+                      >
+                        <i className="fa-solid fa-download text-[10px]"></i> Download File
+                      </a>
+                    </>
+                  ) : null}
+
+                  <label className="text-xs py-1.5 px-3 bg-slate-500/10 hover:bg-slate-500/20 text-slate-500 dark:text-zinc-400 font-semibold rounded-lg flex items-center gap-1 cursor-pointer transition-all">
+                    <i className="fa-solid fa-upload text-[10px]"></i> 
+                    {fileModalCustomer.drawingUrl ? 'Reupload File' : 'Upload File'}
+                    <input 
+                      type="file" 
+                      className="hidden" 
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          handleFileReupload('drawing', e.target.files[0]);
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {/* Quotation Section */}
+              <div className={`p-4 rounded-xl border ${
+                isDark ? 'bg-zinc-800/20 border-zinc-800' : 'bg-slate-50 border-slate-200'
+              }`}>
+                <div className="flex justify-between items-center mb-3">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">Quotation</span>
+                  {fileModalCustomer.quotationUrl ? (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                      Uploaded
+                    </span>
+                  ) : (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-slate-500/10 text-slate-400 border border-slate-500/20">
+                      Not Available
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap gap-2 items-center">
+                  {fileModalCustomer.quotationUrl ? (
+                    <>
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          setActiveFile({ 
+                            url: `${API_BASE_URL}${fileModalCustomer.quotationUrl}`, 
+                            name: `${fileModalCustomer.name}_Quotation.${fileModalCustomer.quotationUrl?.split('.').pop()}` 
+                          });
+                          setFileModalCustomer(null);
+                        }}
+                        className="text-xs py-1.5 px-3 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 font-semibold rounded-lg flex items-center gap-1 transition-all"
+                      >
+                        <i className="fa-solid fa-eye text-[10px]"></i> View File
+                      </button>
+                      <a 
+                        href={`${API_BASE_URL}${fileModalCustomer.quotationUrl}`}
+                        download={`${fileModalCustomer.name}_Quotation.${fileModalCustomer.quotationUrl?.split('.').pop()}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs py-1.5 px-3 bg-[#2554E8]/10 hover:bg-[#2554E8]/20 text-[#2554E8] dark:text-blue-400 font-semibold rounded-lg flex items-center gap-1 transition-all"
+                      >
+                        <i className="fa-solid fa-download text-[10px]"></i> Download File
+                      </a>
+                    </>
+                  ) : null}
+
+                  <label className="text-xs py-1.5 px-3 bg-slate-500/10 hover:bg-slate-500/20 text-slate-500 dark:text-zinc-400 font-semibold rounded-lg flex items-center gap-1 cursor-pointer transition-all">
+                    <i className="fa-solid fa-upload text-[10px]"></i> 
+                    {fileModalCustomer.quotationUrl ? 'Reupload File' : 'Upload File'}
+                    <input 
+                      type="file" 
+                      className="hidden" 
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          handleFileReupload('quotation', e.target.files[0]);
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>
             </div>
           </div>
         </div>

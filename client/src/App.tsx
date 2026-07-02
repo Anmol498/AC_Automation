@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { AuthState, User, UserRole } from './types';
 import Login from './pages/Login';
+import ForgotPassword from './pages/ForgotPassword';
 import Dashboard from './pages/Dashboard';
 import CustomerList from './pages/CustomerList';
 import JobList from './pages/JobList';
@@ -14,6 +15,7 @@ import ContactUs from './pages/ContactUs';
 import Layout from './components/Layout';
 import InventoryManagement from './pages/InventoryManagement';
 import Settings from './pages/Settings';
+import WhatsAppTemplates from './pages/WhatsAppTemplates';
 import DailyWork from './pages/DailyWork';
 import TechnicianWork from './pages/TechnicianWork';
 import ScrollToTop from './components/ScrollToTop';
@@ -71,6 +73,7 @@ const App: React.FC = () => {
   const [mailTransport, setMailTransportState] = useState<'smtp' | 'google_oauth'>('smtp');
   const [companyPhone, setCompanyPhoneState] = useState<string>('95922 92292');
   const [companyEmail, setCompanyEmailState] = useState<string>('contactsatguruengineer@gmail.com');
+  const [whatsappEnabled, setWhatsappEnabledState] = useState<boolean>(true);
 
   // Fetch public config settings on load
   useEffect(() => {
@@ -79,6 +82,7 @@ const App: React.FC = () => {
         const data = await api.get('/config');
         if (data.company_phone) setCompanyPhoneState(data.company_phone);
         if (data.company_email) setCompanyEmailState(data.company_email);
+        if (data.whatsapp_enabled !== undefined) setWhatsappEnabledState(data.whatsapp_enabled === true || data.whatsapp_enabled === 'true');
       } catch (err) {
         console.error("Failed to fetch public config:", err);
       }
@@ -114,6 +118,9 @@ const App: React.FC = () => {
           }
           if (data.requireEmailPreview !== undefined) {
             setRequireEmailPreviewState(data.requireEmailPreview === 'true' || data.requireEmailPreview === true);
+          }
+          if (data.whatsapp_enabled !== undefined) {
+            setWhatsappEnabledState(data.whatsapp_enabled === 'true' || data.whatsapp_enabled === true);
           }
         } catch (err) {
           console.error("Failed to fetch backend settings:", err);
@@ -160,6 +167,10 @@ const App: React.FC = () => {
     setCompanyEmailState(val);
   };
 
+  const setWhatsappEnabled = (val: boolean) => {
+    setWhatsappEnabledState(val);
+  };
+
   const login = (user: User, token: string) => {
     const newState = { user, token, isAuthenticated: true };
     setAuth(newState);
@@ -172,6 +183,14 @@ const App: React.FC = () => {
     });
     setAuth({ user: null, token: null, isAuthenticated: false });
     localStorage.removeItem('satguru_auth');
+  };
+
+  const updateUser = (newUser: User) => {
+    setAuth(prev => {
+      const updated = { ...prev, user: newUser };
+      localStorage.setItem('satguru_auth', JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const logoutRef = React.useRef(logout);
@@ -199,7 +218,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <AuthContext.Provider value={{ ...auth, login, logout, isLoginModalOpen, setLoginModalOpen }}>
+    <AuthContext.Provider value={{ ...auth, login, logout, isLoginModalOpen, setLoginModalOpen, updateUser }}>
       <SettingsContext.Provider value={{ 
         lowStockThreshold, 
         enableLowStockAlert, 
@@ -209,6 +228,7 @@ const App: React.FC = () => {
         mailTransport,
         companyPhone,
         companyEmail,
+        whatsappEnabled,
         setLowStockThreshold, 
         setEnableLowStockAlert, 
         setCopperPipeLowStockThreshold,
@@ -216,7 +236,8 @@ const App: React.FC = () => {
         setRequireEmailPreview,
         setMailTransport,
         setCompanyPhone,
-        setCompanyEmail
+        setCompanyEmail,
+        setWhatsappEnabled
       }}>
         <RealtimeProvider>
           <div className="app-container">
@@ -229,6 +250,7 @@ const App: React.FC = () => {
               <Route path="/product/:id" element={<ProductDetail />} />
               <Route path="/contact" element={<ContactUs />} />
               <Route path="/login" element={!auth.isAuthenticated ? <Login /> : <Navigate to="/dashboard" />} />
+              <Route path="/forgot-password" element={!auth.isAuthenticated ? <ForgotPassword /> : <Navigate to="/dashboard" />} />
 
               <Route element={
                 <ProtectedRoute>
@@ -256,6 +278,11 @@ const App: React.FC = () => {
                   </ProtectedRoute>
                 } />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="/whatsapp-templates" element={
+                  <ProtectedRoute roles={[UserRole.SUPER_ADMIN]}>
+                    <WhatsAppTemplates />
+                  </ProtectedRoute>
+                } />
               </Route>
 
               <Route path="*" element={<Navigate to="/" replace />} />

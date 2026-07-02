@@ -35,5 +35,10 @@ export const updatePhaseSchema = z.object({
   customGreeting: z.string().optional().nullable().or(z.literal('')),
   customMessage: z.string().optional().nullable().or(z.literal('')),
   customPaymentAmount: z.union([z.string(), z.number()]).optional().nullable().or(z.literal('')),
-  skipEmail: z.boolean().optional().nullable()
+  skipEmail: z.boolean().optional().nullable(),
+  sendWhatsApp: z.boolean().optional().nullable(),
+  whatsappTemplate: z.string().optional().nullable().or(z.literal('')),
+  silentComplete: z.boolean().optional().nullable(),
+  customDate: z.string().optional().nullable().or(z.literal('')),
+  customTxt: z.string().optional().nullable().or(z.literal(''))
 });

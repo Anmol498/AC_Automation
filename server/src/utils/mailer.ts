@@ -195,7 +195,7 @@ export const sendEmail = async (
         const errorMessage = `Email Delivery Failed: ${error.message}${error.address ? ` (to ${error.address})` : ''}`;
         console.error(`DEBUG: [Mailer Fail] ${errorType} - ${errorMessage}`);
         
-        logMailError(`Email from ${fromEmail} to ${to}`, error);
+        logMailError(error, `Email from ${fromEmail} to ${to}`);
         return { success: false, error: errorMessage };
     }
 };

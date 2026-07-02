@@ -98,10 +98,11 @@ router.delete('/settings/cleanup-audit-logs', authenticateToken, isSuperAdmin, a
 
 router.get('/config', async (req, res) => {
   try {
-    const [rows]: any = await pool.execute('SELECT setting_key, value_type, setting_value FROM settings WHERE setting_key IN ("company_phone", "company_email")');
+    const [rows]: any = await pool.execute('SELECT setting_key, value_type, setting_value FROM settings WHERE setting_key IN ("company_phone", "company_email", "whatsapp_enabled")');
     const config: Record<string, any> = {
       company_phone: '95922 92292',
-      company_email: 'contactsatguruengineer@gmail.com'
+      company_email: 'contactsatguruengineer@gmail.com',
+      whatsapp_enabled: true
     };
     rows.forEach((row: any) => {
       config[row.setting_key] = parseSetting(row);

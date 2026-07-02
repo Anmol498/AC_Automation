@@ -44,7 +44,7 @@ const FileViewerModal: React.FC<FileViewerModalProps> = ({ url, filename, onClos
   const [xlsxData, setXlsxData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showDwgViewer, setShowDwgViewer] = useState(false);
+  const [showDwgViewer, setShowDwgViewer] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [fileSize, setFileSize] = useState<number | null>(null);
   const viewerContainerRef = useRef<HTMLDivElement>(null);
@@ -87,7 +87,11 @@ const FileViewerModal: React.FC<FileViewerModalProps> = ({ url, filename, onClos
         .then(res => {
           const size = res.headers.get('content-length');
           if (size) {
-            setFileSize(parseInt(size, 10));
+            const parsedSize = parseInt(size, 10);
+            setFileSize(parsedSize);
+            if (parsedSize > 10 * 1024 * 1024) {
+              setShowDwgViewer(false);
+            }
           }
         })
         .catch(err => {

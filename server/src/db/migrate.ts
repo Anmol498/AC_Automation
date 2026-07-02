@@ -151,10 +151,49 @@ export async function ensureDatabaseReady() {
       // Column might already exist, which is fine
     }
 
+    // Alter table to add phone column to users if it doesn't exist
+    try {
+      await pool.execute("ALTER TABLE users ADD COLUMN phone VARCHAR(20) DEFAULT NULL");
+      console.log('Successfully added phone column to users');
+    } catch (err) {
+      // Column might already exist, which is fine
+    }
+
+    // Create password_resets table if it doesn't exist
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS password_resets (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        otp_code VARCHAR(10) NOT NULL,
+        otp_expires_at DATETIME NOT NULL,
+        reset_token VARCHAR(255) NULL,
+        reset_token_expires_at DATETIME NULL,
+        verified BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+
     // Alter table to add email_status column to job_phases if it doesn't exist
     try {
       await pool.execute("ALTER TABLE job_phases ADD COLUMN email_status VARCHAR(50) DEFAULT NULL");
       console.log('Successfully added email_status column to job_phases');
+    } catch (err) {
+      // Column might already exist, which is fine
+    }
+
+    // Alter table to add whatsapp_status column to job_phases if it doesn't exist
+    try {
+      await pool.execute("ALTER TABLE job_phases ADD COLUMN whatsapp_status VARCHAR(50) DEFAULT NULL");
+      console.log('Successfully added whatsapp_status column to job_phases');
+    } catch (err) {
+      // Column might already exist, which is fine
+    }
+
+    // Alter table to add whatsapp_message_id column to job_phases if it doesn't exist
+    try {
+      await pool.execute("ALTER TABLE job_phases ADD COLUMN whatsapp_message_id VARCHAR(255) DEFAULT NULL");
+      console.log('Successfully added whatsapp_message_id column to job_phases');
     } catch (err) {
       // Column might already exist, which is fine
     }
@@ -287,6 +326,18 @@ export async function ensureDatabaseReady() {
         setting_key VARCHAR(255) PRIMARY KEY,
         value_type ENUM('string', 'integer', 'boolean', 'json') NOT NULL DEFAULT 'string',
         setting_value TEXT NOT NULL
+      )
+    `);
+
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS whatsapp_templates (
+        id VARCHAR(255) PRIMARY KEY,
+        name VARCHAR(255) NOT NULL UNIQUE,
+        header TEXT,
+        body TEXT NOT NULL,
+        footer TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )
     `);
 

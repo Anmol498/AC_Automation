@@ -488,6 +488,7 @@ const EstimatedRevenueBarChart: React.FC<{ data: any[], isDark: boolean }> = ({ 
 const Dashboard: React.FC = () => {
   const { token, user } = useAuth();
   const { isDark = false } = useOutletContext<{ isDark?: boolean }>() || {};
+  const isSuperAdmin = user?.role === 'superadmin';
   const [stats, setStats] = useState<any>(null);
   const [revenueStats, setRevenueStats] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -509,7 +510,7 @@ const Dashboard: React.FC = () => {
     if (revenueStats && revenueStats.length > 0) {
       const labels = revenueStats.map(d => d.label);
       if (!startMonth || !labels.includes(startMonth)) {
-        setStartMonth(labels[0]);
+        setStartMonth(labels[Math.max(0, labels.length - 6)]);
       }
       if (!endMonth || !labels.includes(endMonth)) {
         setEndMonth(labels[labels.length - 1]);
@@ -537,6 +538,14 @@ const Dashboard: React.FC = () => {
     const actualEnd = Math.max(startIdx, endIdx);
     return revenueStats.slice(actualStart, actualEnd + 1);
   }, [revenueStats, startMonth, endMonth]);
+
+  const totalCollected = useMemo(() => {
+    return filteredRevenueData.reduce((sum, d) => sum + (d.collected || 0), 0);
+  }, [filteredRevenueData]);
+
+  const totalOutstanding = useMemo(() => {
+    return filteredEstData.reduce((sum, d) => sum + (d.outstanding || 0), 0);
+  }, [filteredEstData]);
 
   const fetchStats = useCallback(() => {
     api.get('/stats')
@@ -604,7 +613,7 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* Charts skeleton */}
-        {user?.role !== 'technician' && (
+        {isSuperAdmin && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
             <div className={`${isDark ? 'bg-card-dark border-border-dark' : 'bg-card-light border-border-light'} p-6 rounded-2xl border shadow-sm h-[320px] flex flex-col justify-between`}>
               <div className="space-y-2">
@@ -698,9 +707,9 @@ const Dashboard: React.FC = () => {
         })}
       </div>
 
-      {/* Unified Date Range Selector - Below 4 metric cards, above charts */}
-      {!isTech && revenueStats.length > 0 && (
-        <div className="flex justify-end pr-1 mb-2">
+      {/* Unified Date Range Selector - Superadmin only */}
+      {isSuperAdmin && revenueStats.length > 0 && (
+        <div className="flex items-center justify-end mb-4">
           <div className="flex items-center gap-2">
             <CustomMonthPicker
               value={labelToMonthValue(startMonth)}
@@ -739,8 +748,8 @@ const Dashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Visual Graphs section */}
-      {!isTech && (
+      {/* Visual Graphs section - Superadmin only */}
+      {isSuperAdmin && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
           {/* Revenue Collected Line Chart Card */}
           <div className={`p-6 rounded-2xl border ${
@@ -748,9 +757,15 @@ const Dashboard: React.FC = () => {
               ? 'bg-card-dark border-border-dark text-zinc-100 shadow-[0_4px_20px_rgba(0,0,0,0.3)]' 
               : 'bg-card-light border-border-light text-slate-800 shadow-[0_2px_8px_rgba(0,0,0,0.03)]'
           } flex flex-col`}>
-            <div className="mb-6">
-              <h3 className="text-lg font-bold text-slate-800 dark:text-zinc-100">Revenue Collected</h3>
-              <p className="text-xs text-slate-400 dark:text-zinc-500">Actual payments received per month</p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+              <div>
+                <h3 className="text-lg font-bold text-slate-800 dark:text-zinc-100">Revenue Collected</h3>
+                <p className="text-xs text-slate-400 dark:text-zinc-500">Actual payments received per month</p>
+              </div>
+              <div className="flex flex-col items-start sm:items-end">
+                <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-zinc-500">Total Collected</span>
+                <span className="text-base font-extrabold text-blue-600 dark:text-blue-400 mt-0.5">₹{totalCollected.toLocaleString('en-IN')}</span>
+              </div>
             </div>
             <div className="w-full flex items-center justify-center">
               <RevenueLineChart data={filteredRevenueData} isDark={isDark} />
@@ -763,21 +778,27 @@ const Dashboard: React.FC = () => {
               ? 'bg-card-dark border-border-dark text-zinc-100 shadow-[0_4px_20px_rgba(0,0,0,0.3)]' 
               : 'bg-card-light border-border-light text-slate-800 shadow-[0_2px_8px_rgba(0,0,0,0.03)]'
           } flex flex-col`}>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
               <div>
                 <h3 className="text-lg font-bold text-slate-800 dark:text-zinc-100">Estimated Revenue</h3>
                 <p className="text-xs text-slate-400 dark:text-zinc-500">Outstanding & received contracts</p>
               </div>
               
-              <div className="flex items-center gap-3 text-[10px] md:text-xs font-bold">
-                <span className="flex items-center gap-1.5 text-emerald-500">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                  Received
-                </span>
-                <span className="flex items-center gap-1.5 text-rose-500">
-                  <span className="w-2 h-2 rounded-full bg-rose-500"></span>
-                  Outstanding
-                </span>
+              <div className="flex flex-col items-start sm:items-end gap-1.5">
+                <div className="flex flex-col items-start sm:items-end">
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-zinc-500">Total Outstanding</span>
+                  <span className="text-base font-extrabold text-rose-500 mt-0.5">₹{totalOutstanding.toLocaleString('en-IN')}</span>
+                </div>
+                <div className="flex items-center gap-3 text-[10px] font-bold">
+                  <span className="flex items-center gap-1.5 text-emerald-500">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    Received
+                  </span>
+                  <span className="flex items-center gap-1.5 text-rose-500">
+                    <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+                    Outstanding
+                  </span>
+                </div>
               </div>
             </div>
             <div className="w-full flex items-center justify-center">

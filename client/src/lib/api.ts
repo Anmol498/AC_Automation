@@ -65,7 +65,7 @@ export async function apiFetch(endpoint: string, options: FetchOptions = {}): Pr
     url += (url.includes('?') ? '&' : '?') + searchParams.toString();
   }
 
-  const fetchOptions = { ...options, headers };
+  const fetchOptions: RequestInit = { ...options, headers, credentials: 'include' };
 
   try {
     const response = await fetch(url, fetchOptions);
@@ -86,6 +86,7 @@ export async function apiFetch(endpoint: string, options: FetchOptions = {}): Pr
         const refreshRes = await fetch(`${API_BASE_URL}/auth/refresh`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include'
         });
 
         if (!refreshRes.ok) {

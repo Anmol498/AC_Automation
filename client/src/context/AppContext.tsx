@@ -6,6 +6,7 @@ export interface AuthContextType extends AuthState {
   logout: () => void;
   isLoginModalOpen: boolean;
   setLoginModalOpen: (open: boolean) => void;
+  updateUser: (newUser: User) => void;
 }
 
 export interface SettingsState {
@@ -17,6 +18,7 @@ export interface SettingsState {
   mailTransport: 'smtp' | 'google_oauth';
   companyPhone: string;
   companyEmail: string;
+  whatsappEnabled: boolean;
   setLowStockThreshold: (val: number) => void;
   setEnableLowStockAlert: (val: boolean) => void;
   setCopperPipeLowStockThreshold: (val: number) => void;
@@ -25,6 +27,7 @@ export interface SettingsState {
   setMailTransport: (val: 'smtp' | 'google_oauth') => void;
   setCompanyPhone: (val: string) => void;
   setCompanyEmail: (val: string) => void;
+  setWhatsappEnabled: (val: boolean) => void;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);

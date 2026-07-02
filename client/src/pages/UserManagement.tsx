@@ -12,12 +12,27 @@ interface UserManagementProps {
 }
 
 const UserManagement: React.FC<UserManagementProps> = ({ inSettingsView = false }) => {
+  const { user: currentUser } = useAuth();
   const { isDark = false } = useOutletContext<{ isDark?: boolean }>() || {};
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [formData, setFormData] = useState({ email: '', password: '', role: UserRole.ADMIN });
-  const [isCollapsed, setIsCollapsed] = useState(inSettingsView);
+  const [formData, setFormData] = useState({ email: '', password: '', role: UserRole.ADMIN, phone: '' });
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth < 768 : false);
+  const [isCollapsed, setIsCollapsed] = useState(() => inSettingsView && (typeof window !== 'undefined' ? window.innerWidth < 768 : true));
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (!mobile) {
+        setIsCollapsed(false);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const fetchUsers = () => {
     setLoading(true);
@@ -38,21 +53,26 @@ const UserManagement: React.FC<UserManagementProps> = ({ inSettingsView = false 
 
   useRealtimeListener('users', fetchUsers);
 
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setFormData({ email: '', password: '', role: UserRole.ADMIN, phone: '' });
+  };
+
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/;
-    if (!passwordRegex.test(formData.password)) {
-      toast.error('Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&#).');
+    
+    if (formData.password.length < 1) {
+      toast.error('Password cannot be empty.');
       return;
     }
+
     try {
       await api.post('/users', formData);
       toast.success("User account registered successfully!");
-      setIsModalOpen(false);
-      setFormData({ email: '', password: '', role: UserRole.ADMIN });
+      handleCloseModal();
       fetchUsers();
     } catch (err: any) {
-      toast.error(err.message || "Failed to create user");
+      toast.error(err.message || "Failed to save user");
     }
   };
 
@@ -79,8 +99,10 @@ const UserManagement: React.FC<UserManagementProps> = ({ inSettingsView = false 
     <div className="space-y-6">
       {inSettingsView ? (
         <div 
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className={`flex items-center justify-between p-4 -mx-4 sm:mx-0 sm:p-0 rounded-2xl cursor-pointer hover:bg-slate-100/50 dark:hover:bg-zinc-850/30 transition-colors select-none`}
+          onClick={() => isMobile && setIsCollapsed(!isCollapsed)}
+          className={`flex items-center justify-between p-4 -mx-4 sm:mx-0 sm:p-0 rounded-2xl transition-colors select-none ${
+            isMobile ? 'cursor-pointer hover:bg-slate-100/50 dark:hover:bg-zinc-850/30' : 'cursor-default'
+          }`}
         >
           <div className="flex items-center gap-3">
             <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
@@ -90,11 +112,13 @@ const UserManagement: React.FC<UserManagementProps> = ({ inSettingsView = false 
             </div>
             <h2 className={`text-xl font-bold tracking-tight ${isDark ? 'text-zinc-100' : 'text-slate-800'}`}>Team Management</h2>
           </div>
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
-            isDark ? 'text-zinc-400 hover:bg-zinc-800' : 'text-slate-400 hover:bg-slate-100'
-          }`}>
-            <i className={`fa-solid fa-chevron-down transition-transform duration-200 ${isCollapsed ? '' : 'rotate-180'}`}></i>
-          </div>
+          {isMobile && (
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+              isDark ? 'text-zinc-400 hover:bg-zinc-800' : 'text-slate-400 hover:bg-slate-100'
+            }`}>
+              <i className={`fa-solid fa-chevron-down transition-transform duration-200 ${isCollapsed ? '' : 'rotate-180'}`}></i>
+            </div>
+          )}
         </div>
       ) : (
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -117,10 +141,10 @@ const UserManagement: React.FC<UserManagementProps> = ({ inSettingsView = false 
       {!isCollapsed && (
         <div className="space-y-6 animate-in fade-in slide-in-from-top-2 duration-200">
           {inSettingsView && (
-            <div className="flex items-center gap-3 w-full md:w-auto mt-2 md:mt-0">
+            <div className="flex w-full md:justify-end">
               <button
                 onClick={() => setIsModalOpen(true)}
-                className="flex w-full justify-center py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl items-center gap-2 shadow-lg shadow-blue-500/20 transition-all font-medium shrink-0"
+                className="flex w-full md:w-auto justify-center px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl items-center gap-2 shadow-lg shadow-blue-500/20 transition-all font-medium shrink-0"
               >
                 <i className="fa-solid fa-user-plus"></i>
                 <span>Add User</span>
@@ -129,7 +153,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ inSettingsView = false 
           )}
 
           {loading ? (
-            <div className="text-center p-10"><i className={`fa-solid fa-spinner fa-spin text-2xl ${isDark ? 'text-zinc-500' : 'text-slate-650'}`}></i></div>
+            <div className="text-center p-10"><i className={`fa-solid fa-spinner fa-spin text-2xl ${isDark ? 'text-zinc-500' : 'text-slate-600'}`}></i></div>
           ) : (
             <>
               {/* Responsive Card/Grid View */}
@@ -145,8 +169,8 @@ const UserManagement: React.FC<UserManagementProps> = ({ inSettingsView = false 
                         isDark 
                           ? user.role === UserRole.SUPER_ADMIN ? 'bg-purple-950/40 text-purple-400' :
                             user.role === UserRole.TECHNICIAN ? 'bg-emerald-950/40 text-emerald-400' : 'bg-blue-950/40 text-blue-400'
-                          : user.role === UserRole.SUPER_ADMIN ? 'bg-purple-105 text-purple-650' :
-                            user.role === UserRole.TECHNICIAN ? 'bg-emerald-105 text-emerald-650' : 'bg-blue-105 text-blue-650'
+                          : user.role === UserRole.SUPER_ADMIN ? 'bg-purple-100 text-purple-600' :
+                            user.role === UserRole.TECHNICIAN ? 'bg-emerald-100 text-emerald-600' : 'bg-blue-100 text-blue-600'
                       }`}>
                         <i className={`fa-solid ${
                           user.role === UserRole.SUPER_ADMIN ? 'fa-crown' :
@@ -155,24 +179,31 @@ const UserManagement: React.FC<UserManagementProps> = ({ inSettingsView = false 
                       </div>
                       <div className="min-w-0">
                         <p className={`font-bold truncate max-w-[180px] ${isDark ? 'text-zinc-100' : 'text-slate-800'}`} title={user.email}>{user.email}</p>
+                        {user.phone && (
+                          <p className={`text-[11px] truncate ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}><i className="fa-solid fa-phone mr-1 opacity-70"></i>{user.phone}</p>
+                        )}
                         <span className={`inline-block mt-1 text-[10px] uppercase font-black px-2 py-0.5 rounded ${
                           isDark 
                             ? user.role === UserRole.SUPER_ADMIN ? 'bg-purple-950/50 text-purple-400' :
                               user.role === UserRole.TECHNICIAN ? 'bg-emerald-950/50 text-emerald-400' : 'bg-blue-950/50 text-blue-400'
-                            : user.role === UserRole.SUPER_ADMIN ? 'bg-purple-50 text-purple-650' :
-                              user.role === UserRole.TECHNICIAN ? 'bg-emerald-50 text-emerald-650' : 'bg-blue-50 text-blue-650'
+                            : user.role === UserRole.SUPER_ADMIN ? 'bg-purple-50 text-purple-600' :
+                              user.role === UserRole.TECHNICIAN ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'
                         }`}>
                           {user.role}
                         </span>
                       </div>
                     </div>
-                    <button
-                      onClick={() => handleDelete(user.id)}
-                      className={`text-slate-400 hover:text-red-500 p-2.5 transition-colors rounded-xl shrink-0 hover:bg-slate-100 dark:hover:bg-zinc-800`}
-                      title="Remove User"
-                    >
-                      <i className="fa-solid fa-user-minus"></i>
-                    </button>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {user.id !== currentUser?.id && (
+                        <button
+                          onClick={() => handleDelete(user.id)}
+                          className={`text-slate-400 hover:text-red-500 p-2.5 transition-colors rounded-xl hover:bg-slate-100 dark:hover:bg-zinc-800`}
+                          title="Remove User"
+                        >
+                          <i className="fa-solid fa-user-minus"></i>
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -182,7 +213,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ inSettingsView = false 
       )}
 
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+        <div className={`fixed inset-0 bg-slate-900/40 backdrop-blur-md z-[100] flex items-center justify-center p-4 ${isDark ? 'dark' : ''}`}>
           <div className={`rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-white/20 animate-in fade-in zoom-in duration-300 ${
             isDark ? 'bg-zinc-900 border-zinc-800' : 'bg-white'
           }`}>
@@ -196,7 +227,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ inSettingsView = false 
                 <h3 className={`text-xl font-black tracking-tight ${isDark ? 'text-zinc-100' : 'text-slate-800'}`}>Register Team Member</h3>
               </div>
               <button 
-                onClick={() => setIsModalOpen(false)}
+                onClick={handleCloseModal}
                 className={`transition-colors rounded-lg p-2 ${
                   isDark ? 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-200'
                 }`}
@@ -212,7 +243,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ inSettingsView = false 
                   type="email" 
                   placeholder="name@satguruengineers.com" 
                   className={`w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all font-medium ${
-                    isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-100 placeholder-zinc-500' : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400'
+                    isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-100 placeholder-zinc-500' : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-450'
                   }`} 
                   value={formData.email} 
                   onChange={e => setFormData({ ...formData, email: e.target.value })} 
@@ -233,6 +264,19 @@ const UserManagement: React.FC<UserManagementProps> = ({ inSettingsView = false 
                   required 
                 />
               </div>
+ 
+              <div>
+                <label className={`text-[10px] font-black uppercase tracking-widest mb-1.5 block ml-1 ${isDark ? 'text-zinc-500' : 'text-slate-400'}`}>Phone Number (for WhatsApp OTP) - Optional</label>
+                <input 
+                  type="text" 
+                  placeholder="e.g. 919876543210" 
+                  className={`w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all font-medium ${
+                    isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-100 placeholder-zinc-500' : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-450'
+                  }`} 
+                  value={formData.phone} 
+                  onChange={e => setFormData({ ...formData, phone: e.target.value })} 
+                />
+              </div>
               
               <div>
                 <label className={`text-[10px] font-black uppercase tracking-widest mb-1.5 block ml-1 ${isDark ? 'text-zinc-500' : 'text-slate-400'}`}>Access Level</label>
@@ -251,7 +295,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ inSettingsView = false 
               <div className="flex gap-3 pt-4">
                 <button 
                   type="button" 
-                  onClick={() => setIsModalOpen(false)} 
+                  onClick={handleCloseModal} 
                   className={`flex-1 py-3.5 px-4 font-bold rounded-2xl transition-all ${
                     isDark ? 'bg-zinc-800 hover:bg-zinc-750 text-zinc-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
                   }`}

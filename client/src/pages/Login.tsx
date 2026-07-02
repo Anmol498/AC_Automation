@@ -24,6 +24,7 @@ const Login: React.FC<LoginProps> = ({ isOpen = true, onClose }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [showForgotPasswordLink, setShowForgotPasswordLink] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -38,12 +39,14 @@ const Login: React.FC<LoginProps> = ({ isOpen = true, onClose }) => {
       setPassword('');
       setError('');
       setShowPassword(false);
+      setShowForgotPasswordLink(false);
     }
   }, [isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setShowForgotPasswordLink(false);
     setIsLoading(true);
 
     try {
@@ -65,7 +68,8 @@ const Login: React.FC<LoginProps> = ({ isOpen = true, onClose }) => {
       navigate('/dashboard');
     } catch (err: any) {
       console.error('Login error:', err);
-      setError(err.message || 'Connection Error: Unable to reach the server. Ensure your Node.js backend is running.');
+      setError('Invalid credentials.');
+      setShowForgotPasswordLink(true);
     } finally {
       setIsLoading(false);
     }
@@ -74,8 +78,8 @@ const Login: React.FC<LoginProps> = ({ isOpen = true, onClose }) => {
   if (!isOpen) return null;
 
   const shell = isModal
-    ? 'fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm'
-    : `min-h-screen flex items-center justify-center p-4 ${isDark ? 'bg-[#151619] text-white' : 'bg-slate-50 text-slate-900'}`;
+    ? `fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm ${isDark ? 'dark' : ''}`
+    : `min-h-screen flex items-center justify-center p-4 ${isDark ? 'dark bg-[#151619] text-white' : 'bg-slate-50 text-slate-900'}`;
 
   const card = isModal
     ? isDark
@@ -201,6 +205,21 @@ const Login: React.FC<LoginProps> = ({ isOpen = true, onClose }) => {
             </>
           )}
         </button>
+
+        {showForgotPasswordLink && (
+          <div className="flex justify-center -mt-2">
+            <button
+              type="button"
+              onClick={() => {
+                onClose?.();
+                navigate('/forgot-password');
+              }}
+              className="text-sm font-bold text-[#246BFF] hover:underline cursor-pointer transition-colors"
+            >
+              Forgot Password?
+            </button>
+          </div>
+        )}
 
         <div className="flex justify-center pt-2">
           <button

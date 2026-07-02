@@ -22,8 +22,10 @@ import {
   escapeHtml,
   INSTALLATION_PHASES,
   SERVICE_PHASES,
-  getPaymentPhaseAmount
+  getPaymentPhaseAmount,
+  cleanPhaseName
 } from '../utils/emailHelper.js';
+import { handleWhatsAppPhaseDispatch, handleWhatsAppDirectSend } from '../utils/whatsappHelper.js';
 import { sendEmail } from '../utils/mailer.js';
 
 const router = express.Router();
@@ -66,18 +68,18 @@ router.get('/stats', authenticateToken, async (req, res) => {
       }
     });
 
-    // Fetch monthly collected revenue (payments received per month over last 6 months)
+    // Fetch monthly collected revenue (payments received per month over last 24 months)
     const [paymentsCollected]: any = await pool.execute(`
       SELECT 
         DATE_FORMAT(created_at, '%Y-%m') as month, 
         SUM(amount) as collected
       FROM payments
-      WHERE created_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
+      WHERE created_at >= DATE_SUB(NOW(), INTERVAL 24 MONTH)
       GROUP BY month
       ORDER BY month ASC
     `);
 
-    // Fetch monthly estimated revenue split (jobs created/started per month over last 6 months)
+    // Fetch monthly estimated revenue split (jobs created/started per month over last 24 months)
     const [jobsRevenue]: any = await pool.execute(`
       SELECT 
         DATE_FORMAT(j.start_date, '%Y-%m') as month,
@@ -86,14 +88,14 @@ router.get('/stats', authenticateToken, async (req, res) => {
         SUM(COALESCE(jcs.balance_due, 0)) as outstanding
       FROM jobs j
       LEFT JOIN job_cost_summary jcs ON jcs.job_id = j.id
-      WHERE j.start_date >= DATE_SUB(NOW(), INTERVAL 6 MONTH) AND j.deleted_at IS NULL
+      WHERE j.start_date >= DATE_SUB(NOW(), INTERVAL 24 MONTH) AND j.deleted_at IS NULL
       GROUP BY month
       ORDER BY month ASC
     `);
 
-    // Generate last 6 months list (from 5 months ago to current month)
+    // Generate last 24 months list (from 23 months ago to current month)
     const revenueStats = [];
-    for (let i = 5; i >= 0; i--) {
+    for (let i = 23; i >= 0; i--) {
       const d = new Date();
       d.setDate(1); // avoid month overflow issues (e.g. if today is 31st)
       d.setMonth(d.getMonth() - i);
@@ -299,7 +301,8 @@ router.get('/jobs/:id', authenticateToken, async (req, res) => {
         is_completed AS isCompleted, 
         completed_at AS completedAt, 
         phase_order AS \`order\`,
-        email_status AS emailStatus
+        email_status AS emailStatus,
+        whatsapp_status AS whatsappStatus
       FROM job_phases 
       WHERE job_id = ? 
       ORDER BY phase_order ASC
@@ -438,20 +441,22 @@ router.get('/phases/:id/email-preview', authenticateToken, async (req, res) => {
       commissioningCost: Number(details.commissioningCost)
     });
 
+    const cleanedPhaseName = cleanPhaseName(details.phaseName);
+
     const subject = wouldBeFinal
-      ? `Final Project Completion: ${details.phaseName}`
-      : `Update: ${details.phaseName} Completed`;
+      ? `Final Project Completion: ${cleanedPhaseName}`
+      : `Update: ${cleanedPhaseName} Completed`;
 
     const defaultMessage = wouldBeFinal
       ? `We're pleased to inform you that your ${details.jobType} project (Job #${details.jobId}) has been fully completed. All phases have been successfully finished. Thank you for choosing Satguru Engineers!\n\nPlease let us know if anything is pending regarding the same`
-      : `We're writing to let you know that a key milestone in your ${details.jobType} has been successfully completed: "${details.phaseName}". Our team is dedicated to providing high-quality service.\n\nPlease let us know if anything is pending regarding the same`;
+      : `We're writing to let you know that a key milestone in your ${details.jobType} has been successfully completed: "${cleanedPhaseName}". Our team is dedicated to providing high-quality service.\n\nPlease let us know if anything is pending regarding the same`;
 
     res.json({
       to: details.email,
       customerName: details.customerName,
       subject,
       message: defaultMessage,
-      phaseName: details.phaseName,
+      phaseName: cleanedPhaseName,
       jobId: details.jobId,
       jobType: details.jobType,
       technician: details.technician,
@@ -467,7 +472,7 @@ router.get('/phases/:id/email-preview', authenticateToken, async (req, res) => {
 
 router.patch('/phases/:id', authenticateToken, validate(updatePhaseSchema), async (req, res) => {
   const { id } = req.params;
-  const { isCompleted, customSubject, customGreeting, customMessage, customPaymentAmount, skipEmail } = req.body;
+  const { isCompleted, customSubject, customGreeting, customMessage, customPaymentAmount, skipEmail, sendWhatsApp, whatsappTemplate, silentComplete, customDate, customTxt } = req.body;
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
@@ -490,8 +495,8 @@ router.patch('/phases/:id', authenticateToken, validate(updatePhaseSchema), asyn
     await connection.execute('UPDATE job_phases SET is_completed = ?, completed_at = ? WHERE id = ?', [isCompleted ? 1 : 0, completedAt, id]);
 
     if (!isCompleted) {
-      await connection.execute('UPDATE job_phases SET email_status = NULL WHERE id = ?', [id]);
-    } else if (skipEmail) {
+      await connection.execute('UPDATE job_phases SET email_status = NULL, whatsapp_status = NULL WHERE id = ?', [id]);
+    } else if (skipEmail && !silentComplete) {
       await connection.execute('UPDATE job_phases SET email_status = "skipped" WHERE id = ?', [id]);
     }
 
@@ -506,10 +511,12 @@ router.patch('/phases/:id', authenticateToken, validate(updatePhaseSchema), asyn
     const [[phaseInfo]]: any = await connection.execute('SELECT phase_name FROM job_phases WHERE job_id = ? AND is_completed = 0 ORDER BY phase_order ASC LIMIT 1', [job_id]);
     const nextPhaseName = phaseInfo ? phaseInfo.phase_name : null;
 
-    if (isCompleted && !skipEmail) {
+    if (isCompleted) {
       const [[details]]: any = await connection.execute(`
         SELECT 
           c.email, 
+          c.phone as customerPhone,
+          c.address as customerAddress,
           c.name as customerName, 
           j.id as jobId, 
           j.job_type as jobType, 
@@ -527,70 +534,109 @@ router.patch('/phases/:id', authenticateToken, validate(updatePhaseSchema), asyn
       `, [id]);
 
       if (details) {
+        const cleanedPhaseName = cleanPhaseName(details.phaseName);
         let emailResult: { success: boolean; error?: string } = { success: false };
-        const fromEmail = await getFromEmail(connection);
+        if (!skipEmail && !silentComplete) {
+          const fromEmail = await getFromEmail(connection);
 
-        if (customSubject || customMessage) {
-          const subject = escapeHtml(customSubject || `Update: ${details.phaseName} Completed`);
-          const greeting = escapeHtml(customGreeting || `Hello ${details.customerName},`);
-          const message = escapeHtml(customMessage || '');
-          
-          let paymentBlock = '';
-          let amount: number | null = null;
-          if (customPaymentAmount && Number(customPaymentAmount) > 0) {
-            amount = Number(customPaymentAmount);
-          } else {
-            const { amount: phaseAmt } = getPaymentPhaseAmount(details.phaseName, details.jobType, {
-              copperPipingCost: Number(details.copperPipingCost),
-              outdoorFittingCost: Number(details.outdoorFittingCost),
-              commissioningCost: Number(details.commissioningCost)
-            });
-            amount = phaseAmt;
-          }
-
-          if (amount !== null && amount > 0) {
-            paymentBlock = buildPaymentBlock(details.phaseName, amount, details.paymentStatus);
-          }
-
-          let completionBlock = '';
-          if (isFinalPhase) {
-            completionBlock = buildCompletionBlock(details.paymentStatus, 'Your system is now fully operational.');
-          }
-
-          const htmlBody = buildEmailLayout("Satguru Engineers Service Update", `
-            <p>${greeting}</p>
-            <p style="white-space: pre-wrap;">${message}</p>
-            <div style="background-color: #f8fafc; border-left: 4px solid #2563eb; padding: 16px; margin: 20px 0;">
-              <p style="margin: 0; font-weight: bold; color: #2563eb;">Phase: ${details.phaseName}</p>
-              <p style="margin: 4px 0 0 0; font-size: 12px; color: #64748b;">Job ID: #${details.jobId} | Technician: ${details.technician}</p>
-            </div>
-            ${paymentBlock}
-            ${completionBlock}
-            <p style="margin-top: 16px; font-size: 14px; color: #64748b;">Thank you for choosing Satguru Engineers.</p>
-          `);
-          
-          emailResult = await sendEmail(fromEmail, details.email, subject, "", htmlBody);
-        } else {
-          emailResult = await sendPhaseNotification(
-            fromEmail,
-            details.email,
-            details.customerName,
-            details.jobType,
-            details.phaseName,
-            details.jobId,
-            details.technician,
-            details.paymentStatus,
-            isFinalPhase,
-            {
-              copperPipingCost: Number(details.copperPipingCost),
-              outdoorFittingCost: Number(details.outdoorFittingCost),
-              commissioningCost: Number(details.commissioningCost)
+          if (customSubject || customMessage) {
+            const subject = escapeHtml(customSubject || `Update: ${cleanedPhaseName} Completed`);
+            const greeting = escapeHtml(customGreeting || `Hello ${details.customerName},`);
+            const message = escapeHtml(customMessage || '');
+            
+            let paymentBlock = '';
+            let amount: number | null = null;
+            if (customPaymentAmount && Number(customPaymentAmount) > 0) {
+              amount = Number(customPaymentAmount);
+            } else {
+              const { amount: phaseAmt } = getPaymentPhaseAmount(details.phaseName, details.jobType, {
+                copperPipingCost: Number(details.copperPipingCost),
+                outdoorFittingCost: Number(details.outdoorFittingCost),
+                commissioningCost: Number(details.commissioningCost)
+              });
+              amount = phaseAmt;
             }
-          );
+
+            if (amount !== null && amount > 0) {
+              paymentBlock = buildPaymentBlock(cleanedPhaseName, amount, details.paymentStatus);
+            }
+
+            let completionBlock = '';
+            if (isFinalPhase) {
+              completionBlock = buildCompletionBlock(details.paymentStatus, 'Your system is now fully operational.');
+            }
+
+            const htmlBody = buildEmailLayout("Satguru Engineers Service Update", `
+              <p>${greeting}</p>
+              <p style="white-space: pre-wrap;">${message}</p>
+              <div style="background-color: #f8fafc; border-left: 4px solid #2563eb; padding: 16px; margin: 20px 0;">
+                <p style="margin: 0; font-weight: bold; color: #2563eb;">Phase: ${cleanedPhaseName}</p>
+                <p style="margin: 4px 0 0 0; font-size: 12px; color: #64748b;">Job ID: #${details.jobId} | Technician: ${details.technician}</p>
+              </div>
+              ${paymentBlock}
+              ${completionBlock}
+              <p style="margin-top: 16px; font-size: 14px; color: #64748b;">Thank you for choosing Satguru Engineers.</p>
+            `);
+            
+            emailResult = await sendEmail(fromEmail, details.email, subject, "", htmlBody);
+          } else {
+            emailResult = await sendPhaseNotification(
+              fromEmail,
+              details.email,
+              details.customerName,
+              details.jobType,
+              details.phaseName,
+              details.jobId,
+              details.technician,
+              details.paymentStatus,
+              isFinalPhase,
+              {
+                copperPipingCost: Number(details.copperPipingCost),
+                outdoorFittingCost: Number(details.outdoorFittingCost),
+                commissioningCost: Number(details.commissioningCost)
+              }
+            );
+          }
+
+          const emailStatus = emailResult.success ? 'sent' : 'failed';
+          await connection.execute('UPDATE job_phases SET email_status = ? WHERE id = ?', [emailStatus, id]);
         }
 
-        const emailStatus = emailResult.success ? 'sent' : 'failed';
-        await connection.execute('UPDATE job_phases SET email_status = ? WHERE id = ?', [emailStatus, id]);
+        // --- WHATSAPP NOTIFICATION DISPATCH ---
+        // Guard: check if WhatsApp is globally enabled
+        let effectiveSendWhatsApp = !!sendWhatsApp;
+        if (effectiveSendWhatsApp) {
+          const [waRows]: any = await connection.execute("SELECT setting_value FROM settings WHERE setting_key = 'whatsapp_enabled'");
+          const waEnabled = waRows.length === 0 || waRows[0].setting_value === 'true' || waRows[0].setting_value === '1';
+          if (!waEnabled) effectiveSendWhatsApp = false;
+        }
+
+        let whatsappSent = false;
+        let whatsappError = null;
+        const waDispatch = await handleWhatsAppPhaseDispatch({
+          connection,
+          phaseId: Number(id),
+          isCompleted: !!isCompleted,
+          silentComplete: !!silentComplete,
+          sendWhatsApp: effectiveSendWhatsApp,
+          whatsappTemplate,
+          customPaymentAmount,
+          customDate,
+          customTxt,
+          customerPhone: details.customerPhone,
+          customerName: details.customerName,
+          customerAddress: details.customerAddress,
+          phaseName: details.phaseName,
+          jobType: details.jobType,
+          technician: details.technician,
+          copperPipingCost: details.copperPipingCost,
+          outdoorFittingCost: details.outdoorFittingCost,
+          commissioningCost: details.commissioningCost
+        });
+        if (waDispatch) {
+          whatsappSent = waDispatch.success;
+          whatsappError = waDispatch.error || null;
+        }
 
         await connection.commit();
         return res.json({ 
@@ -598,7 +644,9 @@ router.patch('/phases/:id', authenticateToken, validate(updatePhaseSchema), asyn
           jobStatus: newStatus, 
           currentPhase: nextPhaseName, 
           emailSent: emailResult.success,
-          emailError: emailResult.error 
+          emailError: emailResult.error,
+          whatsappSent,
+          whatsappError
         });
       }
     }
@@ -639,13 +687,15 @@ router.post('/phases/:id/resend-email', authenticateToken, validate(updatePhaseS
     if (!details) return res.status(404).json({ error: 'Phase not found' });
     if (!details.isCompleted) return res.status(400).json({ error: 'Phase is not yet completed' });
 
-    const subject = escapeHtml(customSubject || `Update: ${details.phaseName} Completed`);
+    const cleanedPhaseName = cleanPhaseName(details.phaseName);
+
+    const subject = escapeHtml(customSubject || `Update: ${cleanedPhaseName} Completed`);
     const greeting = escapeHtml(customGreeting || `Hello ${details.customerName},`);
-    const message = escapeHtml(customMessage || `We're writing to let you know that "${details.phaseName}" has been completed.\n\nPlease let us know if anything is pending regarding the same`);
+    const message = escapeHtml(customMessage || `We're writing to let you know that "${cleanedPhaseName}" has been completed.\n\nPlease let us know if anything is pending regarding the same`);
 
     let paymentBlock = '';
     if (customPaymentAmount && Number(customPaymentAmount) > 0) {
-      paymentBlock = buildPaymentBlock(details.phaseName, Number(customPaymentAmount), details.paymentStatus);
+      paymentBlock = buildPaymentBlock(cleanedPhaseName, Number(customPaymentAmount), details.paymentStatus);
     }
 
     const [[{ total }]]: any = await pool.execute('SELECT COUNT(*) as total FROM job_phases WHERE job_id = ?', [details.jobId]);
@@ -661,7 +711,7 @@ router.post('/phases/:id/resend-email', authenticateToken, validate(updatePhaseS
       <p>${greeting}</p>
       <p style="white-space: pre-wrap;">${message}</p>
       <div style="background-color: #f8fafc; border-left: 4px solid #2563eb; padding: 16px; margin: 20px 0;">
-        <p style="margin: 0; font-weight: bold; color: #2563eb;">Phase: ${details.phaseName}</p>
+        <p style="margin: 0; font-weight: bold; color: #2563eb;">Phase: ${cleanedPhaseName}</p>
         <p style="margin: 4px 0 0 0; font-size: 12px; color: #64748b;">Technician: ${details.technician}</p>
       </div>
       ${paymentBlock}
@@ -675,6 +725,33 @@ router.post('/phases/:id/resend-email', authenticateToken, validate(updatePhaseS
     await pool.execute('UPDATE job_phases SET email_status = ? WHERE id = ?', [emailStatus, id]);
     res.json({ success: true, emailSent: mailResult.success, emailError: mailResult.error });
   } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- SEND WHATSAPP FOR A COMPLETED PHASE ---
+router.post('/phases/:id/send-whatsapp', authenticateToken, validate(updatePhaseSchema), async (req, res) => {
+  const { id } = req.params;
+  const { whatsappTemplate, customPaymentAmount, customDate, customTxt } = req.body;
+
+  try {
+    // Guard: check if WhatsApp is globally enabled
+    const [waRows]: any = await pool.execute("SELECT setting_value FROM settings WHERE setting_key = 'whatsapp_enabled'");
+    const waEnabled = waRows.length === 0 || waRows[0].setting_value === 'true' || waRows[0].setting_value === '1';
+    if (!waEnabled) {
+      return res.status(400).json({ error: 'WhatsApp is currently disabled.' });
+    }
+
+    const result = await handleWhatsAppDirectSend({
+      phaseId: Number(id),
+      whatsappTemplate,
+      customPaymentAmount,
+      customDate,
+      customTxt
+    });
+    res.json(result);
+  } catch (err: any) {
+    await pool.execute('UPDATE job_phases SET whatsapp_status = "failed" WHERE id = ?', [id]);
     res.status(500).json({ error: err.message });
   }
 });
