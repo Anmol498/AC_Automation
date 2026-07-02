@@ -114,7 +114,7 @@ const LayoutContent: React.FC = () => {
   if (user?.role !== UserRole.TECHNICIAN) {
     navItems.splice(1, 0, { path: '/customers', label: 'Customers', icon: 'fa-users' });
     navItems.push({ path: '/inventory', label: 'Inventory', icon: 'fa-boxes-stacked' });
-    navItems.push({ path: '/daily-work', label: 'Logging', icon: 'fa-clipboard-list' });
+    navItems.push({ path: '/logging', label: 'Logging', icon: 'fa-clipboard-list' });
   }
 
   // Technician gets "My Work" nav item

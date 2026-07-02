@@ -266,7 +266,7 @@ const App: React.FC = () => {
                     <InventoryManagement />
                   </ProtectedRoute>
                 } />
-                <Route path="/daily-work" element={<DailyWork />} />
+                <Route path="/logging" element={<DailyWork />} />
                 <Route path="/my-work" element={
                   <ProtectedRoute roles={[UserRole.TECHNICIAN]}>
                     <TechnicianWork />
