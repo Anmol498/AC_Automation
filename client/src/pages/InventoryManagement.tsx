@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useOutletContext } from 'react-router-dom';
 import { useAuth, useSettings } from '../context/AppContext';
 import { useRealtimeListener } from '../components/RealtimeProvider';
@@ -904,7 +905,7 @@ const InventoryManagement: React.FC = () => {
             </div>
 
             {/* Modal */}
-            {isModalOpen && (
+            {isModalOpen && createPortal(
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
                     <div className={`rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh] border ${
                         isDark ? 'bg-[#242427] border-zinc-800 text-zinc-100' : 'bg-white border-slate-200'
@@ -1231,11 +1232,12 @@ const InventoryManagement: React.FC = () => {
                             </button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             {/* Low Stock Modal */}
-            {isLowStockModalOpen && (
+            {isLowStockModalOpen && createPortal(
                 <div className="fixed top-0 left-0 w-screen h-screen z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-hidden" style={{ margin: 0 }}>
                     <div className={`rounded-2xl shadow-xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh] relative z-[101] border ${
                         isDark ? 'bg-[#242427] border-zinc-800 text-zinc-100' : 'bg-white border-slate-200'
@@ -1384,11 +1386,12 @@ const InventoryManagement: React.FC = () => {
                             )}
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             {/* History Modal */}
-            {isHistoryModalOpen && (
+            {isHistoryModalOpen && createPortal(
                 <div className="fixed top-0 left-0 w-screen h-screen z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-hidden" style={{ margin: 0 }}>
                     <div className={`rounded-2xl shadow-xl w-full max-w-5xl overflow-hidden flex flex-col max-h-[90vh] relative z-[101] border ${
                         isDark ? 'bg-[#242427] border-zinc-800 text-zinc-100' : 'bg-white border-slate-200'
@@ -1440,7 +1443,7 @@ const InventoryManagement: React.FC = () => {
                                         <tbody className={`divide-y ${
                                             isDark ? 'divide-zinc-800/60 bg-[#242427]' : 'divide-slate-100 bg-white'
                                         }`}>
-                                            {copperHistoryLogs.map(log => {
+                                            {copperHistoryLogs.slice((historyPage - 1) * itemsPerPage, historyPage * itemsPerPage).map(log => {
                                                 const netUsed = Number(log.sentQty || 0) - Number(log.returnQty || 0);
                                                 return (
                                                     <tr key={`${log.origin || 'warehouse'}-${log.id}`} className={`transition-colors ${
@@ -1561,8 +1564,28 @@ const InventoryManagement: React.FC = () => {
                                 )
                             )}
                         </div>
+                        {activeTab === 'Copper' ? (
+                            copperHistoryLogs.length > itemsPerPage && (
+                                <Pagination
+                                    isDark={isDark}
+                                    currentPage={historyPage}
+                                    totalPages={Math.ceil(copperHistoryLogs.length / itemsPerPage)}
+                                    onPageChange={setHistoryPage}
+                                />
+                            )
+                        ) : (
+                            historyLogs.length > itemsPerPage && (
+                                <Pagination
+                                    isDark={isDark}
+                                    currentPage={historyPage}
+                                    totalPages={Math.ceil(historyLogs.length / itemsPerPage)}
+                                    onPageChange={setHistoryPage}
+                                />
+                            )
+                        )}
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );
