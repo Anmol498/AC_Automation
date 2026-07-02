@@ -1111,15 +1111,20 @@ export default function DailyWork() {
             {/* Date Range Selector Modal for CSV Download */}
             {isDownloadModalOpen && createPortal(
                 <div className="fixed top-0 left-0 w-screen h-screen z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-hidden" style={{ margin: 0 }}>
-                    <div className={`rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col border ${
+                    <div className={`rounded-2xl shadow-xl w-full max-w-md flex flex-col border relative overflow-visible ${
                         isDark ? 'bg-[#242427] border-zinc-800 text-zinc-100' : 'bg-white border-slate-200 text-slate-800'
                     }`}>
                         {/* Header */}
-                        <div className={`p-5 border-b flex justify-between items-center ${
+                        <div className={`p-5 border-b flex justify-between items-center rounded-t-2xl ${
                             isDark ? 'bg-[#1e1e21] border-zinc-800' : 'bg-slate-50 border-slate-100'
                         }`}>
                             <h3 className="font-bold text-sm tracking-tight flex items-center gap-2">
-                                <i className="fa-solid fa-download text-blue-500"></i> Download {downloadTab?.replace('-', ' ')} Logs
+                                <i className="fa-solid fa-download text-blue-500"></i> Download {
+                                    downloadTab === 'Daily-Work' ? 'Daily Work' :
+                                    downloadTab === 'Cash-flow' ? 'Cash Flow' :
+                                    downloadTab === 'Inventory-logs' ? 'Inventory' :
+                                    downloadTab === 'Copper-logs' ? 'Copper' : ''
+                                } Logs
                             </h3>
                             <button onClick={() => setIsDownloadModalOpen(false)} className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
                                 isDark ? 'hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200' : 'hover:bg-slate-100 text-slate-400 hover:text-slate-600'
@@ -1128,23 +1133,23 @@ export default function DailyWork() {
                             </button>
                         </div>
                         {/* Body */}
-                        <div className="p-6 space-y-4">
+                        <div className="p-6 space-y-4 overflow-visible">
                             <p className={`text-xs ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>
                                 Select a date range to filter and download the logs in CSV format.
                             </p>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1.5">
+                            <div className="grid grid-cols-2 gap-4 overflow-visible">
+                                <div className="space-y-1.5 relative overflow-visible">
                                     <label className={`text-[10px] uppercase font-bold tracking-wider ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>Start Date</label>
                                     <CustomDatePicker value={downloadStartDate} onChange={setDownloadStartDate} isDark={isDark} placeholder="From..." />
                                 </div>
-                                <div className="space-y-1.5">
+                                <div className="space-y-1.5 relative overflow-visible">
                                     <label className={`text-[10px] uppercase font-bold tracking-wider ${isDark ? 'text-zinc-400' : 'text-slate-550 text-slate-500'}`}>End Date</label>
                                     <CustomDatePicker value={downloadEndDate} onChange={setDownloadEndDate} isDark={isDark} placeholder="To..." />
                                 </div>
                             </div>
                         </div>
                         {/* Footer */}
-                        <div className={`p-4 border-t flex justify-end gap-2.5 ${
+                        <div className={`p-4 border-t flex justify-end gap-2.5 rounded-b-2xl ${
                             isDark ? 'bg-[#1e1e21] border-zinc-800' : 'bg-slate-50 border-slate-100'
                         }`}>
                             <button
