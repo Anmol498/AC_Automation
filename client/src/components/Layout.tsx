@@ -1,13 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AppContext';
 import { UserRole } from '../types';
 import { APP_NAME } from '../constants';
 import { useRealtime } from './RealtimeProvider';
 import { FloatingDock } from './ui/floating-dock';
-import { GenieOutlet } from './ui/GenieOutlet';
-import { LogoutOverlay } from './ui/LogoutOverlay';
-import { GenieProvider, useGenie } from '../context/GenieContext';
 import { motion, useTransform } from 'framer-motion';
 import {
   IconLayoutDashboard,
@@ -45,25 +42,12 @@ const ThemeToggleSwitch: React.FC<ThemeToggleSwitchProps> = ({ parentSize, isDar
   );
 };
 
-// Outer component: just sets up the Genie context so both the dock (which
-// reports icon click origins) and the Outlet (which animates using them)
-// can share state. Nothing else changed here.
 const Layout: React.FC = () => {
-  return (
-    <GenieProvider>
-      <LayoutContent />
-    </GenieProvider>
-  );
-};
-
-const LayoutContent: React.FC = () => {
   const { user, logout } = useAuth();
   const { status } = useRealtime();
   const location = useLocation();
   const navigate = useNavigate();
-  const { setOrigin } = useGenie();
   const [isCollapsed, setIsCollapsed] = useState(() => localStorage.getItem('sidebar-collapsed') === 'true');
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isDark, setIsDark] = useState(() => {
     const saved = localStorage.getItem('dashboard-theme');
     return saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -121,16 +105,12 @@ const LayoutContent: React.FC = () => {
   if (user?.role === UserRole.TECHNICIAN) {
     navItems.push({ path: '/my-work', label: 'My Work', icon: 'fa-clipboard-list' });
   }
+
   const handleLogout = () => {
-    // Origin (Logout icon position) is already set by onIconInteract on pointerdown,
-    // which fires before this onClick. Show the collapse overlay first, and only
-    // clear auth state (which unmounts Layout) once it's fully played out —
-    // otherwise Layout disappears mid-animation and nothing is visible.
-    setIsLoggingOut(true);
+    navigate('/', { replace: true });
     setTimeout(() => {
-      navigate('/', { replace: true });
       logout();
-    }, 650); // matches LogoutOverlay's enter + hold + collapse timing
+    }, 50);
   };
 
   const getIconForLabel = (label: string, isActive?: boolean) => {
@@ -182,14 +162,12 @@ const LayoutContent: React.FC = () => {
       href: '/settings',
       active: location.pathname.startsWith('/settings'),
     },
-
     {
       title: 'Logout',
       icon: <IconLogout className="h-full w-full text-red-400" />,
       onClick: handleLogout,
     },
   ];
-
 
   return (
     <div className={`h-screen flex flex-col md:flex-row ${isDark ? 'bg-background-dark text-zinc-100 dark' : 'bg-background-light text-slate-900'} overflow-hidden`}>
@@ -202,12 +180,11 @@ const LayoutContent: React.FC = () => {
                 orientation="vertical"
                 items={dockItems}
                 desktopClassName="border-slate-800 bg-slate-900/90 shadow-2xl"
-                onIconInteract={setOrigin}
               />
               {/* Floating border collapse/expand button, attached to the dock capsule */}
               <button
                 onClick={toggleSidebar}
-                className="absolute top-1/2 -right-4 -translate-y-1/2 z-50 w-8 h-8 rounded-full bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center shadow-lg transition-colors cursor-pointer focus:outline-none"
+                className="absolute top-1/2 -right-4 -translate-y-1/2 z-50 w-8 h-8 rounded-full bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-305 hover:text-white flex items-center justify-center shadow-lg transition-colors cursor-pointer focus:outline-none"
                 title="Expand Sidebar"
               >
                 <i className="fa-solid fa-chevron-right text-[10px]"></i>
@@ -287,7 +264,7 @@ const LayoutContent: React.FC = () => {
                 </div>
               </div>
 
-              {/* Subtle Connection Status indicator at absolute bottom */}
+              {/* Connection Status */}
               <div className="flex items-center gap-1.5 mt-1 text-[9px] text-slate-500 select-none border-t border-slate-800/10 pt-2 w-full justify-start px-2">
                 <span className="relative flex h-1.5 w-1.5">
                   {status === 'connecting' && (
@@ -311,7 +288,7 @@ const LayoutContent: React.FC = () => {
               </div>
             </div>
 
-            {/* Floating border collapse/expand button, attached to expanded sidebar edge */}
+            {/* Floating border collapse/expand button */}
             <button
               onClick={toggleSidebar}
               className="absolute top-9 -right-4 -translate-y-1/2 z-30 w-8 h-8 rounded-full bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-305 hover:text-white flex items-center justify-center shadow-lg transition-colors cursor-pointer focus:outline-none"
@@ -346,7 +323,12 @@ const LayoutContent: React.FC = () => {
         </header>
 
         <div className="flex-1 p-4 md:p-6 w-full max-w-full overflow-x-hidden">
-          <GenieOutlet isCollapsed={isCollapsed} outletContext={{ isDark, toggleTheme }} />
+          <div
+            key={location.pathname}
+            className="w-full h-full animate-in fade-in slide-in-from-bottom-2 duration-200"
+          >
+            <Outlet context={{ isDark, toggleTheme }} />
+          </div>
         </div>
       </main>
 
@@ -384,8 +366,6 @@ const LayoutContent: React.FC = () => {
           </span>
         </Link>
       </nav>
-
-      <LogoutOverlay active={isLoggingOut} />
     </div>
   );
 };
