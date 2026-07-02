@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, useNavigate } from 'react-router-dom';
 import { useAuth, useSettings } from '../context/AppContext';
 import { useRealtimeListener } from '../components/RealtimeProvider';
 import { api } from '../lib/api';
@@ -42,6 +42,7 @@ interface HistoryRecord {
 const InventoryManagement: React.FC = () => {
     const { token, user } = useAuth();
     const { isDark = false } = useOutletContext<{ isDark?: boolean }>() || {};
+    const navigate = useNavigate();
     const { lowStockThreshold, enableLowStockAlert, copperPipeLowStockThreshold, enableCopperPipeLowStockAlert } = useSettings();
     const [items, setItems] = useState<InventoryItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -1409,13 +1410,28 @@ const InventoryManagement: React.FC = () => {
                                         : 'Review all stock additions, sales, and corrections.'}
                                 </p>
                             </div>
-                            <button onClick={closeHistoryModal} className={`transition-colors rounded-lg p-2 border ${
-                                isDark 
-                                    ? 'text-zinc-400 hover:text-white hover:bg-zinc-800 border-zinc-700 bg-zinc-900/20' 
-                                    : 'text-slate-400 hover:text-slate-600 hover:bg-slate-200 bg-white shadow-sm border-slate-100'
-                            }`}>
-                                <i className="fa-solid fa-xmark text-lg"></i>
-                            </button>
+                            <div className="flex items-center gap-2.5">
+                                <button 
+                                    onClick={() => {
+                                        closeHistoryModal();
+                                        navigate(activeTab === 'Copper' ? '/logging?tab=Copper-logs' : '/logging?tab=Inventory-logs');
+                                    }}
+                                    className={`px-4 py-2 text-xs font-bold rounded-lg border transition-all flex items-center gap-1.5 ${
+                                        isDark 
+                                            ? 'text-blue-400 border-zinc-700 hover:bg-blue-950/20' 
+                                            : 'text-blue-600 border-slate-200 hover:bg-blue-50/50 shadow-sm bg-white'
+                                    }`}
+                                >
+                                    <i className="fa-solid fa-arrow-up-right-from-square"></i> View All
+                                </button>
+                                <button onClick={closeHistoryModal} className={`transition-colors rounded-lg p-2 border ${
+                                    isDark 
+                                        ? 'text-zinc-400 hover:text-white hover:bg-zinc-800 border-zinc-700 bg-zinc-900/20' 
+                                        : 'text-slate-400 hover:text-slate-600 hover:bg-slate-200 bg-white shadow-sm border-slate-100'
+                                }`}>
+                                    <i className="fa-solid fa-xmark text-lg"></i>
+                                </button>
+                            </div>
                         </div>
                         <div className={`p-0 overflow-y-auto flex-1 ${
                             isDark ? 'bg-[#1e1e21]/40' : 'bg-slate-50/30'

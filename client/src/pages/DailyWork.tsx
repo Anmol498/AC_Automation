@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AppContext';
 import { api } from '../lib/api';
 import { useRealtimeListener } from '../components/RealtimeProvider';
@@ -58,9 +58,28 @@ interface CopperHistoryLog {
 export default function DailyWork() {
     const { token } = useAuth();
     const { isDark = false } = useOutletContext<{ isDark?: boolean }>() || {};
+    const [searchParams, setSearchParams] = useSearchParams();
     
     // Active Tab state
-    const [activeTab, setActiveTab] = useState<'Daily-Work' | 'Cash-flow' | 'Inventory-logs' | 'Copper-logs'>('Daily-Work');
+    const [activeTab, setActiveTab] = useState<'Daily-Work' | 'Cash-flow' | 'Inventory-logs' | 'Copper-logs'>(() => {
+        const tab = searchParams.get('tab');
+        if (tab && ['Daily-Work', 'Cash-flow', 'Inventory-logs', 'Copper-logs'].includes(tab)) {
+            return tab as any;
+        }
+        return 'Daily-Work';
+    });
+
+    useEffect(() => {
+        const tab = searchParams.get('tab');
+        if (tab && ['Daily-Work', 'Cash-flow', 'Inventory-logs', 'Copper-logs'].includes(tab)) {
+            setActiveTab(tab as any);
+        }
+    }, [searchParams]);
+
+    const handleTabChange = (tab: 'Daily-Work' | 'Cash-flow' | 'Inventory-logs' | 'Copper-logs') => {
+        setActiveTab(tab);
+        setSearchParams({ tab });
+    };
 
     // --- Daily Work Logs states ---
     const [dailyLogs, setDailyLogs] = useState<DailyWorkLog[]>([]);
@@ -486,7 +505,7 @@ export default function DailyWork() {
                                 ? isDark ? 'text-blue-400 border-b-2 border-blue-500 bg-blue-950/20' : 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50'
                                 : isDark ? 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
                         }`}
-                        onClick={() => setActiveTab('Daily-Work')}
+                        onClick={() => handleTabChange('Daily-Work')}
                     >
                         Daily Work
                     </button>
@@ -496,7 +515,7 @@ export default function DailyWork() {
                                 ? isDark ? 'text-blue-400 border-b-2 border-blue-500 bg-blue-950/20' : 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50'
                                 : isDark ? 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
                         }`}
-                        onClick={() => setActiveTab('Cash-flow')}
+                        onClick={() => handleTabChange('Cash-flow')}
                     >
                         Cash Flow
                     </button>
@@ -506,7 +525,7 @@ export default function DailyWork() {
                                 ? isDark ? 'text-blue-400 border-b-2 border-blue-500 bg-blue-950/20' : 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50'
                                 : isDark ? 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
                         }`}
-                        onClick={() => setActiveTab('Inventory-logs')}
+                        onClick={() => handleTabChange('Inventory-logs')}
                     >
                         Inventory Logs
                     </button>
@@ -516,7 +535,7 @@ export default function DailyWork() {
                                 ? isDark ? 'text-blue-400 border-b-2 border-blue-500 bg-blue-950/20' : 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50'
                                 : isDark ? 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
                         }`}
-                        onClick={() => setActiveTab('Copper-logs')}
+                        onClick={() => handleTabChange('Copper-logs')}
                     >
                         Copper Logs
                     </button>
