@@ -283,6 +283,20 @@ export async function ensureDatabaseReady() {
     `);
 
     await pool.execute(`
+      CREATE TABLE IF NOT EXISTS cash_flow (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        date DATE NOT NULL,
+        received DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+        from_source VARCHAR(255) NOT NULL DEFAULT '',
+        expenditure DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+        on_source VARCHAR(255) NOT NULL DEFAULT '',
+        sent_home DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+        balance DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await pool.execute(`
       CREATE TABLE IF NOT EXISTS material_logs (
         id INT AUTO_INCREMENT PRIMARY KEY,
         job_id INT NOT NULL,

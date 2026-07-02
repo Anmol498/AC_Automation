@@ -161,4 +161,63 @@ router.delete('/technician-work/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// --- CASH FLOW LOGS ---
+router.get('/cash-flow', authenticateToken, async (req, res) => {
+  try {
+    const [rows] = await pool.execute('SELECT * FROM cash_flow ORDER BY date DESC, id DESC');
+    res.json(rows);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/cash-flow', authenticateToken, isAdminOrSuperAdmin, async (req, res) => {
+  try {
+    const { date, received, from_source, expenditure, on_source, sent_home } = req.body;
+    const finalDate = date || new Date().toISOString().split('T')[0];
+    const recVal = parseFloat(received) || 0;
+    const expVal = parseFloat(expenditure) || 0;
+    const homeVal = parseFloat(sent_home) || 0;
+    const balVal = recVal - expVal;
+
+    const [result]: any = await pool.execute(
+      'INSERT INTO cash_flow (date, received, from_source, expenditure, on_source, sent_home, balance) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [finalDate, recVal, from_source || '', expVal, on_source || '', homeVal, balVal]
+    );
+    res.json({ success: true, id: result.insertId });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.put('/cash-flow/:id', authenticateToken, isAdminOrSuperAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { date, received, from_source, expenditure, on_source, sent_home } = req.body;
+    const finalDate = date || new Date().toISOString().split('T')[0];
+    const recVal = parseFloat(received) || 0;
+    const expVal = parseFloat(expenditure) || 0;
+    const homeVal = parseFloat(sent_home) || 0;
+    const balVal = recVal - expVal;
+
+    await pool.execute(
+      'UPDATE cash_flow SET date = ?, received = ?, from_source = ?, expenditure = ?, on_source = ?, sent_home = ?, balance = ? WHERE id = ?',
+      [finalDate, recVal, from_source || '', expVal, on_source || '', homeVal, balVal, id]
+    );
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/cash-flow/:id', authenticateToken, isAdminOrSuperAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.execute('DELETE FROM cash_flow WHERE id = ?', [id]);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;

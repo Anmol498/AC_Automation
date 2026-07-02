@@ -117,7 +117,7 @@ app.use((req: any, res: any, next: any) => {
           broadcast('jobs');
         } else if (path.startsWith('/api/inventory')) {
           broadcast('inventory');
-        } else if (path.startsWith('/api/daily-work') || path.startsWith('/api/technician-work')) {
+        } else if (path.startsWith('/api/daily-work') || path.startsWith('/api/technician-work') || path.startsWith('/api/cash-flow')) {
           broadcast('work');
         } else if (path.startsWith('/api/material-logs') || path.startsWith('/api/material')) {
           broadcast('jobs');

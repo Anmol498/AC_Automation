@@ -114,7 +114,7 @@ const LayoutContent: React.FC = () => {
   if (user?.role !== UserRole.TECHNICIAN) {
     navItems.splice(1, 0, { path: '/customers', label: 'Customers', icon: 'fa-users' });
     navItems.push({ path: '/inventory', label: 'Inventory', icon: 'fa-boxes-stacked' });
-    navItems.push({ path: '/daily-work', label: 'Daily Work', icon: 'fa-clipboard-list' });
+    navItems.push({ path: '/daily-work', label: 'Logging', icon: 'fa-clipboard-list' });
   }
 
   // Technician gets "My Work" nav item
@@ -145,6 +145,7 @@ const LayoutContent: React.FC = () => {
         return <IconHammer className={sizeClasses} />;
       case 'Inventory':
         return <IconPackage className={sizeClasses} />;
+      case 'Logging':
       case 'Daily Work':
       case 'My Work':
         return <IconClipboardText className={sizeClasses} />;

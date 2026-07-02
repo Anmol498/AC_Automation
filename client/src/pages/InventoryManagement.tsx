@@ -1443,7 +1443,7 @@ const InventoryManagement: React.FC = () => {
                                         <tbody className={`divide-y ${
                                             isDark ? 'divide-zinc-800/60 bg-[#242427]' : 'divide-slate-100 bg-white'
                                         }`}>
-                                            {copperHistoryLogs.slice((historyPage - 1) * itemsPerPage, historyPage * itemsPerPage).map(log => {
+                                            {copperHistoryLogs.slice(0, 20).slice((historyPage - 1) * itemsPerPage, historyPage * itemsPerPage).map(log => {
                                                 const netUsed = Number(log.sentQty || 0) - Number(log.returnQty || 0);
                                                 return (
                                                     <tr key={`${log.origin || 'warehouse'}-${log.id}`} className={`transition-colors ${
@@ -1512,7 +1512,7 @@ const InventoryManagement: React.FC = () => {
                                         <tbody className={`divide-y ${
                                             isDark ? 'divide-zinc-800/60 bg-[#242427]' : 'divide-slate-100 bg-white'
                                         }`}>
-                                            {historyLogs.slice((historyPage - 1) * itemsPerPage, historyPage * itemsPerPage).map(log => (
+                                            {historyLogs.slice(0, 20).slice((historyPage - 1) * itemsPerPage, historyPage * itemsPerPage).map(log => (
                                                 <tr key={log.id} className={`transition-colors ${
                                                     isDark ? 'hover:bg-zinc-800/20' : 'hover:bg-slate-50'
                                                 }`}>
@@ -1569,7 +1569,7 @@ const InventoryManagement: React.FC = () => {
                                 <Pagination
                                     isDark={isDark}
                                     currentPage={historyPage}
-                                    totalPages={Math.ceil(copperHistoryLogs.length / itemsPerPage)}
+                                    totalPages={Math.min(Math.ceil(copperHistoryLogs.length / itemsPerPage), 2)}
                                     onPageChange={setHistoryPage}
                                 />
                             )
@@ -1578,7 +1578,7 @@ const InventoryManagement: React.FC = () => {
                                 <Pagination
                                     isDark={isDark}
                                     currentPage={historyPage}
-                                    totalPages={Math.ceil(historyLogs.length / itemsPerPage)}
+                                    totalPages={Math.min(Math.ceil(historyLogs.length / itemsPerPage), 2)}
                                     onPageChange={setHistoryPage}
                                 />
                             )
