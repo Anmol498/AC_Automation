@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { useOutletContext, useNavigate } from 'react-router-dom';
+import { useOutletContext, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth, useSettings } from '../context/AppContext';
 import { useRealtimeListener } from '../components/RealtimeProvider';
 import { api } from '../lib/api';
@@ -43,15 +43,64 @@ const InventoryManagement: React.FC = () => {
     const { token, user } = useAuth();
     const { isDark = false } = useOutletContext<{ isDark?: boolean }>() || {};
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
+
+    // Tab state
+    const [activeTab, setActiveTab] = useState<'Mitsubishi' | 'Akabishi' | 'Copper'>(() => {
+        const tab = searchParams.get('tab');
+        if (tab && ['Mitsubishi', 'Akabishi', 'Copper'].includes(tab)) {
+            return tab as any;
+        }
+        return 'Mitsubishi';
+    });
+
+    // Page state
+    const [currentPage, setCurrentPage] = useState(() => {
+        const page = searchParams.get('page');
+        return page ? parseInt(page, 10) : 1;
+    });
+
     const { lowStockThreshold, enableLowStockAlert, copperPipeLowStockThreshold, enableCopperPipeLowStockAlert } = useSettings();
     const [items, setItems] = useState<InventoryItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState('');
-    const [activeTab, setActiveTab] = useState<'Mitsubishi' | 'Akabishi' | 'Copper'>('Mitsubishi');
     const [lastSoldItem, setLastSoldItem] = useState<{ id: number, quantity: number, soldQuantity: number } | null>(null);
     const [isLowStockModalOpen, setIsLowStockModalOpen] = useState(false);
-    const [currentPage, setCurrentPage] = useState(1);
     const [historyPage, setHistoryPage] = useState(1);
+
+    useEffect(() => {
+        const tab = searchParams.get('tab');
+        if (tab && ['Mitsubishi', 'Akabishi', 'Copper'].includes(tab)) {
+            setActiveTab(tab as any);
+        } else {
+            setActiveTab('Mitsubishi');
+        }
+
+        const page = searchParams.get('page');
+        if (page) {
+            const parsed = parseInt(page, 10);
+            if (!isNaN(parsed) && parsed !== currentPage) {
+                setCurrentPage(parsed);
+            }
+        } else {
+            setCurrentPage(1);
+        }
+    }, [searchParams]);
+
+    const handleTabChange = (tab: 'Mitsubishi' | 'Akabishi' | 'Copper') => {
+        setActiveTab(tab);
+        const params = new URLSearchParams(searchParams);
+        params.set('tab', tab);
+        params.set('page', '1');
+        setSearchParams(params);
+    };
+
+    const handlePageChange = (page: number) => {
+        setCurrentPage(page);
+        const params = new URLSearchParams(searchParams);
+        params.set('page', String(page));
+        setSearchParams(params);
+    };
     const itemsPerPage = 10;
 
     // Copper inventory states
@@ -89,9 +138,7 @@ const InventoryManagement: React.FC = () => {
         salePrice: 0
     });
 
-    useEffect(() => {
-        setCurrentPage(1);
-    }, [activeTab]);
+
 
     const fetchInventory = async () => {
         try {
@@ -655,7 +702,7 @@ const InventoryManagement: React.FC = () => {
                                 ? isDark ? 'text-blue-400 border-b-2 border-blue-500 bg-blue-950/20' : 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50' 
                                 : isDark ? 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
                         }`}
-                        onClick={() => setActiveTab('Mitsubishi')}
+                        onClick={() => handleTabChange('Mitsubishi')}
                     >
                         Mitsubishi
                     </button>
@@ -665,7 +712,7 @@ const InventoryManagement: React.FC = () => {
                                 ? isDark ? 'text-blue-400 border-b-2 border-blue-500 bg-blue-950/20' : 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50' 
                                 : isDark ? 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
                         }`}
-                        onClick={() => setActiveTab('Akabishi')}
+                        onClick={() => handleTabChange('Akabishi')}
                     >
                         Akabishi
                     </button>
@@ -675,7 +722,7 @@ const InventoryManagement: React.FC = () => {
                                 ? isDark ? 'text-blue-400 border-b-2 border-blue-500 bg-blue-950/20' : 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50' 
                                 : isDark ? 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
                         }`}
-                        onClick={() => setActiveTab('Copper')}
+                        onClick={() => handleTabChange('Copper')}
                     >
                         Copper Pipe
                     </button>
@@ -807,7 +854,7 @@ const InventoryManagement: React.FC = () => {
                     <Pagination isDark={isDark}
                         currentPage={currentPage}
                         totalPages={totalItemsPages}
-                        onPageChange={setCurrentPage}
+                        onPageChange={handlePageChange}
                     />
                 </div>
                 )}

@@ -84,7 +84,12 @@ export default function DailyWork() {
     // --- Daily Work Logs states ---
     const [dailyLogs, setDailyLogs] = useState<DailyWorkLog[]>([]);
     const [isDailyLoading, setIsDailyLoading] = useState(false);
-    const [dailyPage, setDailyPage] = useState(1);
+    
+    const [dailyPage, setDailyPage] = useState(() => {
+        const page = searchParams.get('dailyPage');
+        return page ? parseInt(page, 10) : 1;
+    });
+
     const [dailySearch, setDailySearch] = useState('');
     const [isDailySearchExpanded, setIsDailySearchExpanded] = useState(false);
     const dailySearchRef = useRef<HTMLInputElement>(null);
@@ -96,7 +101,12 @@ export default function DailyWork() {
     // --- Cash Flow Logs states ---
     const [cashLogs, setCashLogs] = useState<CashFlowLog[]>([]);
     const [isCashLoading, setIsCashLoading] = useState(false);
-    const [cashPage, setCashPage] = useState(1);
+    
+    const [cashPage, setCashPage] = useState(() => {
+        const page = searchParams.get('cashPage');
+        return page ? parseInt(page, 10) : 1;
+    });
+
     const [cashSearch, setCashSearch] = useState('');
     const [isCashSearchExpanded, setIsCashSearchExpanded] = useState(false);
     const cashSearchRef = useRef<HTMLInputElement>(null);
@@ -108,7 +118,12 @@ export default function DailyWork() {
     // --- Inventory History Logs states ---
     const [inventoryLogs, setInventoryLogs] = useState<InventoryHistoryLog[]>([]);
     const [isInventoryLoading, setIsInventoryLoading] = useState(false);
-    const [inventoryPage, setInventoryPage] = useState(1);
+    
+    const [inventoryPage, setInventoryPage] = useState(() => {
+        const page = searchParams.get('inventoryPage');
+        return page ? parseInt(page, 10) : 1;
+    });
+
     const [inventorySearch, setInventorySearch] = useState('');
     const [isInventorySearchExpanded, setIsInventorySearchExpanded] = useState(false);
     const inventorySearchRef = useRef<HTMLInputElement>(null);
@@ -116,7 +131,12 @@ export default function DailyWork() {
     // --- Copper History Logs states ---
     const [copperLogs, setCopperLogs] = useState<CopperHistoryLog[]>([]);
     const [isCopperLoading, setIsCopperLoading] = useState(false);
-    const [copperPage, setCopperPage] = useState(1);
+    
+    const [copperPage, setCopperPage] = useState(() => {
+        const page = searchParams.get('copperPage');
+        return page ? parseInt(page, 10) : 1;
+    });
+
     const [copperSearch, setCopperSearch] = useState('');
     const [isCopperSearchExpanded, setIsCopperSearchExpanded] = useState(false);
     const copperSearchRef = useRef<HTMLInputElement>(null);
@@ -132,6 +152,68 @@ export default function DailyWork() {
     const [downloadEndDate, setDownloadEndDate] = useState(() => new Date().toISOString().split('T')[0]);
 
     const itemsPerPage = 10;
+
+    useEffect(() => {
+        const dp = searchParams.get('dailyPage');
+        if (dp) {
+            const p = parseInt(dp, 10);
+            if (!isNaN(p) && p !== dailyPage) setDailyPage(p);
+        } else {
+            setDailyPage(1);
+        }
+
+        const cp = searchParams.get('cashPage');
+        if (cp) {
+            const p = parseInt(cp, 10);
+            if (!isNaN(p) && p !== cashPage) setCashPage(p);
+        } else {
+            setCashPage(1);
+        }
+
+        const ip = searchParams.get('inventoryPage');
+        if (ip) {
+            const p = parseInt(ip, 10);
+            if (!isNaN(p) && p !== inventoryPage) setInventoryPage(p);
+        } else {
+            setInventoryPage(1);
+        }
+
+        const cop = searchParams.get('copperPage');
+        if (cop) {
+            const p = parseInt(cop, 10);
+            if (!isNaN(p) && p !== copperPage) setCopperPage(p);
+        } else {
+            setCopperPage(1);
+        }
+    }, [searchParams]);
+
+    const handleDailyPageChange = (page: number) => {
+        setDailyPage(page);
+        const params = new URLSearchParams(searchParams);
+        params.set('dailyPage', String(page));
+        setSearchParams(params);
+    };
+
+    const handleCashPageChange = (page: number) => {
+        setCashPage(page);
+        const params = new URLSearchParams(searchParams);
+        params.set('cashPage', String(page));
+        setSearchParams(params);
+    };
+
+    const handleInventoryPageChange = (page: number) => {
+        setInventoryPage(page);
+        const params = new URLSearchParams(searchParams);
+        params.set('inventoryPage', String(page));
+        setSearchParams(params);
+    };
+
+    const handleCopperPageChange = (page: number) => {
+        setCopperPage(page);
+        const params = new URLSearchParams(searchParams);
+        params.set('copperPage', String(page));
+        setSearchParams(params);
+    };
 
     // --- FETCH METHODS ---
     const fetchDailyLogs = async () => {
@@ -201,11 +283,41 @@ export default function DailyWork() {
         fetchCopperLogs();
     });
 
-    // Reset pagination pages on search term change
-    useEffect(() => { setDailyPage(1); }, [dailySearch]);
-    useEffect(() => { setCashPage(1); }, [cashSearch]);
-    useEffect(() => { setInventoryPage(1); }, [inventorySearch]);
-    useEffect(() => { setCopperPage(1); }, [copperSearch]);
+    const isDailyMounted = useRef(false);
+    useEffect(() => {
+        if (!isDailyMounted.current) {
+            isDailyMounted.current = true;
+            return;
+        }
+        handleDailyPageChange(1);
+    }, [dailySearch]);
+
+    const isCashMounted = useRef(false);
+    useEffect(() => {
+        if (!isCashMounted.current) {
+            isCashMounted.current = true;
+            return;
+        }
+        handleCashPageChange(1);
+    }, [cashSearch]);
+
+    const isInventoryMounted = useRef(false);
+    useEffect(() => {
+        if (!isInventoryMounted.current) {
+            isInventoryMounted.current = true;
+            return;
+        }
+        handleInventoryPageChange(1);
+    }, [inventorySearch]);
+
+    const isCopperMounted = useRef(false);
+    useEffect(() => {
+        if (!isCopperMounted.current) {
+            isCopperMounted.current = true;
+            return;
+        }
+        handleCopperPageChange(1);
+    }, [copperSearch]);
 
     // --- DAILY WORK HANDLERS ---
     const handleAddDailyRow = async () => {
@@ -716,7 +828,7 @@ export default function DailyWork() {
                                 </tbody>
                             </table>
                         </div>
-                        <Pagination isDark={isDark} currentPage={dailyPage} totalPages={totalDailyPages} onPageChange={setDailyPage} />
+                        <Pagination isDark={isDark} currentPage={dailyPage} totalPages={totalDailyPages} onPageChange={handleDailyPageChange} />
                     </div>
                 )}
 
@@ -901,7 +1013,7 @@ export default function DailyWork() {
                                 </tbody>
                             </table>
                         </div>
-                        <Pagination isDark={isDark} currentPage={cashPage} totalPages={totalCashPages} onPageChange={setCashPage} />
+                        <Pagination isDark={isDark} currentPage={cashPage} totalPages={totalCashPages} onPageChange={handleCashPageChange} />
                     </div>
                 )}
 
@@ -1018,7 +1130,7 @@ export default function DailyWork() {
                                 </tbody>
                             </table>
                         </div>
-                        <Pagination isDark={isDark} currentPage={inventoryPage} totalPages={totalInventoryPages} onPageChange={setInventoryPage} />
+                        <Pagination isDark={isDark} currentPage={inventoryPage} totalPages={totalInventoryPages} onPageChange={handleInventoryPageChange} />
                     </div>
                 )}
 
@@ -1122,7 +1234,7 @@ export default function DailyWork() {
                                 </tbody>
                             </table>
                         </div>
-                        <Pagination isDark={isDark} currentPage={copperPage} totalPages={totalCopperPages} onPageChange={setCopperPage} />
+                        <Pagination isDark={isDark} currentPage={copperPage} totalPages={totalCopperPages} onPageChange={handleCopperPageChange} />
                     </div>
                 )}
             </div>
