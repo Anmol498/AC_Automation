@@ -30,6 +30,7 @@ const JobDetail: React.FC = () => {
   const [whatsappAnimStates, setWhatsappAnimStates] = useState<Record<number, 'idle' | 'filling' | 'rippling' | 'resolving' | 'completed'>>({});
   const [expandedCompletedPhases, setExpandedCompletedPhases] = useState<Record<number, boolean>>({});
   const [justCompletedPhases, setJustCompletedPhases] = useState<Set<number>>(new Set());
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
   const startEmailFilling = (phaseId: number) => {
     setEmailAnimStates(prev => ({ ...prev, [phaseId]: 'filling' }));
@@ -1700,245 +1701,321 @@ const JobDetail: React.FC = () => {
           </button>
         </div>
 
-        <div className="flex flex-col gap-3">
-          {/* Stacked completed phases at top (excludes just-completed this session) */}
+        <div className="mt-2">
           {(() => {
-            const stackedPhases = [...phases.filter(p => p.isCompleted && !justCompletedPhases.has(p.id))].reverse();
-            if (stackedPhases.length === 0) return null;
-            const allExpanded = stackedPhases.every(p => expandedCompletedPhases[p.id]);
+            const groups = job?.jobType === 'Service' 
+              ? [
+                  { title: "Inspection", items: ["Initial System Inspection"] },
+                  { title: "Cleaning", items: ["Filter & Coil Cleaning"] },
+                  { title: "Check", items: ["Gas Level & Pressure Check"] },
+                  { title: "Repair", items: ["Component Repair/Replacement"] },
+                  { title: "Final & Payment", items: ["Final Testing & Payment"] }
+                ]
+              : [
+                  {
+                    title: "Prep & Piping",
+                    items: [
+                      "Drain pipe",
+                      "Remote pipe",
+                      "Wall opening",
+                      "Supporting",
+                      "Copper piping (payment)"
+                    ]
+                  },
+                  {
+                    title: "Wiring & Ducting",
+                    items: [
+                      "Leak testing",
+                      "Dressing",
+                      "Communication wiring",
+                      "Ducting"
+                    ]
+                  },
+                  {
+                    title: "Unit Installation",
+                    items: [
+                      "Indoor Unit Installation",
+                      "Grill fitting",
+                      "Outdoor fittings (payment)"
+                    ]
+                  },
+                  {
+                    title: "Testing & Commissioning",
+                    items: [
+                      "Pressure stand",
+                      "Vacuum",
+                      "Gas charging",
+                      "Remote fitting",
+                      "Commissioning (payment)"
+                    ]
+                  }
+                ];
 
-            const toggleAll = () => {
-              if (allExpanded) {
-                setExpandedCompletedPhases({});
+            const matchedPhaseIds = new Set<number>();
+            const mappedGroups = groups.map((g) => {
+              const groupPhases = phases.filter(p => {
+                const match = g.items.some(item => item.toLowerCase() === p.phaseName.toLowerCase());
+                if (match) matchedPhaseIds.add(p.id);
+                return match;
+              });
+              return { ...g, phases: groupPhases };
+            });
+
+            const unmatchedPhases = phases.filter(p => !matchedPhaseIds.has(p.id));
+            if (unmatchedPhases.length > 0) {
+              mappedGroups.push({
+                title: "Other Tasks",
+                items: unmatchedPhases.map(p => p.phaseName),
+                phases: unmatchedPhases
+              });
+            }
+
+            let foundActive = false;
+            const groupsWithStatus = mappedGroups.map((g) => {
+              const total = g.phases.length;
+              const completed = g.phases.filter(p => p.isCompleted).length;
+              
+              let status: 'Complete' | 'In progress' | 'Not started' = 'Not started';
+              if (total === 0) {
+                status = 'Not started';
+              } else if (completed === total) {
+                status = 'Complete';
+              } else if (completed > 0) {
+                status = 'In progress';
+                foundActive = true;
+              } else if (!foundActive) {
+                status = 'In progress';
+                foundActive = true;
               } else {
-                const newState: Record<number, boolean> = {};
-                stackedPhases.forEach(p => { newState[p.id] = true; });
-                setExpandedCompletedPhases(newState);
+                status = 'Not started';
               }
+
+              return {
+                ...g,
+                total,
+                completed,
+                status
+              };
+            });
+
+            const isGroupExpanded = (groupTitle: string, status: string) => {
+              if (expandedGroups[groupTitle] !== undefined) {
+                return expandedGroups[groupTitle];
+              }
+              return status === 'In progress';
             };
 
-            return (
-              <div className="mb-1">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="h-px flex-1 bg-slate-200 dark:bg-border-dark"></div>
-                  <button 
-                    onClick={toggleAll}
-                    className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors cursor-pointer flex items-center gap-1.5"
-                  >
-                    Completed ({stackedPhases.length}/{phases.length})
-                    <i className={`ph ph-caret-down text-[8px] transition-transform duration-200 ${allExpanded ? 'rotate-180' : ''}`}></i>
-                  </button>
-                  <div className="h-px flex-1 bg-slate-200 dark:bg-border-dark"></div>
-                </div>
-                <div className="relative">
-                  {stackedPhases.map((phase, i) => {
-                    const isExpanded = expandedCompletedPhases[phase.id];
-                    
-                    return (
-                      <div
-                        key={phase.id}
-                        className="transition-all duration-300 ease-in-out"
-                        style={{
-                          marginTop: i === 0 ? '0px' : (allExpanded || expandedCompletedPhases[stackedPhases[i - 1]?.id] ? '6px' : '-32px'),
-                          zIndex: stackedPhases.length - i,
-                          position: 'relative',
-                        }}
-                      >
-                        <div className={`border rounded-xl overflow-hidden transition-all duration-300 ${isExpanded 
-                          ? 'border-emerald-500/30 bg-white dark:bg-card-dark shadow-lg shadow-emerald-500/5' 
-                          : 'border-slate-200 dark:border-border-dark bg-white dark:bg-card-dark hover:shadow-md'
-                        }`}>
-                          <button
-                            onClick={i === 0 ? toggleAll : (() => setExpandedCompletedPhases(prev => ({ ...prev, [phase.id]: !prev[phase.id] })))}
-                            className="w-full px-4 py-2.5 flex items-center justify-between gap-3 cursor-pointer hover:bg-slate-50/50 dark:hover:bg-background-dark/30 transition-colors"
-                          >
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] shrink-0 bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400">
-                                <i className="ph ph-check font-bold"></i>
-                              </div>
-                              <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 truncate">{phase.phaseName}</span>
-                              {phase.completedAt && (
-                                <span className="text-[10px] text-emerald-600/70 dark:text-emerald-400/70 font-medium shrink-0 hidden sm:inline">
-                                  {new Date(phase.completedAt).toLocaleDateString()}
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                              {!isExpanded && (
-                                <div className="flex items-center gap-1.5">
-                                  {/* Email Status Indicator */}
-                                  {phaseEmailStatus[phase.id] === 'skipped' && phaseWhatsappStatus[phase.id] === 'skipped' && (
-                                    <span className="text-[9px] text-slate-400 dark:text-slate-500 italic">skipped</span>
-                                  )}
-                                  {phaseEmailStatus[phase.id] === 'sent' && (
-                                    <div className="w-5 h-5 flex items-center justify-center rounded-full bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200/50 dark:border-blue-900/30" title="Email sent">
-                                      <svg className="w-2.5 h-2.5 text-blue-600 dark:text-blue-400" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" /></svg>
-                                    </div>
-                                  )}
-                                  {phaseEmailStatus[phase.id] === 'failed' && (
-                                    <div className="w-5 h-5 flex items-center justify-center rounded-full bg-red-50 dark:bg-red-950/20 border border-red-200/50 dark:border-red-900/30" title="Email failed">
-                                      <i className="fa-solid fa-envelope text-[10px] text-red-500"></i>
-                                    </div>
-                                  )}
+            const toggleGroup = (groupTitle: string, status: string) => {
+              setExpandedGroups(prev => ({
+                ...prev,
+                [groupTitle]: !isGroupExpanded(groupTitle, status)
+              }));
+            };
 
-                                  {/* WhatsApp Status Indicator */}
-                                  {phaseWhatsappStatus[phase.id] === 'read' && (
-                                    <div className="w-5 h-5 flex items-center justify-center rounded-full bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200/50 dark:border-emerald-900/30" title="WhatsApp read">
-                                      <svg className="w-3 h-3 text-[#34B7F1]" viewBox="0 0 24 24"><path d="M2 13l4 4L16 7" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" /><path d="M8 13l4 4L22 7" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" /></svg>
-                                    </div>
-                                  )}
-                                  {phaseWhatsappStatus[phase.id] === 'delivered' && (
-                                    <div className="w-5 h-5 flex items-center justify-center rounded-full bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200/50 dark:border-emerald-900/30" title="WhatsApp delivered">
-                                      <svg className="w-3 h-3 text-slate-400" viewBox="0 0 24 24"><path d="M2 13l4 4L16 7" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" /><path d="M8 13l4 4L22 7" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" /></svg>
-                                    </div>
-                                  )}
-                                  {phaseWhatsappStatus[phase.id] === 'sent' && (
-                                    <div className="w-5 h-5 flex items-center justify-center rounded-full bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200/50 dark:border-emerald-900/30" title="WhatsApp sent">
-                                      <svg className="w-3 h-3 text-slate-400" viewBox="0 0 24 24"><path d="M4 13l4 4L18 7" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" /></svg>
-                                    </div>
-                                  )}
-                                  {phaseWhatsappStatus[phase.id] === 'failed' && (
-                                    <div className="w-5 h-5 flex items-center justify-center rounded-full bg-red-50 dark:bg-red-950/20 border border-red-200/50 dark:border-red-900/30" title="WhatsApp failed">
-                                      <i className="fa-brands fa-whatsapp text-[10px] text-red-500"></i>
-                                    </div>
-                                  )}
+            const renderGroupCard = (group: any) => {
+              const isExpanded = isGroupExpanded(group.title, group.status);
+              let ringColor = '';
+              let statusLabel = '';
+
+              if (group.status === 'Complete') {
+                ringColor = 'border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/5';
+                statusLabel = 'Complete';
+              } else if (group.status === 'In progress') {
+                ringColor = 'border-blue-500/30 text-blue-600 dark:text-blue-400 bg-blue-500/5';
+                statusLabel = 'In progress';
+              } else {
+                ringColor = 'border-slate-200 dark:border-border-dark text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-background-dark/50';
+                statusLabel = 'Not started';
+              }
+
+              return (
+                <div 
+                  key={group.title} 
+                  className={`border rounded-xl overflow-hidden transition-all duration-350 ${
+                    isExpanded 
+                      ? 'shadow-md border-slate-300 dark:border-slate-700 bg-white dark:bg-card-dark' 
+                      : 'border-slate-200 dark:border-border-dark bg-white dark:bg-card-dark/25 hover:border-slate-350 dark:hover:border-slate-800'
+                  }`}
+                >
+                  <button
+                    onClick={() => toggleGroup(group.title, group.status)}
+                    className="w-full px-4 py-3 flex items-center justify-between gap-3 text-left transition-colors cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-900/30"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 border ${ringColor}`}>
+                        {group.completed}/{group.total}
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-sm font-bold text-slate-805 dark:text-slate-200 truncate">{group.title}</span>
+                        <span className="text-[9px] text-slate-400 dark:text-slate-500 font-semibold uppercase tracking-wider mt-0.5">{statusLabel}</span>
+                      </div>
+                    </div>
+                    <i className={`ph ph-caret-down text-slate-400 text-xs transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}></i>
+                  </button>
+
+                  {isExpanded && (
+                    <div className="border-t border-slate-100 dark:border-border-dark/50 bg-slate-50/20 dark:bg-background-dark/10 p-3 flex flex-col gap-2 animate-in fade-in duration-200">
+                      {group.phases.map((phase: any) => {
+                        const originalIdx = phases.findIndex(p => p.id === phase.id);
+                        const isJustCompleted = justCompletedPhases.has(phase.id);
+                        return (
+                          <div 
+                            key={phase.id} 
+                            className={`p-2.5 rounded-lg border text-xs flex items-center justify-between gap-3 transition-all ${
+                              phase.isCompleted 
+                                ? 'bg-emerald-500/5 dark:bg-emerald-500/10 border-emerald-500/10' 
+                                : 'bg-white dark:bg-[#18181b] border-slate-200 dark:border-border-dark hover:border-slate-350 dark:hover:border-slate-700'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              {phase.isCompleted ? (
+                                <div className="w-5 h-5 rounded-full flex items-center justify-center bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 shrink-0">
+                                  <i className="ph ph-check text-[10px] font-bold"></i>
+                                </div>
+                              ) : (
+                                <div className="w-5 h-5 rounded-full border border-slate-300 dark:border-slate-700 shrink-0 flex items-center justify-center text-[9px] text-slate-400 font-medium">
+                                  {originalIdx + 1}
                                 </div>
                               )}
-                              <i className={`ph ph-caret-down text-slate-400 text-xs transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}></i>
-                            </div>
-                          </button>
-
-                          {isExpanded && (
-                            <div className="px-4 pb-3 pt-1 border-t border-slate-100 dark:border-border-dark/50 flex items-center justify-between gap-4 animate-in fade-in duration-200">
-                              <div className="flex items-center gap-2">
+                              <div className="flex flex-col min-w-0">
+                                <span className={`font-semibold truncate ${
+                                  phase.isCompleted 
+                                    ? 'text-slate-450 dark:text-slate-400 line-through' 
+                                    : 'text-slate-700 dark:text-slate-200'
+                                }`}>
+                                  {phase.phaseName}
+                                </span>
                                 {phase.completedAt && (
-                                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
-                                    <i className="ph ph-circle-wavy-check"></i> Finished {new Date(phase.completedAt).toLocaleDateString()}
+                                  <span className="text-[9px] text-emerald-600 dark:text-emerald-450 font-bold flex items-center gap-1 mt-0.5">
+                                    <i className="ph ph-circle-wavy-check"></i> {new Date(phase.completedAt).toLocaleDateString()}
                                   </span>
                                 )}
                               </div>
-                              <div className="flex items-center gap-1.5 shrink-0">
-                                {phaseEmailStatus[phase.id] !== 'skipped' && (
-                                  <AnimatedNotificationButton
-                                    channel="email"
-                                    status={phaseEmailStatus[phase.id]}
-                                    onClick={() => handleRetryEmail(phase.id)}
-                                    isProcessing={isProcessing === phase.id}
-                                    animState={emailAnimStates[phase.id] || 'idle'}
-                                  />
-                                )}
-                                {whatsappEnabled && phaseWhatsappStatus[phase.id] !== 'skipped' && (
-                                  <AnimatedNotificationButton
-                                    channel="whatsapp"
-                                    status={phaseWhatsappStatus[phase.id]}
-                                    onClick={() => handleMarkCompleteWhatsApp(phase.id, true)}
-                                    isProcessing={isProcessing === phase.id}
-                                    animState={whatsappAnimStates[phase.id] || 'idle'}
-                                  />
-                                )}
-                                {((!phaseEmailStatus[phase.id] || phaseEmailStatus[phase.id] === 'failed') && 
-                                  (!whatsappEnabled || !phaseWhatsappStatus[phase.id] || phaseWhatsappStatus[phase.id] === 'failed')) && (
-                                  <button
-                                    onClick={() => handleSkipNotificationsForPhase(phase.id)}
-                                    disabled={isProcessing === phase.id}
-                                    className="px-2.5 py-1.5 bg-white dark:bg-[#18181b] border border-slate-200 dark:border-border-dark text-[10px] font-bold text-slate-500 dark:text-slate-400 hover:border-red-400 hover:text-red-500 rounded-xl transition-all cursor-pointer"
-                                    title="Skip notifications"
-                                  >
-                                    SKIP
-                                  </button>
-                                )}
-                                {phaseEmailStatus[phase.id] === 'skipped' && (!whatsappEnabled || phaseWhatsappStatus[phase.id] === 'skipped') && (
-                                  <span className="text-[10px] text-slate-400 dark:text-slate-500 italic">Notifications skipped</span>
-                                )}
-                              </div>
                             </div>
-                          )}
-                        </div>
+
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {phase.isCompleted ? (
+                                <>
+                                  {phaseEmailStatus[phase.id] !== 'skipped' && (
+                                    <AnimatedNotificationButton
+                                      channel="email"
+                                      status={phaseEmailStatus[phase.id]}
+                                      onClick={() => handleRetryEmail(phase.id)}
+                                      isProcessing={isProcessing === phase.id}
+                                      animState={emailAnimStates[phase.id] || 'idle'}
+                                    />
+                                  )}
+                                  {whatsappEnabled && phaseWhatsappStatus[phase.id] !== 'skipped' && (
+                                    <AnimatedNotificationButton
+                                      channel="whatsapp"
+                                      status={phaseWhatsappStatus[phase.id]}
+                                      onClick={() => handleMarkCompleteWhatsApp(phase.id, true)}
+                                      isProcessing={isProcessing === phase.id}
+                                      animState={whatsappAnimStates[phase.id] || 'idle'}
+                                    />
+                                  )}
+                                  {((!phaseEmailStatus[phase.id] || phaseEmailStatus[phase.id] === 'failed') && 
+                                    (!whatsappEnabled || !phaseWhatsappStatus[phase.id] || phaseWhatsappStatus[phase.id] === 'failed')) && (
+                                    <button
+                                      onClick={() => handleSkipNotificationsForPhase(phase.id)}
+                                      disabled={isProcessing === phase.id}
+                                      className="px-2 py-1 bg-white dark:bg-[#18181b] border border-slate-200 dark:border-border-dark text-[9px] font-bold text-slate-500 dark:text-slate-450 hover:border-red-400 hover:text-red-500 rounded-lg transition-all cursor-pointer"
+                                      title="Skip notifications"
+                                    >
+                                      SKIP
+                                    </button>
+                                  )}
+                                  {phaseEmailStatus[phase.id] === 'skipped' && (!whatsappEnabled || phaseWhatsappStatus[phase.id] === 'skipped') && (
+                                    <span className="text-[9px] text-slate-405 dark:text-slate-500 italic font-medium">Skipped</span>
+                                  )}
+                                </>
+                              ) : (
+                                <button
+                                  onClick={() => handleDirectComplete(phase.id, { sendWhatsApp: false, skipEmail: true, silentComplete: true })}
+                                  disabled={isProcessing === phase.id}
+                                  className="px-2.5 py-1 bg-white dark:bg-[#18181b] border border-slate-200 dark:border-border-dark text-[9px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-350 hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 rounded-lg transition-all disabled:opacity-50 shrink-0 cursor-pointer"
+                                  title="Complete phase"
+                                >
+                                  {isProcessing === phase.id ? <i className="fa-solid fa-circle-notch fa-spin"></i> : 'COMPLETE'}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            };
+
+            return (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Not Started Column */}
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-border-dark">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-450 dark:text-slate-500 flex items-center gap-1.5">
+                      <i className="ph ph-circle text-slate-400 text-xs"></i> Not Started
+                    </span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+                      {groupsWithStatus.filter(g => g.status === 'Not started').length}
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-3">
+                    {groupsWithStatus.filter(g => g.status === 'Not started').length === 0 ? (
+                      <div className="border border-dashed border-slate-200 dark:border-slate-800 rounded-xl p-6 text-center text-xs text-slate-400 dark:text-slate-500">
+                        No phases in this status
                       </div>
-                    );
-                  })}
+                    ) : (
+                      groupsWithStatus.filter(g => g.status === 'Not started').map(g => renderGroupCard(g))
+                    )}
+                  </div>
+                </div>
+
+                {/* In Progress Column */}
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-border-dark">
+                    <span className="text-xs font-bold uppercase tracking-wider text-blue-500 flex items-center gap-1.5">
+                      <i className="ph ph-spinner-gap fa-spin text-blue-500 text-xs"></i> In Progress
+                    </span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                      {groupsWithStatus.filter(g => g.status === 'In progress').length}
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-3">
+                    {groupsWithStatus.filter(g => g.status === 'In progress').length === 0 ? (
+                      <div className="border border-dashed border-blue-500/10 dark:border-blue-500/5 rounded-xl p-6 text-center text-xs text-slate-450 dark:text-slate-500">
+                        No active phases
+                      </div>
+                    ) : (
+                      groupsWithStatus.filter(g => g.status === 'In progress').map(g => renderGroupCard(g))
+                    )}
+                  </div>
+                </div>
+
+                {/* Complete Column */}
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-border-dark">
+                    <span className="text-xs font-bold uppercase tracking-wider text-emerald-500 flex items-center gap-1.5">
+                      <i className="ph ph-check-circle text-emerald-500 text-xs"></i> Complete
+                    </span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                      {groupsWithStatus.filter(g => g.status === 'Complete').length}
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-3">
+                    {groupsWithStatus.filter(g => g.status === 'Complete').length === 0 ? (
+                      <div className="border border-dashed border-emerald-500/10 dark:border-emerald-500/5 rounded-xl p-6 text-center text-xs text-slate-450 dark:text-slate-500">
+                        No completed phases
+                      </div>
+                    ) : (
+                      groupsWithStatus.filter(g => g.status === 'Complete').map(g => renderGroupCard(g))
+                    )}
+                  </div>
                 </div>
               </div>
             );
           })()}
-
-          {/* Remaining phases in original order: just-completed (with buttons) + incomplete (with COMPLETE) */}
-          {phases.filter(p => !p.isCompleted || justCompletedPhases.has(p.id)).map((phase) => {
-            const originalIdx = phases.findIndex(p => p.id === phase.id);
-            const isJustCompleted = justCompletedPhases.has(phase.id);
-            return (
-            <div key={phase.id} className={`p-4 flex items-center justify-between gap-4 transition-all border rounded-xl ${isJustCompleted 
-              ? 'border-emerald-500/30 bg-emerald-50/5 dark:bg-emerald-950/5' 
-              : 'border-slate-200 dark:border-border-dark bg-white dark:bg-card-dark/25 hover:bg-slate-50 dark:hover:bg-background-dark/40 group'}`}>
-              <div className="flex items-center gap-4">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black transition-all shrink-0 border ${isJustCompleted
-                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
-                  : 'bg-slate-100 dark:bg-[#18181b] border-slate-200 dark:border-border-dark text-slate-400 dark:text-slate-500'
-                }`}>
-                  {isJustCompleted ? <i className="ph ph-check font-bold"></i> : originalIdx + 1}
-                </div>
-                <div className="flex flex-col">
-                  <span className={`text-sm font-semibold ${isJustCompleted ? 'text-slate-800 dark:text-slate-200' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200'}`}>{phase.phaseName}</span>
-                  {isJustCompleted && phase.completedAt && (
-                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1 mt-0.5">
-                      <i className="ph ph-circle-wavy-check"></i> Finished {new Date(phase.completedAt).toLocaleDateString()}
-                    </span>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center gap-1.5 shrink-0">
-                {isJustCompleted ? (
-                  <>
-                    {/* Email button */}
-                    {phaseEmailStatus[phase.id] !== 'skipped' && (
-                      <AnimatedNotificationButton
-                        channel="email"
-                        status={phaseEmailStatus[phase.id]}
-                        onClick={() => handleRetryEmail(phase.id)}
-                        isProcessing={isProcessing === phase.id}
-                        animState={emailAnimStates[phase.id] || 'idle'}
-                      />
-                    )}
-                    {/* WhatsApp button */}
-                    {whatsappEnabled && phaseWhatsappStatus[phase.id] !== 'skipped' && (
-                      <AnimatedNotificationButton
-                        channel="whatsapp"
-                        status={phaseWhatsappStatus[phase.id]}
-                        onClick={() => handleMarkCompleteWhatsApp(phase.id, true)}
-                        isProcessing={isProcessing === phase.id}
-                        animState={whatsappAnimStates[phase.id] || 'idle'}
-                      />
-                    )}
-                    {/* Skip button */}
-                    {((!phaseEmailStatus[phase.id] || phaseEmailStatus[phase.id] === 'failed') && 
-                      (!whatsappEnabled || !phaseWhatsappStatus[phase.id] || phaseWhatsappStatus[phase.id] === 'failed')) && (
-                      <button
-                        onClick={() => handleSkipNotificationsForPhase(phase.id)}
-                        disabled={isProcessing === phase.id}
-                        className="px-2.5 py-1.5 bg-white dark:bg-[#18181b] border border-slate-200 dark:border-border-dark text-[10px] font-bold text-slate-500 dark:text-slate-400 hover:border-red-400 hover:text-red-500 rounded-xl transition-all cursor-pointer"
-                        title="Skip notifications"
-                      >
-                        SKIP
-                      </button>
-                    )}
-                    {phaseEmailStatus[phase.id] === 'skipped' && (!whatsappEnabled || phaseWhatsappStatus[phase.id] === 'skipped') && (
-                      <span className="text-[10px] text-slate-400 dark:text-slate-500 italic">Notifications skipped</span>
-                    )}
-                  </>
-                ) : (
-                  <button
-                    onClick={() => handleDirectComplete(phase.id, { sendWhatsApp: false, skipEmail: true, silentComplete: true })}
-                    disabled={isProcessing === phase.id}
-                    className="px-3 py-1.5 bg-white dark:bg-[#18181b] border border-slate-200 dark:border-border-dark text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-350 hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 rounded-xl transition-all disabled:opacity-50 shrink-0 cursor-pointer"
-                    title="Complete phase"
-                  >
-                    {isProcessing === phase.id ? <i className="fa-solid fa-circle-notch fa-spin"></i> : 'COMPLETE'}
-                  </button>
-                )}
-              </div>
-            </div>
-          );
-          })}
         </div>
       </div>
 
