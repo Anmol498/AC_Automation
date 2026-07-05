@@ -11,6 +11,7 @@ import { useRealtimeListener } from '../components/RealtimeProvider';
 import { api } from '../lib/api';
 import { useDebounce } from '../hooks/useDebounce';
 import { API_BASE_URL } from '../constants';
+import { Skeleton } from '../components/ui/Skeleton';
 
 
 const CustomerList: React.FC = () => {
@@ -284,7 +285,90 @@ const CustomerList: React.FC = () => {
       </div>
 
       {loading ? (
-        <div className="text-center p-10"><i className="fa-solid fa-spinner fa-spin text-blue-600 text-2xl"></i></div>
+        <div className="space-y-6">
+          {/* Skeleton Mobile Card View */}
+          <div className="md:hidden space-y-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div 
+                key={i} 
+                className={`rounded-3xl p-5 shadow-sm border flex flex-col ${
+                  isDark ? 'bg-[#242427] border-zinc-800' : 'bg-white border-slate-100'
+                }`}
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex items-center gap-3 w-full">
+                    <Skeleton className="w-12 h-12 rounded-2xl shrink-0" />
+                    <div className="space-y-2 flex-1">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-3 w-16" />
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-3 mb-5">
+                  <Skeleton className="h-3.5 w-full" />
+                  <Skeleton className="h-3.5 w-3/4" />
+                </div>
+                <div className="flex justify-between items-center pt-4 border-t border-slate-50 dark:border-zinc-800">
+                  <Skeleton className="h-6 w-20 rounded-lg" />
+                  <Skeleton className="h-8 w-16 rounded-xl" />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Skeleton Desktop Table View */}
+          <div className="hidden md:flex flex-col gap-4">
+            <div className={`rounded-2xl border overflow-hidden shadow-sm ${
+              isDark ? 'bg-[#242427] border-zinc-800' : 'bg-white border-slate-200'
+            }`}>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left table-fixed">
+                  <thead className={`text-[10px] font-bold uppercase tracking-wider ${
+                    isDark ? 'bg-[#1e1e21] text-zinc-400' : 'bg-slate-50 text-slate-500'
+                  }`}>
+                    <tr>
+                      <th className="w-[25%] px-6 py-4">Name</th>
+                      <th className="w-[25%] px-6 py-4">Contact</th>
+                      <th className="w-[32%] px-6 py-4">Address</th>
+                      <th className="w-[12%] px-6 py-4">Files</th>
+                      <th className="w-[6%] px-6 py-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className={`divide-y ${isDark ? 'divide-zinc-800' : 'divide-slate-100'}`}>
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <tr key={i} className="text-sm">
+                        <td className="px-6 py-4">
+                          <Skeleton className="h-4 w-28 mb-1.5" />
+                          <Skeleton className="h-3 w-20" />
+                        </td>
+                        <td className="px-6 py-4">
+                          <Skeleton className="h-4 w-36 mb-1.5" />
+                          <Skeleton className="h-3 w-24" />
+                        </td>
+                        <td className="px-6 py-4">
+                          <Skeleton className="h-3.5 w-full mb-1" />
+                          <Skeleton className="h-3.5 w-2/3" />
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-col gap-1.5">
+                            <Skeleton className="h-3 w-16" />
+                            <Skeleton className="h-3 w-16" />
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex justify-end gap-2">
+                            <Skeleton className="h-8 w-8 rounded-full" />
+                            <Skeleton className="h-8 w-8 rounded-full" />
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
       ) : (
         <div className="space-y-6">
           {/* Mobile Card View (< md) */}

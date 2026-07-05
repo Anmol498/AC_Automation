@@ -11,6 +11,7 @@ import CustomSelect from '../components/CustomSelect';
 import { toast } from 'sonner';
 import { api } from '../lib/api';
 import { useDebounce } from '../hooks/useDebounce';
+import { Skeleton } from '../components/ui/Skeleton';
 
 
 const JobList: React.FC = () => {
@@ -289,7 +290,101 @@ const JobList: React.FC = () => {
       </div>
 
       {loading ? (
-        <div className="text-center p-10"><i className="fa-solid fa-spinner fa-spin text-blue-600 text-2xl"></i></div>
+        <div className="space-y-6">
+          {/* Skeleton Mobile Card View */}
+          <div className="md:hidden space-y-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className={`rounded-2xl p-5 shadow-sm border flex flex-col ${
+                isDark ? 'bg-[var(--color-card-dark)] border-[var(--color-border-dark)]' : 'bg-[var(--color-card-light)] border-[var(--color-border-light)]'
+              }`}>
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex items-center gap-3 w-full">
+                    <Skeleton className="w-10 h-10 rounded-full shrink-0" />
+                    <div className="space-y-2 flex-1">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-3 w-24" />
+                    </div>
+                  </div>
+                </div>
+                {user?.role === 'superadmin' && (
+                  <div className="grid grid-cols-2 gap-4 mb-5">
+                    <div>
+                      <Skeleton className="h-2 w-12 mb-1.5" />
+                      <Skeleton className="h-5 w-20" />
+                    </div>
+                    <div className="flex flex-col items-end">
+                      <Skeleton className="h-2 w-12 mb-1.5" />
+                      <Skeleton className="h-5 w-20" />
+                    </div>
+                  </div>
+                )}
+                <div className="flex justify-between items-center mt-auto pt-4 border-t border-slate-50 dark:border-zinc-800">
+                  <Skeleton className="h-6 w-24 rounded-full" />
+                  <Skeleton className="h-8 w-20 rounded-lg" />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Skeleton Desktop Table View */}
+          <div className={`hidden md:block rounded-2xl border shadow-sm overflow-hidden ${
+            isDark ? 'bg-[var(--color-card-dark)] border-[var(--color-border-dark)]' : 'bg-[var(--color-card-light)] border-[var(--color-border-light)]'
+          }`}>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse table-fixed">
+                <thead className={`text-[10px] font-bold uppercase tracking-widest ${
+                  isDark ? 'bg-[#1e1e21] text-zinc-400' : 'bg-slate-50 text-slate-500'
+                }`}>
+                  <tr>
+                    <th className={`${user?.role === 'superadmin' ? 'w-[8%]' : 'w-[10%]'} px-6 py-4 border-b ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>ID</th>
+                    <th className={`${user?.role === 'superadmin' ? 'w-[22%]' : 'w-[36%]'} px-6 py-4 border-b ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>Customer</th>
+                    <th className={`${user?.role === 'superadmin' ? 'w-[12%]' : 'w-[16%]'} px-6 py-4 border-b ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>Job Type</th>
+                    {user?.role === 'superadmin' && <th className={`w-[12%] px-6 py-4 border-b ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>Total Cost</th>}
+                    {user?.role === 'superadmin' && <th className={`w-[18%] px-6 py-4 border-b text-center ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>Remaining</th>}
+                    <th className={`${user?.role === 'superadmin' ? 'w-[22%]' : 'w-[30%]'} px-6 py-4 border-b ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>Current Phase / Status</th>
+                    <th className={`${user?.role === 'superadmin' ? 'w-[6%]' : 'w-[8%]'} px-6 py-4 border-b text-right ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody className={`divide-y ${isDark ? 'divide-zinc-800' : 'divide-slate-100'}`}>
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <tr key={i}>
+                      <td className="px-6 py-4">
+                        <Skeleton className="h-3.5 w-8" />
+                      </td>
+                      <td className="px-6 py-4">
+                        <Skeleton className="h-4 w-32 mb-1.5" />
+                        <Skeleton className="h-3 w-24" />
+                      </td>
+                      <td className="px-6 py-4">
+                        <Skeleton className="h-5 w-16 rounded" />
+                      </td>
+                      {user?.role === 'superadmin' && (
+                        <td className="px-6 py-4">
+                          <Skeleton className="h-4 w-16" />
+                        </td>
+                      )}
+                      {user?.role === 'superadmin' && (
+                        <td className="px-6 py-4 text-center">
+                          <div className="flex justify-center">
+                            <Skeleton className="h-6 w-24 rounded-full" />
+                          </div>
+                        </td>
+                      )}
+                      <td className="px-6 py-4">
+                        <Skeleton className="h-6 w-28 rounded-full" />
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex justify-end">
+                          <Skeleton className="h-7 w-16 rounded-lg" />
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       ) : (
         <>
           {/* Mobile Card View (< md) */}

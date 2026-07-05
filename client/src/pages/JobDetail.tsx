@@ -10,6 +10,7 @@ import CustomSelect from '../components/CustomSelect';
 import { useAuth, useSettings } from '../context/AppContext';
 import { api } from '../lib/api';
 import { AnimatedNotificationButton } from '../components/AnimatedNotificationButton';
+import { Skeleton } from '../components/ui/Skeleton';
 
 const JobDetail: React.FC = () => {
   const { id } = useParams();
@@ -796,7 +797,129 @@ const JobDetail: React.FC = () => {
     }
   };
 
-  if (loading) return <div className="p-10 text-center"><i className="fa-solid fa-spinner fa-spin text-2xl text-blue-600"></i></div>;
+  if (loading) {
+    return (
+      <div className="space-y-8 page-content">
+        {/* Top Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch w-full">
+          {/* Left Column: Title area and Site Address Card */}
+          <div className="lg:col-span-7 flex flex-col justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <Skeleton className="w-10 h-10 rounded-xl shrink-0" />
+              <div className="space-y-2 flex-1">
+                <Skeleton className="h-3 w-16" />
+                <Skeleton className="h-7 w-32" />
+                <Skeleton className="h-3.5 w-40" />
+              </div>
+            </div>
+            <div className={`border rounded-2xl p-[18px] px-6 grid grid-cols-1 md:grid-cols-3 gap-4 items-center shadow-sm flex-grow ${
+              isDark ? 'bg-card-dark border-border-dark' : 'bg-white border-slate-200'
+            }`}>
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className={`flex gap-3 items-center min-w-0 ${i > 0 ? 'md:border-l md:pl-6' : ''} ${
+                  isDark ? 'border-border-dark' : 'border-slate-200'
+                }`}>
+                  <Skeleton className="w-10 h-10 rounded-full shrink-0" />
+                  <div className="space-y-2 flex-1">
+                    <Skeleton className="h-2 w-12" />
+                    <Skeleton className="h-4 w-24" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Right Column: Customer Card + Workflow Progress Card */}
+          <div className="lg:col-span-5 grid grid-cols-1 sm:grid-cols-2 gap-6 items-end">
+            <div className={`border rounded-2xl p-[18px] px-6 flex flex-col gap-3 shadow-sm ${
+              isDark ? 'bg-card-dark border-border-dark' : 'bg-white border-slate-200'
+            }`}>
+              <div className="flex gap-3 items-center">
+                <Skeleton className="w-10 h-10 rounded-xl shrink-0" />
+                <div className="space-y-2 flex-1">
+                  <Skeleton className="h-2.5 w-12" />
+                  <Skeleton className="h-4 w-24" />
+                </div>
+              </div>
+              <div className="border-t pt-3 space-y-2 border-slate-200 dark:border-border-dark">
+                <Skeleton className="h-2 w-16" />
+                <div className="flex gap-2">
+                  <Skeleton className="h-6 w-16 rounded-lg" />
+                  <Skeleton className="h-6 w-16 rounded-lg" />
+                </div>
+              </div>
+            </div>
+
+            <div className={`border rounded-2xl p-[18px] px-6 flex flex-col justify-between shadow-sm h-[135px] ${
+              isDark ? 'bg-card-dark border-border-dark' : 'bg-white border-slate-200'
+            }`}>
+              <div className="space-y-2">
+                <Skeleton className="h-2.5 w-16" />
+                <Skeleton className="h-4 w-24" />
+              </div>
+              <div className="w-full space-y-1">
+                <div className="flex justify-between">
+                  <Skeleton className="h-3 w-8" />
+                  <Skeleton className="h-3 w-6" />
+                </div>
+                <Skeleton className="h-2 w-full rounded" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom content layout: main panel (phases) + sidebar (payments / materials) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start w-full">
+          {/* Main: Phases (7 columns) */}
+          <div className={`lg:col-span-7 border rounded-2xl p-6 shadow-sm ${
+            isDark ? 'bg-card-dark border-border-dark' : 'bg-white border-slate-200'
+          }`}>
+            <div className="flex justify-between items-center mb-6">
+              <div className="space-y-1">
+                <Skeleton className="h-5 w-32" />
+                <Skeleton className="h-3 w-48" />
+              </div>
+              <Skeleton className="h-8 w-24 rounded-lg" />
+            </div>
+
+            <div className="space-y-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className={`p-4 rounded-xl border flex items-center justify-between gap-4 ${
+                  isDark ? 'border-zinc-800' : 'border-slate-100'
+                }`}>
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <Skeleton className="w-7 h-7 rounded-full shrink-0" />
+                    <div className="space-y-1.5 flex-1 min-w-0">
+                      <Skeleton className="h-4 w-40" />
+                      <Skeleton className="h-2.5 w-24" />
+                    </div>
+                  </div>
+                  <Skeleton className="h-7 w-20 rounded-full" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Sidebar: Cost breakdown, Payments, Materials (5 columns) */}
+          <div className="lg:col-span-5 space-y-6">
+            <div className={`border rounded-2xl p-6 shadow-sm space-y-4 ${
+              isDark ? 'bg-card-dark border-border-dark' : 'bg-white border-slate-200'
+            }`}>
+              <Skeleton className="h-5 w-32" />
+              <div className="space-y-3">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="flex justify-between items-center">
+                    <Skeleton className="h-3.5 w-24" />
+                    <Skeleton className="h-3.5 w-16" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
   if (error || !job) return (
     <div className="p-10 text-center space-y-4">
       <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
