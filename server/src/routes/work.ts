@@ -9,12 +9,20 @@ const router = express.Router();
 // --- DAILY WORK LOGS ---
 router.get('/daily-work', authenticateToken, async (req, res) => {
   try {
-    const [rows] = await pool.execute(`
+    const role = req.user?.role?.toLowerCase();
+    let query = `
       SELECT dwl.id, dwl.job_id AS jobId, dwl.date, dwl.work_description AS work_description, dwl.qty, u.email AS technician, dwl.technician_id AS technician_id, dwl.remarks, dwl.address, dwl.created_at AS createdAt
       FROM daily_work_logs dwl
       LEFT JOIN users u ON dwl.technician_id = u.id
-      ORDER BY dwl.date DESC, dwl.id DESC
-    `);
+      LEFT JOIN users creator ON dwl.created_by = creator.id
+    `;
+
+    if (role !== 'superadmin') {
+      query += ` WHERE creator.role IS NULL OR creator.role != 'superadmin' `;
+    }
+
+    query += ` ORDER BY dwl.date DESC, dwl.id DESC `;
+    const [rows] = await pool.execute(query);
     res.json(rows);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -32,8 +40,8 @@ router.post('/daily-work', authenticateToken, isAdminOrSuperAdmin, validate(dail
     }
 
     const [result]: any = await pool.execute(
-      'INSERT INTO daily_work_logs (job_id, date, work_description, qty, technician_id, remarks, address) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [null, date, work_description || '', qty || '0', technicianId, remarks || '', address || '']
+      'INSERT INTO daily_work_logs (job_id, date, work_description, qty, technician_id, remarks, address, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [null, date, work_description || '', qty || '0', technicianId, remarks || '', address || '', req.user.id]
     );
     res.json({ success: true, id: result.insertId });
   } catch (err: any) {
@@ -45,6 +53,22 @@ router.put('/daily-work/:id', authenticateToken, isAdminOrSuperAdmin, validate(d
   try {
     const { id } = req.params;
     const { date, work_description, qty, technician, remarks, address } = req.body;
+
+    // Check if the log was created by a superadmin
+    const [existing]: any = await pool.execute(`
+      SELECT dwl.created_by, creator.role AS creator_role 
+      FROM daily_work_logs dwl
+      LEFT JOIN users creator ON dwl.created_by = creator.id
+      WHERE dwl.id = ?
+    `, [id]);
+
+    if (existing.length === 0) {
+      return res.status(404).json({ error: 'Entry not found' });
+    }
+
+    if (existing[0].creator_role?.toLowerCase() === 'superadmin' && req.user.role?.toLowerCase() !== 'superadmin') {
+      return res.status(403).json({ error: 'Access denied: Only superadmin can modify this entry' });
+    }
 
     let technicianId = null;
     if (technician) {
@@ -64,7 +88,25 @@ router.put('/daily-work/:id', authenticateToken, isAdminOrSuperAdmin, validate(d
 
 router.delete('/daily-work/:id', authenticateToken, isAdminOrSuperAdmin, async (req, res) => {
   try {
-    await pool.execute('DELETE FROM daily_work_logs WHERE id = ?', [req.params.id]);
+    const { id } = req.params;
+
+    // Check if the log was created by a superadmin
+    const [existing]: any = await pool.execute(`
+      SELECT dwl.created_by, creator.role AS creator_role 
+      FROM daily_work_logs dwl
+      LEFT JOIN users creator ON dwl.created_by = creator.id
+      WHERE dwl.id = ?
+    `, [id]);
+
+    if (existing.length === 0) {
+      return res.status(404).json({ error: 'Entry not found' });
+    }
+
+    if (existing[0].creator_role?.toLowerCase() === 'superadmin' && req.user.role?.toLowerCase() !== 'superadmin') {
+      return res.status(403).json({ error: 'Access denied: Only superadmin can delete this entry' });
+    }
+
+    await pool.execute('DELETE FROM daily_work_logs WHERE id = ?', [id]);
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -80,16 +122,27 @@ router.get('/technician-work', authenticateToken, async (req, res) => {
         `SELECT dwl.id, dwl.job_id AS jobId, dwl.date, dwl.work_description AS work_description, dwl.qty, u.email AS technician, dwl.technician_id AS technician_id, dwl.remarks, dwl.address, dwl.created_at AS createdAt
          FROM daily_work_logs dwl
          LEFT JOIN users u ON dwl.technician_id = u.id
-         WHERE dwl.technician_id = ?
+         LEFT JOIN users creator ON dwl.created_by = creator.id
+         WHERE dwl.technician_id = ? AND (creator.role IS NULL OR creator.role != 'superadmin')
          ORDER BY dwl.date DESC, dwl.id DESC`,
         [req.user.id]
       );
       return res.json(rows);
-    } else if (role === 'superadmin' || role === 'admin') {
+    } else if (role === 'superadmin') {
       const [rows] = await pool.execute(
         `SELECT dwl.id, dwl.job_id AS jobId, dwl.date, dwl.work_description AS work_description, dwl.qty, u.email AS technician, dwl.technician_id AS technician_id, dwl.remarks, dwl.address, dwl.created_at AS createdAt
          FROM daily_work_logs dwl
          LEFT JOIN users u ON dwl.technician_id = u.id
+         ORDER BY dwl.date DESC, dwl.id DESC`
+      );
+      return res.json(rows);
+    } else if (role === 'admin') {
+      const [rows] = await pool.execute(
+        `SELECT dwl.id, dwl.job_id AS jobId, dwl.date, dwl.work_description AS work_description, dwl.qty, u.email AS technician, dwl.technician_id AS technician_id, dwl.remarks, dwl.address, dwl.created_at AS createdAt
+         FROM daily_work_logs dwl
+         LEFT JOIN users u ON dwl.technician_id = u.id
+         LEFT JOIN users creator ON dwl.created_by = creator.id
+         WHERE creator.role IS NULL OR creator.role != 'superadmin'
          ORDER BY dwl.date DESC, dwl.id DESC`
       );
       return res.json(rows);
@@ -108,8 +161,8 @@ router.post('/technician-work', authenticateToken, validate(technicianWorkSchema
     const { date, work_description, qty, remarks, address } = req.body;
 
     const [result]: any = await pool.execute(
-      'INSERT INTO daily_work_logs (job_id, date, work_description, qty, technician_id, remarks, address) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [null, date, work_description || '', qty || '0', req.user.id, remarks || '', address || '']
+      'INSERT INTO daily_work_logs (job_id, date, work_description, qty, technician_id, remarks, address, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [null, date, work_description || '', qty || '0', req.user.id, remarks || '', address || '', req.user.id]
     );
     res.json({ success: true, id: result.insertId });
   } catch (err: any) {

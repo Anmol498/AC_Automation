@@ -35,10 +35,6 @@ const UPLOAD_DIR = process.env.UPLOAD_DIR || 'uploads';
 const APP_VERSION = "2026-03-17_V2_Modular";
 console.log(`>>> SERVER STARTING - VERSION: ${APP_VERSION} <<<`);
 
-// Ensure directories exist
-if (!fs.existsSync(UPLOAD_DIR)) {
-  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-}
 const LOG_DIR = path.join(process.cwd(), 'logs');
 if (!fs.existsSync(LOG_DIR)) {
   fs.mkdirSync(LOG_DIR, { recursive: true });
@@ -52,6 +48,8 @@ app.use(cookieParser());
 
 // Helmet security headers
 app.use(helmet({
+  crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: false,
   contentSecurityPolicy: {
     directives: {
       ...helmet.contentSecurityPolicy.getDefaultDirectives(),

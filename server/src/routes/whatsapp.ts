@@ -10,7 +10,8 @@ import {
   getTemplates,
   createTemplate,
   updateTemplate,
-  deleteTemplate
+  deleteTemplate,
+  ensureDefaultTemplates
 } from '../utils/whatsappHelper.js';
 
 const router = express.Router();
@@ -74,7 +75,8 @@ router.post('/whatsapp/session/start', authenticateToken, isSuperAdmin, async (r
 // Disconnect/reset WhatsApp session
 router.post('/whatsapp/session/disconnect', authenticateToken, isSuperAdmin, async (req, res) => {
   try {
-    const disconnectRes = await disconnectSession();
+    const { clearSessionName } = req.body;
+    const disconnectRes = await disconnectSession(!!clearSessionName);
     if (disconnectRes.success) {
       res.json(disconnectRes);
     } else {
@@ -88,6 +90,13 @@ router.post('/whatsapp/session/disconnect', authenticateToken, isSuperAdmin, asy
 // List all templates
 router.get('/whatsapp/templates', authenticateToken, isSuperAdmin, async (req, res) => {
   try {
+    // Automatically sync/seed templates to the active session when visiting this view
+    try {
+      await ensureDefaultTemplates();
+    } catch (syncErr) {
+      console.warn('[WhatsApp Service] Background template sync failed:', syncErr);
+    }
+
     const templatesRes = await getTemplates();
     if (templatesRes.success) {
       res.json(templatesRes.data || []);

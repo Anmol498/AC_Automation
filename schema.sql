@@ -1,12 +1,16 @@
 -- ============================================================
 -- CoolBreeze AC Automation — Full Schema (Up-to-Date)
--- Target Database: jqckozpd_coolbreeze_ac (cPanel / shared hosting)
+-- Target Database: MySQL / MariaDB (InnoDB engine)
 -- Updated: 2026-07-05
 -- ============================================================
 
--- On cPanel / shared hosting, the database is typically pre-created via MySQL Databases wizard,
--- so we USE it rather than CREATE DATABASE.
-USE `jqckozpd_coolbreeze_ac`;
+-- Create database if running locally:
+-- CREATE DATABASE IF NOT EXISTS `coolbreeze_ac`;
+-- USE `coolbreeze_ac`;
+
+-- For cPanel / shared hosting, the database is typically pre-created via MySQL Databases wizard,
+-- so you would uncomment/update the following line:
+-- USE `jqckozpd_coolbreeze_ac`;
 
 SET FOREIGN_KEY_CHECKS = 0;
 

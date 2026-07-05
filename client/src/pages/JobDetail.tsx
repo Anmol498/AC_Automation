@@ -784,7 +784,7 @@ const JobDetail: React.FC = () => {
         setNotification({ message: 'WhatsApp message sent successfully!', type: 'success' });
       } else {
         cancelWhatsappAnimation(phaseId);
-        const errorDetail = data.whatsappError ? ` (Reason: ${data.whatsappError})` : '';
+        const errorDetail = (data.whatsappError || data.error) ? ` (Reason: ${data.whatsappError || data.error})` : '';
         setNotification({ message: `WhatsApp failed to send${errorDetail}. Please check connection or retry.`, type: 'error' });
       }
     } catch (err: any) {

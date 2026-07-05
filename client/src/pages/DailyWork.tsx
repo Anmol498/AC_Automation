@@ -6,6 +6,7 @@ import { useRealtimeListener } from '../components/RealtimeProvider';
 import Pagination from '../components/Pagination';
 import { toast } from 'sonner';
 import CustomDatePicker from '../components/CustomDatePicker';
+import CustomMonthPicker from '../components/CustomMonthPicker';
 import { createPortal } from 'react-dom';
 
 interface DailyWorkLog {
@@ -107,6 +108,7 @@ export default function DailyWork() {
 
     // --- Cash Flow Logs states ---
     const [cashLogs, setCashLogs] = useState<CashFlowLog[]>([]);
+    const [selectedCashMonth, setSelectedCashMonth] = useState<string>('');
     const [isCashLoading, setIsCashLoading] = useState(false);
     
     const [cashPage, setCashPage] = useState(() => {
@@ -121,6 +123,22 @@ export default function DailyWork() {
     const [editCashForm, setEditCashForm] = useState({ date: '', received: '', from_source: '', expenditure: '', on_source: '', sent_home: '' });
     const [newCashRow, setNewCashRow] = useState({ date: new Date().toISOString().split('T')[0], received: '', from_source: '', expenditure: '', on_source: '', sent_home: '' });
     const [showNewCashRow, setShowNewCashRow] = useState(false);
+
+    const { totalReceived, totalExpenditure, totalSentHome, totalBalance } = React.useMemo(() => {
+        const logsToSum = selectedCashMonth
+            ? cashLogs.filter(log => log.date && log.date.startsWith(selectedCashMonth))
+            : cashLogs;
+        const received = logsToSum.reduce((sum, log) => sum + Number(log.received || 0), 0);
+        const expenditure = logsToSum.reduce((sum, log) => sum + Number(log.expenditure || 0), 0);
+        const sentHome = logsToSum.reduce((sum, log) => sum + Number(log.sent_home || 0), 0);
+        const balance = received - expenditure - sentHome;
+        return {
+            totalReceived: received,
+            totalExpenditure: expenditure,
+            totalSentHome: sentHome,
+            totalBalance: balance
+        };
+    }, [cashLogs, selectedCashMonth]);
 
     // --- Inventory History Logs states ---
     const [inventoryLogs, setInventoryLogs] = useState<InventoryHistoryLog[]>([]);
@@ -310,7 +328,7 @@ export default function DailyWork() {
             return;
         }
         handleCashPageChange(1);
-    }, [cashSearch]);
+    }, [cashSearch, selectedCashMonth]);
 
     const isInventoryMounted = useRef(false);
     useEffect(() => {
@@ -460,10 +478,12 @@ export default function DailyWork() {
     const paginatedDailyLogs = filteredDailyLogs.slice((dailyPage - 1) * itemsPerPage, dailyPage * itemsPerPage);
 
     // 2. Cash Flow
-    const filteredCashLogs = cashLogs.filter(log =>
-        (log.from_source || '').toLowerCase().includes(cashSearch.toLowerCase()) ||
-        (log.on_source || '').toLowerCase().includes(cashSearch.toLowerCase())
-    );
+    const filteredCashLogs = cashLogs.filter(log => {
+        const matchesSearch = (log.from_source || '').toLowerCase().includes(cashSearch.toLowerCase()) ||
+            (log.on_source || '').toLowerCase().includes(cashSearch.toLowerCase());
+        const matchesMonth = !selectedCashMonth || (log.date && log.date.startsWith(selectedCashMonth));
+        return matchesSearch && matchesMonth;
+    });
     const totalCashPages = Math.ceil(filteredCashLogs.length / itemsPerPage);
     const paginatedCashLogs = filteredCashLogs.slice((cashPage - 1) * itemsPerPage, cashPage * itemsPerPage);
 
@@ -619,14 +639,14 @@ export default function DailyWork() {
                 <p className={`${isDark ? 'text-zinc-400' : 'text-slate-500'} text-sm mt-1`}>Track activities, cash flow, and stock movements.</p>
             </div>
 
-            {/* Navigation Tabs (matches the design style in inventory) */}
-            <div className={`rounded-2xl border shadow-sm overflow-hidden flex flex-col ${isDark ? 'bg-[#242427] border-zinc-800' : 'bg-white border-slate-200'}`}>
-                <div className={`flex border-b overflow-x-auto scrollbar-none ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>
+            {/* Navigation Tabs (styled like the tabs in inventory) */}
+            <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between border-b gap-4 pb-0 ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>
+                <div className="flex overflow-x-auto overflow-y-hidden scrollbar-none gap-8">
                     <button
-                        className={`flex-1 py-4 px-3 text-sm font-bold text-center transition-colors min-w-[120px] ${
+                        className={`pb-4 px-1 text-sm font-bold transition-colors relative whitespace-nowrap -mb-[1px] ${
                             activeTab === 'Daily-Work'
-                                ? isDark ? 'text-blue-400 border-b-2 border-blue-500 bg-blue-950/20' : 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50'
-                                : isDark ? 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                                ? isDark ? 'text-blue-400 border-b-2 border-blue-500' : 'text-blue-600 border-b-2 border-blue-600'
+                                : isDark ? 'text-zinc-400 hover:text-zinc-200' : 'text-slate-500 hover:text-slate-700'
                         }`}
                         onClick={() => handleTabChange('Daily-Work')}
                     >
@@ -634,31 +654,31 @@ export default function DailyWork() {
                     </button>
                     {user?.role === 'superadmin' && (
                         <button
-                            className={`flex-1 py-4 px-3 text-sm font-bold text-center transition-colors min-w-[120px] ${
+                            className={`pb-4 px-1 text-sm font-bold transition-colors relative whitespace-nowrap -mb-[1px] ${
                                 activeTab === 'Cash-flow'
-                                    ? isDark ? 'text-blue-400 border-b-2 border-blue-500 bg-blue-950/20' : 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50'
-                                    : isDark ? 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
-                            }`}
+                                    ? isDark ? 'text-blue-400 border-b-2 border-blue-500' : 'text-blue-600 border-b-2 border-blue-600'
+                                    : isDark ? 'text-zinc-400 hover:text-zinc-200' : 'text-slate-500 hover:text-slate-700'
+                        }`}
                             onClick={() => handleTabChange('Cash-flow')}
                         >
                             Cash Flow
                         </button>
                     )}
                     <button
-                        className={`flex-1 py-4 px-3 text-sm font-bold text-center transition-colors min-w-[120px] ${
+                        className={`pb-4 px-1 text-sm font-bold transition-colors relative whitespace-nowrap -mb-[1px] ${
                             activeTab === 'Inventory-logs'
-                                ? isDark ? 'text-blue-400 border-b-2 border-blue-500 bg-blue-950/20' : 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50'
-                                : isDark ? 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                                ? isDark ? 'text-blue-400 border-b-2 border-blue-500' : 'text-blue-600 border-b-2 border-blue-600'
+                                : isDark ? 'text-zinc-400 hover:text-zinc-200' : 'text-slate-500 hover:text-slate-700'
                         }`}
                         onClick={() => handleTabChange('Inventory-logs')}
                     >
                         Inventory Logs
                     </button>
                     <button
-                        className={`flex-1 py-4 px-3 text-sm font-bold text-center transition-colors min-w-[120px] ${
+                        className={`pb-4 px-1 text-sm font-bold transition-colors relative whitespace-nowrap -mb-[1px] ${
                             activeTab === 'Copper-logs'
-                                ? isDark ? 'text-blue-400 border-b-2 border-blue-500 bg-blue-950/20' : 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50'
-                                : isDark ? 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                                ? isDark ? 'text-blue-400 border-b-2 border-blue-500' : 'text-blue-600 border-b-2 border-blue-600'
+                                : isDark ? 'text-zinc-400 hover:text-zinc-200' : 'text-slate-500 hover:text-slate-700'
                         }`}
                         onClick={() => handleTabChange('Copper-logs')}
                     >
@@ -666,54 +686,281 @@ export default function DailyWork() {
                     </button>
                 </div>
 
+                {/* Tab Actions aligned to the right */}
+                <div className="flex items-center gap-3 pb-4 self-end sm:self-auto">
+                    {activeTab === 'Daily-Work' && (
+                        <>
+                            <div className="relative flex items-center">
+                                {!isDailySearchExpanded && !dailySearch ? (
+                                    <button
+                                        onClick={() => { setIsDailySearchExpanded(true); setTimeout(() => dailySearchRef.current?.focus(), 50); }}
+                                        className={`w-9 h-9 border rounded-lg flex items-center justify-center transition-all shadow-sm ${isDark ? 'bg-[#242427] border-zinc-800 text-zinc-400 hover:text-blue-400 hover:border-zinc-700' : 'bg-white border-slate-200 text-slate-400 hover:text-blue-500 hover:border-blue-300'}`}
+                                        title="Search"
+                                    >
+                                        <i className="fa-solid fa-magnifying-glass text-xs"></i>
+                                    </button>
+                                ) : (
+                                    <div className="relative group animate-in fade-in slide-in-from-right-2 duration-200">
+                                        <i className={`fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 transition-colors text-xs ${isDark ? 'text-zinc-400 group-focus-within:text-blue-500' : 'text-slate-400 group-focus-within:text-blue-500'}`}></i>
+                                        <input
+                                            ref={dailySearchRef}
+                                            type="text"
+                                            placeholder="Search work logs..."
+                                            value={dailySearch}
+                                            onChange={(e) => setDailySearch(e.target.value)}
+                                            onBlur={() => { if (!dailySearch) setIsDailySearchExpanded(false); }}
+                                            className={`w-full sm:w-56 pl-8 pr-8 py-2 border rounded-lg text-sm transition-all focus:outline-none focus:ring-2 ${isDark ? 'bg-[#242427] border-zinc-800 text-white placeholder-zinc-500 focus:ring-blue-500/20 focus:border-zinc-700' : 'bg-white border-slate-200 text-slate-700 placeholder:text-slate-400 focus:ring-blue-500/20 focus:border-blue-500'}`}
+                                        />
+                                        {dailySearch && (
+                                            <button onClick={() => { setDailySearch(''); dailySearchRef.current?.focus(); }} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors">
+                                                <i className="fa-solid fa-xmark text-xs"></i>
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                            <button onClick={() => openDownloadModal('Daily-Work')} disabled={dailyLogs.length === 0} className={`px-4 py-2 border font-bold text-xs rounded-lg transition-all flex items-center gap-2 disabled:opacity-50 ${isDark ? 'bg-[#242427] text-blue-400 border-blue-950/40 hover:bg-blue-900/20' : 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100'}`}>
+                                <i className="fa-solid fa-download"></i> Download
+                            </button>
+                            <button onClick={() => setShowNewDailyRow(true)} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition-all shadow-md shadow-blue-500/20 flex items-center gap-2">
+                                <i className="fa-solid fa-plus"></i> Add Entry
+                            </button>
+                        </>
+                    )}
+                    {activeTab === 'Cash-flow' && (
+                        <>
+                            <div className="relative flex items-center">
+                                {!isCashSearchExpanded && !cashSearch ? (
+                                    <button
+                                        onClick={() => { setIsCashSearchExpanded(true); setTimeout(() => cashSearchRef.current?.focus(), 50); }}
+                                        className={`w-9 h-9 border rounded-lg flex items-center justify-center transition-all shadow-sm ${isDark ? 'bg-[#242427] border-zinc-800 text-zinc-400 hover:text-blue-400 hover:border-zinc-700' : 'bg-white border-slate-200 text-slate-400 hover:text-blue-500 hover:border-blue-300'}`}
+                                        title="Search"
+                                    >
+                                        <i className="fa-solid fa-magnifying-glass text-xs"></i>
+                                    </button>
+                                ) : (
+                                    <div className="relative group animate-in fade-in slide-in-from-right-2 duration-200">
+                                        <i className={`fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 transition-colors text-xs ${isDark ? 'text-zinc-400 group-focus-within:text-blue-500' : 'text-slate-400 group-focus-within:text-blue-500'}`}></i>
+                                        <input
+                                            ref={cashSearchRef}
+                                            type="text"
+                                            placeholder="Search source..."
+                                            value={cashSearch}
+                                            onChange={(e) => setCashSearch(e.target.value)}
+                                            onBlur={() => { if (!cashSearch) setIsCashSearchExpanded(false); }}
+                                            className={`w-full sm:w-56 pl-8 pr-8 py-2 border rounded-lg text-sm transition-all focus:outline-none focus:ring-2 ${isDark ? 'bg-[#242427] border-zinc-800 text-white placeholder-zinc-500 focus:ring-blue-500/20 focus:border-zinc-700' : 'bg-white border-slate-200 text-slate-700 placeholder:text-slate-400 focus:ring-blue-500/20 focus:border-blue-500'}`}
+                                        />
+                                        {cashSearch && (
+                                            <button onClick={() => { setCashSearch(''); cashSearchRef.current?.focus(); }} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-550 hover:text-slate-500 transition-colors">
+                                                <i className="fa-solid fa-xmark text-xs"></i>
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Monthly Filter */}
+                            <div className="flex items-center gap-1.5 shrink-0">
+                                <CustomMonthPicker
+                                    value={selectedCashMonth}
+                                    onChange={setSelectedCashMonth}
+                                    isDark={isDark}
+                                    placeholder="Monthly"
+                                    align="right"
+                                />
+                                {selectedCashMonth && (
+                                    <button 
+                                        onClick={() => setSelectedCashMonth('')}
+                                        className={`w-9 h-9 border rounded-lg flex items-center justify-center transition-all ${
+                                            isDark 
+                                                ? 'bg-[#242427] border-zinc-800 text-zinc-400 hover:text-rose-450 hover:text-rose-400 hover:border-zinc-700' 
+                                                : 'bg-white border-slate-200 text-slate-400 hover:text-rose-600 hover:border-rose-300'
+                                        }`}
+                                        title="Clear monthly filter"
+                                    >
+                                        <i className="fa-solid fa-xmark text-xs"></i>
+                                    </button>
+                                )}
+                            </div>
+
+                            <button onClick={() => openDownloadModal('Cash-flow')} disabled={cashLogs.length === 0} className={`px-4 py-2 border font-bold text-xs rounded-lg transition-all flex items-center gap-2 disabled:opacity-50 ${isDark ? 'bg-[#242427] text-blue-400 border-blue-950/40 hover:bg-blue-900/20' : 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100'}`}>
+                                <i className="fa-solid fa-download"></i> Download
+                            </button>
+                            <button onClick={() => setShowNewCashRow(true)} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition-all shadow-md shadow-blue-500/20 flex items-center gap-2">
+                                <i className="fa-solid fa-plus"></i> Add Entry
+                            </button>
+                        </>
+                    )}
+                    {activeTab === 'Inventory-logs' && (
+                        <>
+                            <div className="relative flex items-center">
+                                {!isInventorySearchExpanded && !inventorySearch ? (
+                                    <button
+                                        onClick={() => { setIsInventorySearchExpanded(true); setTimeout(() => inventorySearchRef.current?.focus(), 50); }}
+                                        className={`w-9 h-9 border rounded-lg flex items-center justify-center transition-all shadow-sm ${isDark ? 'bg-[#242427] border-zinc-800 text-zinc-400 hover:text-blue-400 hover:border-zinc-700' : 'bg-white border-slate-200 text-slate-400 hover:text-blue-500 hover:border-blue-300'}`}
+                                        title="Search"
+                                    >
+                                        <i className="fa-solid fa-magnifying-glass text-xs"></i>
+                                    </button>
+                                ) : (
+                                    <div className="relative group animate-in fade-in slide-in-from-right-2 duration-200">
+                                        <i className={`fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 transition-colors text-xs ${isDark ? 'text-zinc-400 group-focus-within:text-blue-500' : 'text-slate-400 group-focus-within:text-blue-500'}`}></i>
+                                        <input
+                                            ref={inventorySearchRef}
+                                            type="text"
+                                            placeholder="Search model, user, customer..."
+                                            value={inventorySearch}
+                                            onChange={(e) => setInventorySearch(e.target.value)}
+                                            onBlur={() => { if (!inventorySearch) setIsInventorySearchExpanded(false); }}
+                                            className={`w-full sm:w-56 pl-8 pr-8 py-2 border rounded-lg text-sm transition-all focus:outline-none focus:ring-2 ${isDark ? 'bg-[#242427] border-zinc-800 text-white placeholder-zinc-500 focus:ring-blue-500/20 focus:border-zinc-700' : 'bg-white border-slate-200 text-slate-700 placeholder:text-slate-400 focus:ring-blue-500/20 focus:border-blue-500'}`}
+                                        />
+                                        {inventorySearch && (
+                                            <button onClick={() => { setInventorySearch(''); inventorySearchRef.current?.focus(); }} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-550 hover:text-slate-500 transition-colors">
+                                                <i className="fa-solid fa-xmark text-xs"></i>
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                            <button onClick={() => openDownloadModal('Inventory-logs')} disabled={inventoryLogs.length === 0} className={`px-4 py-2 border font-bold text-xs rounded-lg transition-all flex items-center gap-2 disabled:opacity-50 ${isDark ? 'bg-[#242427] text-blue-400 border-blue-950/40 hover:bg-blue-900/20' : 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100'}`}>
+                                <i className="fa-solid fa-download"></i> Download
+                            </button>
+                        </>
+                    )}
+                    {activeTab === 'Copper-logs' && (
+                        <>
+                            <div className="relative flex items-center">
+                                {!isCopperSearchExpanded && !copperSearch ? (
+                                    <button
+                                        onClick={() => { setIsCopperSearchExpanded(true); setTimeout(() => copperSearchRef.current?.focus(), 50); }}
+                                        className={`w-9 h-9 border rounded-lg flex items-center justify-center transition-all shadow-sm ${isDark ? 'bg-[#242427] border-zinc-800 text-zinc-400 hover:text-blue-400 hover:border-zinc-700' : 'bg-white border-slate-200 text-slate-400 hover:text-blue-500 hover:border-blue-300'}`}
+                                        title="Search"
+                                    >
+                                        <i className="fa-solid fa-magnifying-glass text-xs"></i>
+                                    </button>
+                                ) : (
+                                    <div className="relative group animate-in fade-in slide-in-from-right-2 duration-200">
+                                        <i className={`fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 transition-colors text-xs ${isDark ? 'text-zinc-400 group-focus-within:text-blue-500' : 'text-slate-400 group-focus-within:text-blue-500'}`}></i>
+                                        <input
+                                            ref={copperSearchRef}
+                                            type="text"
+                                            placeholder="Search pipe size, origin..."
+                                            value={copperSearch}
+                                            onChange={(e) => setCopperSearch(e.target.value)}
+                                            onBlur={() => { if (!copperSearch) setIsCopperSearchExpanded(false); }}
+                                            className={`w-full sm:w-56 pl-8 pr-8 py-2 border rounded-lg text-sm transition-all focus:outline-none focus:ring-2 ${isDark ? 'bg-[#242427] border-zinc-800 text-white placeholder-zinc-500 focus:ring-blue-500/20 focus:border-zinc-700' : 'bg-white border-slate-200 text-slate-700 placeholder:text-slate-400 focus:ring-blue-500/20 focus:border-blue-500'}`}
+                                        />
+                                        {copperSearch && (
+                                            <button onClick={() => { setCopperSearch(''); copperSearchRef.current?.focus(); }} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-550 hover:text-slate-500 transition-colors">
+                                                <i className="fa-solid fa-xmark text-xs"></i>
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                            <button onClick={() => openDownloadModal('Copper-logs')} disabled={copperLogs.length === 0} className={`px-4 py-2 border font-bold text-xs rounded-lg transition-all flex items-center gap-2 disabled:opacity-50 ${isDark ? 'bg-[#242427] text-blue-400 border-blue-950/40 hover:bg-blue-900/20' : 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100'}`}>
+                                <i className="fa-solid fa-download"></i> Download
+                            </button>
+                        </>
+                    )}
+                </div>
+            </div>
+
+            {/* Cash Flow Summary Cards */}
+            {activeTab === 'Cash-flow' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in duration-300">
+                    {/* Received Card */}
+                    <div className={`p-5 rounded-2xl border shadow-sm flex items-center justify-between transition-all duration-300 ${
+                        isDark ? 'bg-[#242427] border-zinc-800 text-white' : 'bg-white border-slate-200 text-slate-800'
+                    }`}>
+                        <div className="space-y-1">
+                            <span className={`text-[10px] uppercase font-black tracking-widest ${isDark ? 'text-zinc-500' : 'text-slate-400'}`}>
+                                Total Received
+                            </span>
+                            <h3 className="text-xl md:text-2xl font-black tracking-tight">
+                                ₹{totalReceived.toLocaleString('en-IN')}
+                            </h3>
+                        </div>
+                        <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
+                            isDark ? 'bg-emerald-950/40 text-emerald-400' : 'bg-emerald-50 text-emerald-600'
+                        }`}>
+                            <i className="fa-solid fa-circle-arrow-down text-xl"></i>
+                        </div>
+                    </div>
+
+                    {/* Expenditure Card */}
+                    <div className={`p-5 rounded-2xl border shadow-sm flex items-center justify-between transition-all duration-300 ${
+                        isDark ? 'bg-[#242427] border-zinc-800 text-white' : 'bg-white border-slate-200 text-slate-800'
+                    }`}>
+                        <div className="space-y-1">
+                            <span className={`text-[10px] uppercase font-black tracking-widest ${isDark ? 'text-zinc-500' : 'text-slate-400'}`}>
+                                Total Expenditure
+                            </span>
+                            <h3 className="text-xl md:text-2xl font-black tracking-tight">
+                                ₹{totalExpenditure.toLocaleString('en-IN')}
+                            </h3>
+                        </div>
+                        <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
+                            isDark ? 'bg-rose-950/40 text-rose-400' : 'bg-rose-50 text-rose-600'
+                        }`}>
+                            <i className="fa-solid fa-circle-arrow-up text-xl"></i>
+                        </div>
+                    </div>
+
+                    {/* Sent Home Card */}
+                    <div className={`p-5 rounded-2xl border shadow-sm flex items-center justify-between transition-all duration-300 ${
+                        isDark ? 'bg-[#242427] border-zinc-800 text-white' : 'bg-white border-slate-200 text-slate-800'
+                    }`}>
+                        <div className="space-y-1">
+                            <span className={`text-[10px] uppercase font-black tracking-widest ${isDark ? 'text-zinc-500' : 'text-slate-400'}`}>
+                                Sent Home
+                            </span>
+                            <h3 className="text-xl md:text-2xl font-black tracking-tight">
+                                ₹{totalSentHome.toLocaleString('en-IN')}
+                            </h3>
+                        </div>
+                        <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
+                            isDark ? 'bg-blue-950/40 text-blue-400' : 'bg-blue-50 text-blue-600'
+                        }`}>
+                            <i className="fa-solid fa-house-chimney-user text-lg"></i>
+                        </div>
+                    </div>
+
+                    {/* Balance Card */}
+                    <div className={`p-5 rounded-2xl border shadow-sm flex items-center justify-between transition-all duration-300 ${
+                        isDark ? 'bg-[#242427] border-zinc-800 text-white' : 'bg-white border-slate-200 text-slate-800'
+                    }`}>
+                        <div className="space-y-1">
+                            <span className={`text-[10px] uppercase font-black tracking-widest ${isDark ? 'text-zinc-500' : 'text-slate-400'}`}>
+                                Balance
+                            </span>
+                            <h3 className={`text-xl md:text-2xl font-black tracking-tight ${
+                                totalBalance >= 0 
+                                    ? isDark ? 'text-emerald-400' : 'text-emerald-600'
+                                    : isDark ? 'text-rose-400' : 'text-rose-600'
+                            }`}>
+                                ₹{totalBalance.toLocaleString('en-IN')}
+                            </h3>
+                        </div>
+                        <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
+                            totalBalance >= 0
+                                ? isDark ? 'bg-emerald-950/20 text-emerald-400' : 'bg-emerald-50 text-emerald-600'
+                                : isDark ? 'bg-rose-950/20 text-rose-400' : 'bg-rose-50 text-rose-600'
+                        }`}>
+                            <i className="fa-solid fa-wallet text-lg"></i>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Subtab Contents */}
+            <div className={`rounded-2xl border shadow-sm overflow-hidden flex flex-col ${isDark ? 'bg-[#242427] border-zinc-800' : 'bg-white border-slate-200'}`}>
+
                 {/* Subtab Contents */}
 
                 {/* 1. Daily Work Tab */}
                 {activeTab === 'Daily-Work' && (
                     <div className="flex flex-col flex-1">
-                        <div className={`flex flex-col sm:flex-row items-start sm:items-center justify-between px-5 py-3 border-b gap-4 ${isDark ? 'bg-[#1e1e21] border-zinc-800' : 'bg-slate-50 border-slate-200'}`}>
-                            <h3 className={`text-xs font-black uppercase tracking-widest min-w-max ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>Work Activity Log</h3>
-                            <div className="flex flex-1 items-center justify-end gap-3 w-full sm:w-auto">
-                                <div className="relative flex items-center">
-                                    {!isDailySearchExpanded && !dailySearch ? (
-                                        <button
-                                            onClick={() => { setIsDailySearchExpanded(true); setTimeout(() => dailySearchRef.current?.focus(), 50); }}
-                                            className={`w-9 h-9 border rounded-lg flex items-center justify-center transition-all shadow-sm ${isDark ? 'bg-[#242427] border-zinc-800 text-zinc-400 hover:text-blue-400 hover:border-zinc-700' : 'bg-white border-slate-200 text-slate-400 hover:text-blue-500 hover:border-blue-300'}`}
-                                            title="Search"
-                                        >
-                                            <i className="fa-solid fa-magnifying-glass text-xs"></i>
-                                        </button>
-                                    ) : (
-                                        <div className="relative group animate-in fade-in slide-in-from-right-2 duration-200">
-                                            <i className={`fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 transition-colors text-xs ${isDark ? 'text-zinc-400 group-focus-within:text-blue-500' : 'text-slate-400 group-focus-within:text-blue-500'}`}></i>
-                                            <input
-                                                ref={dailySearchRef}
-                                                type="text"
-                                                placeholder="Search work logs..."
-                                                value={dailySearch}
-                                                onChange={(e) => setDailySearch(e.target.value)}
-                                                onBlur={() => { if (!dailySearch) setIsDailySearchExpanded(false); }}
-                                                className={`w-full sm:w-56 pl-8 pr-8 py-2 border rounded-lg text-sm transition-all focus:outline-none focus:ring-2 ${isDark ? 'bg-[#242427] border-zinc-800 text-white placeholder-zinc-500 focus:ring-blue-500/20 focus:border-zinc-700' : 'bg-white border-slate-200 text-slate-700 placeholder:text-slate-400 focus:ring-blue-500/20 focus:border-blue-500'}`}
-                                            />
-                                            {dailySearch && (
-                                                <button onClick={() => { setDailySearch(''); dailySearchRef.current?.focus(); }} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors">
-                                                    <i className="fa-solid fa-xmark text-xs"></i>
-                                                </button>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="flex gap-2 shrink-0">
-                                    <button onClick={() => openDownloadModal('Daily-Work')} disabled={dailyLogs.length === 0} className={`px-4 py-2 border font-bold text-xs rounded-lg transition-all flex items-center gap-2 disabled:opacity-50 ${isDark ? 'bg-[#242427] text-blue-400 border-blue-950/40 hover:bg-blue-900/20' : 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100'}`}>
-                                        <i className="fa-solid fa-download"></i> Download
-                                    </button>
-                                    <button onClick={() => setShowNewDailyRow(true)} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition-all shadow-md shadow-blue-500/20 flex items-center gap-2">
-                                        <i className="fa-solid fa-plus"></i> Add Entry
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
                         <div className="overflow-x-auto">
                             <table className="w-full text-left text-sm">
                                 <thead className={`${isDark ? 'bg-[#1e1e21] text-zinc-400' : 'bg-slate-100 text-slate-500'} text-[10px] uppercase font-black tracking-wider`}>
@@ -848,49 +1095,6 @@ export default function DailyWork() {
                 {/* 2. Cash Flow Tab */}
                 {activeTab === 'Cash-flow' && (
                     <div className="flex flex-col flex-1">
-                        <div className={`flex flex-col sm:flex-row items-start sm:items-center justify-between px-5 py-3 border-b gap-4 ${isDark ? 'bg-[#1e1e21] border-zinc-800' : 'bg-slate-50 border-slate-200'}`}>
-                            <h3 className={`text-xs font-black uppercase tracking-widest min-w-max ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>Cash Flow Ledger</h3>
-                            <div className="flex flex-1 items-center justify-end gap-3 w-full sm:w-auto">
-                                <div className="relative flex items-center">
-                                    {!isCashSearchExpanded && !cashSearch ? (
-                                        <button
-                                            onClick={() => { setIsCashSearchExpanded(true); setTimeout(() => cashSearchRef.current?.focus(), 50); }}
-                                            className={`w-9 h-9 border rounded-lg flex items-center justify-center transition-all shadow-sm ${isDark ? 'bg-[#242427] border-zinc-800 text-zinc-400 hover:text-blue-400 hover:border-zinc-700' : 'bg-white border-slate-200 text-slate-400 hover:text-blue-500 hover:border-blue-300'}`}
-                                            title="Search"
-                                        >
-                                            <i className="fa-solid fa-magnifying-glass text-xs"></i>
-                                        </button>
-                                    ) : (
-                                        <div className="relative group animate-in fade-in slide-in-from-right-2 duration-200">
-                                            <i className={`fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 transition-colors text-xs ${isDark ? 'text-zinc-400 group-focus-within:text-blue-500' : 'text-slate-400 group-focus-within:text-blue-500'}`}></i>
-                                            <input
-                                                ref={cashSearchRef}
-                                                type="text"
-                                                placeholder="Search source..."
-                                                value={cashSearch}
-                                                onChange={(e) => setCashSearch(e.target.value)}
-                                                onBlur={() => { if (!cashSearch) setIsCashSearchExpanded(false); }}
-                                                className={`w-full sm:w-56 pl-8 pr-8 py-2 border rounded-lg text-sm transition-all focus:outline-none focus:ring-2 ${isDark ? 'bg-[#242427] border-zinc-800 text-white placeholder-zinc-500 focus:ring-blue-500/20 focus:border-zinc-700' : 'bg-white border-slate-200 text-slate-700 placeholder:text-slate-400 focus:ring-blue-500/20 focus:border-blue-500'}`}
-                                            />
-                                            {cashSearch && (
-                                                <button onClick={() => { setCashSearch(''); cashSearchRef.current?.focus(); }} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors">
-                                                    <i className="fa-solid fa-xmark text-xs"></i>
-                                                </button>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="flex gap-2 shrink-0">
-                                    <button onClick={() => openDownloadModal('Cash-flow')} disabled={cashLogs.length === 0} className={`px-4 py-2 border font-bold text-xs rounded-lg transition-all flex items-center gap-2 disabled:opacity-50 ${isDark ? 'bg-[#242427] text-blue-400 border-blue-950/40 hover:bg-blue-900/20' : 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100'}`}>
-                                        <i className="fa-solid fa-download"></i> Download
-                                    </button>
-                                    <button onClick={() => setShowNewCashRow(true)} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition-all shadow-md shadow-blue-500/20 flex items-center gap-2">
-                                        <i className="fa-solid fa-plus"></i> Add Entry
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
                         <div className="overflow-x-auto">
                             <table className="w-full text-left text-sm">
                                 <thead className={`${isDark ? 'bg-[#1e1e21] text-zinc-400' : 'bg-slate-100 text-slate-500'} text-[10px] uppercase font-black tracking-wider`}>
@@ -1033,44 +1237,6 @@ export default function DailyWork() {
                 {/* 3. Inventory Logs Tab */}
                 {activeTab === 'Inventory-logs' && (
                     <div className="flex flex-col flex-1">
-                        <div className={`flex flex-col sm:flex-row items-start sm:items-center justify-between px-5 py-3 border-b gap-4 ${isDark ? 'bg-[#1e1e21] border-zinc-800' : 'bg-slate-50 border-slate-200'}`}>
-                            <h3 className={`text-xs font-black uppercase tracking-widest min-w-max ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>Inventory Audit Trail (Full)</h3>
-                            <div className="flex flex-1 items-center justify-end gap-3 w-full sm:w-auto">
-                                <div className="relative flex items-center">
-                                    {!isInventorySearchExpanded && !inventorySearch ? (
-                                        <button
-                                            onClick={() => { setIsInventorySearchExpanded(true); setTimeout(() => inventorySearchRef.current?.focus(), 50); }}
-                                            className={`w-9 h-9 border rounded-lg flex items-center justify-center transition-all shadow-sm ${isDark ? 'bg-[#242427] border-zinc-800 text-zinc-400 hover:text-blue-400 hover:border-zinc-700' : 'bg-white border-slate-200 text-slate-400 hover:text-blue-500 hover:border-blue-300'}`}
-                                            title="Search"
-                                        >
-                                            <i className="fa-solid fa-magnifying-glass text-xs"></i>
-                                        </button>
-                                    ) : (
-                                        <div className="relative group animate-in fade-in slide-in-from-right-2 duration-200">
-                                            <i className={`fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 transition-colors text-xs ${isDark ? 'text-zinc-400 group-focus-within:text-blue-500' : 'text-slate-400 group-focus-within:text-blue-500'}`}></i>
-                                            <input
-                                                ref={inventorySearchRef}
-                                                type="text"
-                                                placeholder="Search model, user, customer..."
-                                                value={inventorySearch}
-                                                onChange={(e) => setInventorySearch(e.target.value)}
-                                                onBlur={() => { if (!inventorySearch) setIsInventorySearchExpanded(false); }}
-                                                className={`w-full sm:w-56 pl-8 pr-8 py-2 border rounded-lg text-sm transition-all focus:outline-none focus:ring-2 ${isDark ? 'bg-[#242427] border-zinc-800 text-white placeholder-zinc-500 focus:ring-blue-500/20 focus:border-zinc-700' : 'bg-white border-slate-200 text-slate-700 placeholder:text-slate-400 focus:ring-blue-500/20 focus:border-blue-500'}`}
-                                            />
-                                            {inventorySearch && (
-                                                <button onClick={() => { setInventorySearch(''); inventorySearchRef.current?.focus(); }} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors">
-                                                    <i className="fa-solid fa-xmark text-xs"></i>
-                                                </button>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                                <button onClick={() => openDownloadModal('Inventory-logs')} disabled={inventoryLogs.length === 0} className={`px-4 py-2 border font-bold text-xs rounded-lg transition-all flex items-center gap-2 disabled:opacity-50 ${isDark ? 'bg-[#242427] text-blue-400 border-blue-950/40 hover:bg-blue-900/20' : 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100'}`}>
-                                    <i className="fa-solid fa-download"></i> Download
-                                </button>
-                            </div>
-                        </div>
-
                         <div className="overflow-x-auto">
                             <table className="w-full text-left text-sm border-collapse">
                                 <thead className={`${isDark ? 'bg-[#1e1e21] text-zinc-400' : 'bg-slate-100 text-slate-500'} text-[10px] uppercase font-black tracking-wider`}>
@@ -1150,44 +1316,6 @@ export default function DailyWork() {
                 {/* 4. Copper Logs Tab */}
                 {activeTab === 'Copper-logs' && (
                     <div className="flex flex-col flex-1">
-                        <div className={`flex flex-col sm:flex-row items-start sm:items-center justify-between px-5 py-3 border-b gap-4 ${isDark ? 'bg-[#1e1e21] border-zinc-800' : 'bg-slate-50 border-slate-200'}`}>
-                            <h3 className={`text-xs font-black uppercase tracking-widest min-w-max ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>Copper Pipe Audit Trail (Full)</h3>
-                            <div className="flex flex-1 items-center justify-end gap-3 w-full sm:w-auto">
-                                <div className="relative flex items-center">
-                                    {!isCopperSearchExpanded && !copperSearch ? (
-                                        <button
-                                            onClick={() => { setIsCopperSearchExpanded(true); setTimeout(() => copperSearchRef.current?.focus(), 50); }}
-                                            className={`w-9 h-9 border rounded-lg flex items-center justify-center transition-all shadow-sm ${isDark ? 'bg-[#242427] border-zinc-800 text-zinc-400 hover:text-blue-400 hover:border-zinc-700' : 'bg-white border-slate-200 text-slate-400 hover:text-blue-500 hover:border-blue-300'}`}
-                                            title="Search"
-                                        >
-                                            <i className="fa-solid fa-magnifying-glass text-xs"></i>
-                                        </button>
-                                    ) : (
-                                        <div className="relative group animate-in fade-in slide-in-from-right-2 duration-200">
-                                            <i className={`fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 transition-colors text-xs ${isDark ? 'text-zinc-400 group-focus-within:text-blue-500' : 'text-slate-400 group-focus-within:text-blue-500'}`}></i>
-                                            <input
-                                                ref={copperSearchRef}
-                                                type="text"
-                                                placeholder="Search pipe size, origin..."
-                                                value={copperSearch}
-                                                onChange={(e) => setCopperSearch(e.target.value)}
-                                                onBlur={() => { if (!copperSearch) setIsCopperSearchExpanded(false); }}
-                                                className={`w-full sm:w-56 pl-8 pr-8 py-2 border rounded-lg text-sm transition-all focus:outline-none focus:ring-2 ${isDark ? 'bg-[#242427] border-zinc-800 text-white placeholder-zinc-500 focus:ring-blue-500/20 focus:border-zinc-700' : 'bg-white border-slate-200 text-slate-700 placeholder:text-slate-400 focus:ring-blue-500/20 focus:border-blue-500'}`}
-                                            />
-                                            {copperSearch && (
-                                                <button onClick={() => { setCopperSearch(''); copperSearchRef.current?.focus(); }} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors">
-                                                    <i className="fa-solid fa-xmark text-xs"></i>
-                                                </button>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                                <button onClick={() => openDownloadModal('Copper-logs')} disabled={copperLogs.length === 0} className={`px-4 py-2 border font-bold text-xs rounded-lg transition-all flex items-center gap-2 disabled:opacity-50 ${isDark ? 'bg-[#242427] text-blue-400 border-blue-950/40 hover:bg-blue-900/20' : 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100'}`}>
-                                    <i className="fa-solid fa-download"></i> Download
-                                </button>
-                            </div>
-                        </div>
-
                         <div className="overflow-x-auto">
                             <table className="w-full text-left text-sm border-collapse">
                                 <thead className={`${isDark ? 'bg-[#1e1e21] text-zinc-400' : 'bg-slate-100 text-slate-500'} text-[10px] uppercase font-black tracking-wider`}>

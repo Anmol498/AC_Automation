@@ -1,6 +1,15 @@
 import pool from '../config/db.js';
 import bcrypt from 'bcryptjs';
 
+async function safeAlter(sql: string, label?: string) {
+  try {
+    await pool.execute(sql);
+    if (label) console.log(`Migration applied: ${label}`);
+  } catch (err: any) {
+    // Column/constraint might already exist — safe to ignore
+  }
+}
+
 export async function ensureDatabaseReady() {
   try {
     console.log("Initializing database schema...");
@@ -144,20 +153,10 @@ export async function ensureDatabaseReady() {
     `);
 
     // Alter table to add group_name column if it doesn't exist
-    try {
-      await pool.execute("ALTER TABLE inventory_copper ADD COLUMN group_name VARCHAR(50) NOT NULL DEFAULT 'Standard Sizes'");
-      console.log('Successfully added group_name column to inventory_copper');
-    } catch (err) {
-      // Column might already exist, which is fine
-    }
+    await safeAlter("ALTER TABLE inventory_copper ADD COLUMN group_name VARCHAR(50) NOT NULL DEFAULT 'Standard Sizes'", 'group_name on inventory_copper');
 
     // Alter table to add phone column to users if it doesn't exist
-    try {
-      await pool.execute("ALTER TABLE users ADD COLUMN phone VARCHAR(20) DEFAULT NULL");
-      console.log('Successfully added phone column to users');
-    } catch (err) {
-      // Column might already exist, which is fine
-    }
+    await safeAlter("ALTER TABLE users ADD COLUMN phone VARCHAR(20) DEFAULT NULL", 'phone on users');
 
     // Create password_resets table if it doesn't exist
     await pool.execute(`
@@ -175,28 +174,13 @@ export async function ensureDatabaseReady() {
     `);
 
     // Alter table to add email_status column to job_phases if it doesn't exist
-    try {
-      await pool.execute("ALTER TABLE job_phases ADD COLUMN email_status VARCHAR(50) DEFAULT NULL");
-      console.log('Successfully added email_status column to job_phases');
-    } catch (err) {
-      // Column might already exist, which is fine
-    }
+    await safeAlter("ALTER TABLE job_phases ADD COLUMN email_status VARCHAR(50) DEFAULT NULL", 'email_status on job_phases');
 
     // Alter table to add whatsapp_status column to job_phases if it doesn't exist
-    try {
-      await pool.execute("ALTER TABLE job_phases ADD COLUMN whatsapp_status VARCHAR(50) DEFAULT NULL");
-      console.log('Successfully added whatsapp_status column to job_phases');
-    } catch (err) {
-      // Column might already exist, which is fine
-    }
+    await safeAlter("ALTER TABLE job_phases ADD COLUMN whatsapp_status VARCHAR(50) DEFAULT NULL", 'whatsapp_status on job_phases');
 
     // Alter table to add whatsapp_message_id column to job_phases if it doesn't exist
-    try {
-      await pool.execute("ALTER TABLE job_phases ADD COLUMN whatsapp_message_id VARCHAR(255) DEFAULT NULL");
-      console.log('Successfully added whatsapp_message_id column to job_phases');
-    } catch (err) {
-      // Column might already exist, which is fine
-    }
+    await safeAlter("ALTER TABLE job_phases ADD COLUMN whatsapp_message_id VARCHAR(255) DEFAULT NULL", 'whatsapp_message_id on job_phases');
 
     // Migration: Update group_name for existing items that contain 'home'
     try {
@@ -313,27 +297,26 @@ export async function ensureDatabaseReady() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
 
-    try {
-      await pool.execute("ALTER TABLE material_logs MODIFY COLUMN category ENUM('copper', 'drain', 'remote', 'other', 'ac_model') NOT NULL");
-      console.log("Successfully altered material_logs table to include 'ac_model' ENUM value.");
-    } catch (err: any) {
-      console.log("Altering material_logs enum category column was skipped or failed:", err.message);
-    }
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS material_log_items (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        material_log_id INT NOT NULL,
+        item_name VARCHAR(255) NOT NULL,
+        sent_qty DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+        used_qty DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+        returned_qty DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+        notes TEXT DEFAULT NULL,
+        INDEX idx_mli_log (material_log_id),
+        CONSTRAINT fk_mli_log FOREIGN KEY (material_log_id) REFERENCES material_logs(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
 
-    try {
-      await pool.execute("ALTER TABLE inventory_history ADD COLUMN job_id INT DEFAULT NULL");
-      await pool.execute("ALTER TABLE inventory_history ADD CONSTRAINT fk_inv_history_job FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE SET NULL");
-      console.log("Successfully altered inventory_history table to include job_id column and constraint.");
-    } catch (err: any) {
-      console.log("Altering inventory_history to include job_id was skipped or failed:", err.message);
-    }
+    await safeAlter("ALTER TABLE material_logs MODIFY COLUMN category ENUM('copper', 'drain', 'remote', 'other', 'ac_model') NOT NULL", 'ac_model enum on material_logs');
 
-    try {
-      await pool.execute("ALTER TABLE inventory_history MODIFY COLUMN action_type ENUM('ADDED_STOCK', 'SOLD_STOCK', 'UPDATED_DETAILS', 'RETURNED_STOCK') NOT NULL");
-      console.log("Successfully altered inventory_history table to include 'RETURNED_STOCK' in action_type ENUM.");
-    } catch (err: any) {
-      console.log("Altering inventory_history action_type ENUM was skipped or failed:", err.message);
-    }
+    await safeAlter("ALTER TABLE inventory_history ADD COLUMN job_id INT DEFAULT NULL", 'job_id on inventory_history');
+    await safeAlter("ALTER TABLE inventory_history ADD CONSTRAINT fk_inv_history_job FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE SET NULL", 'fk_inv_history_job');
+
+    await safeAlter("ALTER TABLE inventory_history MODIFY COLUMN action_type ENUM('ADDED_STOCK', 'SOLD_STOCK', 'UPDATED_DETAILS', 'RETURNED_STOCK') NOT NULL", 'RETURNED_STOCK enum on inventory_history');
 
     await pool.execute(`
       CREATE TABLE IF NOT EXISTS settings (
@@ -402,6 +385,10 @@ export async function ensureDatabaseReady() {
         ['hsd@icloud.com', hashedDefaultPassword, 'superadmin']
       );
     }
+
+    // Ensure created_by column exists in daily_work_logs table
+    await safeAlter("ALTER TABLE daily_work_logs ADD COLUMN created_by INT NULL", 'created_by on daily_work_logs');
+    await safeAlter("ALTER TABLE daily_work_logs ADD CONSTRAINT fk_dwl_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL", 'fk_dwl_created_by');
 
     console.log("Database schema ready.");
   } catch (err: any) {
