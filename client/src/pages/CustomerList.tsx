@@ -12,6 +12,7 @@ import { api } from '../lib/api';
 import { useDebounce } from '../hooks/useDebounce';
 import { API_BASE_URL } from '../constants';
 import { Skeleton } from '../components/ui/Skeleton';
+import { FolderUpload } from '../components/ui/FolderUpload';
 
 
 const CustomerList: React.FC = () => {
@@ -573,21 +574,27 @@ const CustomerList: React.FC = () => {
               <input type="email" placeholder="Email" className={`w-full p-2.5 border rounded-lg ${isDark ? 'bg-[#18181b] border-zinc-800 text-white placeholder-zinc-500' : 'border-slate-200'}`} value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
               <input placeholder="Phone" className={`w-full p-2.5 border rounded-lg ${isDark ? 'bg-[#18181b] border-zinc-800 text-white placeholder-zinc-500' : 'border-slate-200'}`} value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} />
               <textarea placeholder="Address" className={`w-full p-2.5 border rounded-lg ${isDark ? 'bg-[#18181b] border-zinc-800 text-white placeholder-zinc-500' : 'border-slate-200'}`} rows={3} value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} required />
-              <div className={`space-y-3 p-4 rounded-xl border ${
-                isDark ? 'bg-zinc-800/40 border-zinc-800' : 'bg-slate-50 border-slate-200'
-              }`}>
-                <div>
-                  <label className={`block text-xs font-bold mb-1 pl-1 ${isDark ? 'text-zinc-400' : 'text-slate-600'}`}>Drawing</label>
-                  <input type="file" className="text-sm p-1 w-full outline-none" onChange={e => setDrawingFile(e.target.files ? e.target.files[0] : null)} />
-                  {editingId && <span className="text-[9px] text-slate-400 pl-1 italic">Leave empty to keep existing drawing</span>}
-                </div>
-                <div className={`h-px w-full ${isDark ? 'bg-zinc-800' : 'bg-slate-200'}`} />
-                <div>
-                  <label className={`block text-xs font-bold mb-1 pl-1 ${isDark ? 'text-zinc-400' : 'text-slate-600'}`}>Quotation</label>
-                  <input type="file" className="text-sm p-1 w-full outline-none" onChange={e => setQuotationFile(e.target.files ? e.target.files[0] : null)} />
-                  {editingId && <span className="text-[9px] text-slate-400 pl-1 italic">Leave empty to keep existing quotation</span>}
-                </div>
+              <div className="flex gap-4 items-center justify-between py-2">
+                <FolderUpload
+                  label="Drawing"
+                  fileType="dwg"
+                  selectedFile={drawingFile}
+                  onChange={setDrawingFile}
+                  isDark={isDark}
+                />
+                <FolderUpload
+                  label="Quotation"
+                  fileType="quot"
+                  selectedFile={quotationFile}
+                  onChange={setQuotationFile}
+                  isDark={isDark}
+                />
               </div>
+              {editingId && (
+                <p className="text-[10px] text-slate-400 dark:text-zinc-500 text-center italic leading-tight">
+                  Leave empty to keep existing files
+                </p>
+              )}
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setIsModalOpen(false)} className={`flex-1 py-3 px-4 font-bold rounded-2xl transition-all ${
                   isDark ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-350' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
