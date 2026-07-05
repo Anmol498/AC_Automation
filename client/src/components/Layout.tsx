@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AppContext';
 import { UserRole } from '../types';
 import { APP_NAME } from '../constants';
 import { useRealtime } from './RealtimeProvider';
 import { FloatingDock } from './ui/floating-dock';
+import { GenieOutlet } from './ui/GenieOutlet';
+import { LogoutOverlay } from './ui/LogoutOverlay';
+import { GenieProvider, useGenie } from '../context/GenieContext';
 import { motion, useTransform } from 'framer-motion';
 import {
   IconLayoutDashboard,
@@ -43,11 +46,21 @@ const ThemeToggleSwitch: React.FC<ThemeToggleSwitchProps> = ({ parentSize, isDar
 };
 
 const Layout: React.FC = () => {
+  return (
+    <GenieProvider>
+      <LayoutContent />
+    </GenieProvider>
+  );
+};
+
+const LayoutContent: React.FC = () => {
   const { user, logout } = useAuth();
   const { status } = useRealtime();
   const location = useLocation();
   const navigate = useNavigate();
+  const { setOrigin } = useGenie();
   const [isCollapsed, setIsCollapsed] = useState(() => localStorage.getItem('sidebar-collapsed') === 'true');
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isDark, setIsDark] = useState(() => {
     const saved = localStorage.getItem('dashboard-theme');
     return saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -107,10 +120,11 @@ const Layout: React.FC = () => {
   }
 
   const handleLogout = () => {
-    navigate('/', { replace: true });
+    setIsLoggingOut(true);
     setTimeout(() => {
+      navigate('/', { replace: true });
       logout();
-    }, 50);
+    }, 650); // matches LogoutOverlay's enter + hold + collapse timing
   };
 
   const getIconForLabel = (label: string, isActive?: boolean) => {
@@ -180,6 +194,7 @@ const Layout: React.FC = () => {
                 orientation="vertical"
                 items={dockItems}
                 desktopClassName="border-slate-800 bg-slate-900/90 shadow-2xl"
+                onIconInteract={setOrigin}
               />
               {/* Floating border collapse/expand button, attached to the dock capsule */}
               <button
@@ -323,12 +338,7 @@ const Layout: React.FC = () => {
         </header>
 
         <div className="flex-1 p-4 md:p-6 w-full max-w-full overflow-x-hidden">
-          <div
-            key={location.pathname}
-            className="w-full h-full animate-in fade-in slide-in-from-bottom-2 duration-200"
-          >
-            <Outlet context={{ isDark, toggleTheme }} />
-          </div>
+          <GenieOutlet isCollapsed={isCollapsed} outletContext={{ isDark, toggleTheme }} />
         </div>
       </main>
 
@@ -366,6 +376,8 @@ const Layout: React.FC = () => {
           </span>
         </Link>
       </nav>
+
+      <LogoutOverlay active={isLoggingOut} />
     </div>
   );
 };
