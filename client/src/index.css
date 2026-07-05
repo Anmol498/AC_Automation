@@ -108,6 +108,15 @@ h3 { letter-spacing: -0.03em; }
   background: rgba(100, 116, 139, 0.45);
 }
 
+/* Hide scrollbars */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 /* Subtle Page Load Animation */
 @keyframes fadeIn {
   from { opacity: 0; }

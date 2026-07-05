@@ -1,9 +1,8 @@
 import nodemailer from 'nodemailer';
-import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
 
-dotenv.config();
+const isDev = process.env.NODE_ENV === 'development';
 
 /**
  * Log email errors to a persistent file
@@ -31,7 +30,7 @@ const logMailError = (error: any, context: string) => {
  * Create a transporter for SMTP
  */
 const getSmtpTransporter = () => {
-    console.log("DEBUG: Creating SMTP transporter (Port 465, family: 4)");
+    if (isDev) console.log("Creating SMTP transporter (Port 465, family: 4)");
     return nodemailer.createTransport({
         host: process.env.SMTP_HOST || 'satguruengineers.com',
         port: parseInt(process.env.SMTP_PORT || '465'),
@@ -82,11 +81,7 @@ const sendEmailViaGmailApi = async (
     html: string
 ): Promise<{ success: boolean; error?: string }> => {
     try {
-        console.log("DEBUG: Initializing Gmail API Transport (HTTPS Port 443)");
-        console.log("DEBUG: GMAIL_USER:", fromEmail);
-        console.log("DEBUG: CLIENT_ID present:", !!process.env.GMAIL_CLIENT_ID);
-        console.log("DEBUG: CLIENT_SECRET present:", !!process.env.GMAIL_CLIENT_SECRET);
-        console.log("DEBUG: REFRESH_TOKEN present:", !!process.env.GMAIL_REFRESH_TOKEN);
+        if (isDev) console.log("Initializing Gmail API Transport (HTTPS Port 443)");
 
         const accessToken = await getGmailAccessToken();
 
@@ -127,10 +122,10 @@ const sendEmailViaGmailApi = async (
         }
 
         const resData: any = await response.json();
-        console.log(`DEBUG: Email sent via Gmail API: ${resData.id}`);
+        console.log(`Email sent via Gmail API: ${resData.id}`);
         return { success: true };
     } catch (error: any) {
-        console.error("DEBUG: Gmail API Fail:", error);
+        console.error("Gmail API Fail:", error);
         logMailError(error, `Gmail API Failure for ${to}`);
         return { success: false, error: `Gmail API Failed: ${error.message}` };
     }
@@ -151,7 +146,7 @@ export const sendEmail = async (
     text: string,
     html: string
 ): Promise<{ success: boolean; error?: string }> => {
-    console.log(`DEBUG: [Mailer v3] Sending email FROM: ${fromEmail} TO: ${to}`);
+    if (isDev) console.log(`Sending email FROM: ${fromEmail} TO: ${to}`);
     const isOAuth = fromEmail.toLowerCase().includes('gmail.com');
 
     let bcc: string | undefined;
@@ -159,14 +154,14 @@ export const sendEmail = async (
 
     // Detect sender and configure transport/BCC
     if (fromEmail === 'contactsatguruengineers@gmail.com') {
-        console.log("Routing to Gmail API");
+        if (isDev) console.log("Routing to Gmail API");
         bcc = 'contactsatguruengineers@gmail.com';
         fromName = process.env.GMAIL_FROM_NAME || "Satguru Engineers";
         return await sendEmailViaGmailApi(fromEmail, fromName, to, bcc, subject, text, html);
     } 
 
     // Default to SMTP (specifically for contact@satguruengineers.com)
-    console.log("Routing to SMTP Transport");
+    if (isDev) console.log("Routing to SMTP Transport");
     const transporter = getSmtpTransporter();
     bcc = 'contact@satguruengineers.com';
     fromName = process.env.SMTP_FROM_NAME || "Satguru Engineers";
@@ -193,7 +188,7 @@ export const sendEmail = async (
         }
         
         const errorMessage = `Email Delivery Failed: ${error.message}${error.address ? ` (to ${error.address})` : ''}`;
-        console.error(`DEBUG: [Mailer Fail] ${errorType} - ${errorMessage}`);
+        console.error(`[Mailer] ${errorType} - ${errorMessage}`);
         
         logMailError(error, `Email from ${fromEmail} to ${to}`);
         return { success: false, error: errorMessage };

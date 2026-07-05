@@ -1,10 +1,8 @@
-import dotenv from 'dotenv';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { randomUUID } from 'crypto';
 import pool from '../config/db.js';
 import { getPaymentPhaseAmount, cleanPhaseName } from './emailHelper.js';
-dotenv.config();
 
 const execAsync = promisify(exec);
 
@@ -283,20 +281,12 @@ export async function startSession(): Promise<{ success: boolean; data?: any; er
   
   const res = await openwaFetch(`/api/sessions/${OPENWA_SESSION_NAME}/start`, { method: 'POST' });
   if (res.ok) {
-    // Pre-seed default templates after session starts
-    setTimeout(async () => {
-      await ensureDefaultTemplates();
-    }, 2000);
     return { success: true, data: res.data };
   }
   
   // Handle case where session is already started on the gateway
   if (res.status === 400 && (res.data?.message?.toLowerCase().includes('already started') || String(res.data).toLowerCase().includes('already started'))) {
     console.log(`[WhatsApp Service] Session "${sessionName}" is already started.`);
-    // Pre-seed default templates
-    setTimeout(async () => {
-      await ensureDefaultTemplates();
-    }, 1000);
     return { success: true, data: res.data };
   }
   
@@ -374,14 +364,13 @@ export async function ensureDefaultTemplates(): Promise<void> {
     
     // 4. Register any local template that is missing from the OpenWA gateway session
     for (const localT of finalLocalTemplates) {
-      const existsInOpenwa = openwaTemplates.some((t: any) => t.id === localT.id || t.name === localT.name);
+      const existsInOpenwa = openwaTemplates.some((t: any) => t.name === localT.name);
       if (!existsInOpenwa) {
         console.log(`[WhatsApp Service] Syncing template "${localT.name}" to OpenWA session...`);
         try {
           await openwaFetch(`/api/sessions/${OPENWA_SESSION_NAME}/templates`, {
             method: 'POST',
             body: JSON.stringify({
-              id: localT.id,
               name: localT.name,
               header: localT.header,
               body: localT.body,
@@ -399,6 +388,24 @@ export async function ensureDefaultTemplates(): Promise<void> {
 }
 
 /**
+ * Helper to find the generated OpenWA template ID by its name
+ */
+async function getOpenwaTemplateIdByName(templateName: string): Promise<string | null> {
+  try {
+    const openwaRes = await openwaFetch(`/api/sessions/${OPENWA_SESSION_NAME}/templates`);
+    if (openwaRes.ok && Array.isArray(openwaRes.data)) {
+      const found = openwaRes.data.find((t: any) => t.name === templateName);
+      if (found && found.id) {
+        return found.id;
+      }
+    }
+  } catch (err: any) {
+    console.warn('[WhatsApp Service] Error mapping template name to OpenWA ID:', err.message || err);
+  }
+  return null;
+}
+
+/**
  * Creates a template
  */
 export async function createTemplate(template: { name: string; header?: string; body: string; footer?: string }): Promise<{ success: boolean; data?: any; error?: string }> {
@@ -409,11 +416,11 @@ export async function createTemplate(template: { name: string; header?: string; 
       [id, template.name, template.header || null, template.body, template.footer || null]
     );
     
-    // Try to push to OpenWA session
+    // Try to push to OpenWA session (without id, so OpenWA generates it)
     try {
       await openwaFetch(`/api/sessions/${OPENWA_SESSION_NAME}/templates`, {
         method: 'POST',
-        body: JSON.stringify({ id, ...template })
+        body: JSON.stringify(template)
       });
     } catch (openwaErr: any) {
       console.warn('[WhatsApp Service] Template saved locally, but failed to push to OpenWA:', openwaErr.message || openwaErr);
@@ -446,12 +453,21 @@ export async function updateTemplate(idOrName: string, template: { header?: stri
       [template.header || null, template.body, template.footer || null, dbTemplate.id]
     );
 
-    // Try to update in OpenWA session
+    // Try to update in OpenWA session using resolved OpenWA template ID
     try {
-      await openwaFetch(`/api/sessions/${OPENWA_SESSION_NAME}/templates/${dbTemplate.id}`, {
-        method: 'PUT',
-        body: JSON.stringify({ name: dbTemplate.name, ...template })
-      });
+      const openwaId = await getOpenwaTemplateIdByName(dbTemplate.name);
+      if (openwaId) {
+        await openwaFetch(`/api/sessions/${OPENWA_SESSION_NAME}/templates/${openwaId}`, {
+          method: 'PUT',
+          body: JSON.stringify({ name: dbTemplate.name, ...template })
+        });
+      } else {
+        // Fallback: create if missing
+        await openwaFetch(`/api/sessions/${OPENWA_SESSION_NAME}/templates`, {
+          method: 'POST',
+          body: JSON.stringify({ name: dbTemplate.name, ...template })
+        });
+      }
     } catch (openwaErr: any) {
       console.warn('[WhatsApp Service] Template updated locally, but failed to sync to OpenWA:', openwaErr.message || openwaErr);
     }
@@ -480,11 +496,14 @@ export async function deleteTemplate(idOrName: string): Promise<{ success: boole
 
     await pool.execute('DELETE FROM whatsapp_templates WHERE id = ?', [dbTemplate.id]);
 
-    // Try to delete from OpenWA session
+    // Try to delete from OpenWA session using resolved OpenWA template ID
     try {
-      await openwaFetch(`/api/sessions/${OPENWA_SESSION_NAME}/templates/${dbTemplate.id}`, {
-        method: 'DELETE'
-      });
+      const openwaId = await getOpenwaTemplateIdByName(dbTemplate.name);
+      if (openwaId) {
+        await openwaFetch(`/api/sessions/${OPENWA_SESSION_NAME}/templates/${openwaId}`, {
+          method: 'DELETE'
+        });
+      }
     } catch (openwaErr: any) {
       console.warn('[WhatsApp Service] Template deleted locally, but failed to delete in OpenWA:', openwaErr.message || openwaErr);
     }
@@ -507,6 +526,33 @@ export async function sendWhatsAppNotification(payload: WhatsAppTemplatePayload)
 
   // Ensure default templates are seeded before attempting to send
   await ensureDefaultTemplates();
+
+  // Check if session was connected recently to avoid initial history sync congestion
+  try {
+    const url = `${OPENWA_API_URL}/api/sessions`;
+    const headers = {
+      'Content-Type': 'application/json',
+      ...(OPENWA_API_KEY ? { 'X-API-Key': OPENWA_API_KEY } : {})
+    };
+    const response = await fetch(url, { headers });
+    if (response.ok) {
+      const sessions = await response.json();
+      const sessionName = await getActiveSessionName();
+      const session = sessions.find((s: any) => s.name === sessionName || s.id === sessionName);
+      if (session && session.connectedAt) {
+        const connectedTime = new Date(session.connectedAt).getTime();
+        const elapsed = Date.now() - connectedTime;
+        const minimumSyncBuffer = 45000; // 45 seconds
+        if (elapsed > 0 && elapsed < minimumSyncBuffer) {
+          const delayTime = minimumSyncBuffer - elapsed;
+          console.log(`[WhatsApp Service] Session connected recently (${Math.round(elapsed / 1000)}s ago). Delaying message send by ${Math.round(delayTime / 1000)}s to ensure initial chat sync is complete.`);
+          await new Promise(resolve => setTimeout(resolve, delayTime));
+        }
+      }
+    }
+  } catch (err: any) {
+    console.warn('[WhatsApp Service] Pre-send connection age check failed:', err.message || err);
+  }
 
   const endpoint = `/api/sessions/${OPENWA_SESSION_NAME}/messages/send-template`;
   const res = await openwaFetch(endpoint, {
@@ -547,7 +593,7 @@ async function clearRemoteAuthFiles(): Promise<void> {
   }
 }
 
-export async function disconnectSession(): Promise<{ success: boolean; error?: string }> {
+export async function disconnectSession(clearSessionName = false): Promise<{ success: boolean; error?: string }> {
   try {
     const sessionName = await getActiveSessionName();
     const sessionId = await getSessionId(false);
@@ -567,11 +613,13 @@ export async function disconnectSession(): Promise<{ success: boolean; error?: s
     
     // Clear connected phone and session name from DB cache
     await saveSetting('whatsapp_connected_phone', '');
-    await saveSetting('whatsapp_session_name', '');
+    if (clearSessionName) {
+      await saveSetting('whatsapp_session_name', '');
+    }
     
     console.log('[WhatsApp Service] Session disconnected and auth cleared. Flag set to prevent auto-reconnection.');
     
-    if (res.ok) {
+    if (res.ok || res.status === 404) {
       return { success: true };
     }
     return { success: false, error: res.data || 'Failed to delete session' };
@@ -582,9 +630,63 @@ export async function disconnectSession(): Promise<{ success: boolean; error?: s
     delete cachedSessionIds[sessionName];
     // Clear connected phone and session name from DB cache on failure/error as well
     await saveSetting('whatsapp_connected_phone', '');
-    await saveSetting('whatsapp_session_name', '');
+    if (clearSessionName) {
+      await saveSetting('whatsapp_session_name', '');
+    }
     return { success: false, error: err.message || 'Disconnect error' };
   }
+}
+
+/**
+ * Resolves the final WhatsApp template name and builds template variables.
+ */
+function resolveTemplatePayload(
+  phaseName: string,
+  jobType: string,
+  costs: { copperPipingCost: number; outdoorFittingCost: number; commissioningCost: number },
+  customerName: string,
+  customerAddress: string | null | undefined,
+  customerPhone: string,
+  technician: string | null | undefined,
+  whatsappTemplate: string | null | undefined,
+  customPaymentAmount: string | number | null | undefined,
+  customDate: string | null | undefined,
+  customTxt: string | null | undefined
+): { chatId: string; templateName: string; vars: Record<string, string> } {
+  const { isPaymentPhase, amount: phaseAmt } = getPaymentPhaseAmount(phaseName, jobType, costs);
+
+  const paymentAmount = customPaymentAmount !== undefined && customPaymentAmount !== null && Number(customPaymentAmount) >= 0 
+    ? Number(customPaymentAmount) 
+    : (phaseAmt || 0);
+
+  let usePaymentTemplate = isPaymentPhase && paymentAmount > 0;
+  if (whatsappTemplate === 'Phase-Complete-Payment' || whatsappTemplate === 'Phases-Complete-Payment') {
+    usePaymentTemplate = true;
+  } else if (whatsappTemplate === 'Phase-Complete' || whatsappTemplate === 'Phases-Complete') {
+    usePaymentTemplate = false;
+  }
+
+  const finalTemplateName = (whatsappTemplate && whatsappTemplate !== 'Phase-Complete' && whatsappTemplate !== 'Phase-Complete-Payment' && whatsappTemplate !== 'Phases-Complete' && whatsappTemplate !== 'Phases-Complete-Payment')
+    ? whatsappTemplate
+    : (usePaymentTemplate ? 'Phase-Complete-Payment' : 'Phase-Complete');
+
+  return {
+    chatId: formatWhatsAppChatId(customerPhone),
+    templateName: finalTemplateName,
+    vars: {
+      customer: customerName,
+      Customer: customerName,
+      Adress: customerAddress || 'Customer Address',
+      Address: customerAddress || 'Customer Address',
+      phase: cleanPhaseName(phaseName),
+      technician: technician ? technician.split('@')[0] : 'Assigned Technician',
+      outstanding: String(paymentAmount),
+      date: customDate || '',
+      Date: customDate || '',
+      txt: customTxt || '',
+      Txt: customTxt || ''
+    }
+  };
 }
 
 interface PhaseDispatchPayload {
@@ -641,46 +743,14 @@ export async function handleWhatsAppPhaseDispatch(payload: PhaseDispatchPayload)
 
   if (sendWhatsApp && customerPhone) {
     try {
-      const { isPaymentPhase, amount: phaseAmt } = getPaymentPhaseAmount(phaseName, jobType, {
-        copperPipingCost: Number(copperPipingCost || 0),
-        outdoorFittingCost: Number(outdoorFittingCost || 0),
-        commissioningCost: Number(commissioningCost || 0)
-      });
+      const waPayload = resolveTemplatePayload(
+        phaseName, jobType,
+        { copperPipingCost: Number(copperPipingCost || 0), outdoorFittingCost: Number(outdoorFittingCost || 0), commissioningCost: Number(commissioningCost || 0) },
+        customerName, customerAddress, customerPhone, technician,
+        whatsappTemplate, customPaymentAmount, customDate, customTxt
+      );
 
-      const paymentAmount = customPaymentAmount !== undefined && customPaymentAmount !== null && Number(customPaymentAmount) >= 0 
-        ? Number(customPaymentAmount) 
-        : (phaseAmt || 0);
-
-      let usePaymentTemplate = isPaymentPhase && paymentAmount > 0;
-      if (whatsappTemplate === 'Phase-Complete-Payment' || whatsappTemplate === 'Phases-Complete-Payment') {
-        usePaymentTemplate = true;
-      } else if (whatsappTemplate === 'Phase-Complete' || whatsappTemplate === 'Phases-Complete') {
-        usePaymentTemplate = false;
-      }
-
-      const formattedPhone = formatWhatsAppChatId(customerPhone);
-
-      const finalTemplateName = (whatsappTemplate && whatsappTemplate !== 'Phase-Complete' && whatsappTemplate !== 'Phase-Complete-Payment' && whatsappTemplate !== 'Phases-Complete' && whatsappTemplate !== 'Phases-Complete-Payment')
-        ? whatsappTemplate
-        : (usePaymentTemplate ? 'Phase-Complete-Payment' : 'Phase-Complete');
-
-      const waResult = await sendWhatsAppNotification({
-        chatId: formattedPhone,
-        templateName: finalTemplateName,
-        vars: {
-          customer: customerName,
-          Customer: customerName,
-          Adress: customerAddress || 'Customer Address',
-          Address: customerAddress || 'Customer Address',
-          phase: cleanPhaseName(phaseName),
-          technician: technician ? technician.split('@')[0] : 'Assigned Technician',
-          outstanding: String(paymentAmount),
-          date: customDate || '',
-          Date: customDate || '',
-          txt: customTxt || '',
-          Txt: customTxt || ''
-        }
-      });
+      const waResult = await sendWhatsAppNotification(waPayload);
 
       const waStatus = waResult.success ? 'sent' : 'failed';
       await connection.execute(
@@ -714,7 +784,7 @@ interface DirectSendPayload {
 /**
  * Handles sending/resending a WhatsApp message for an already completed phase.
  */
-export async function handleWhatsAppDirectSend(payload: DirectSendPayload): Promise<{ success: boolean; whatsappSent: boolean; error?: string }> {
+export async function handleWhatsAppDirectSend(payload: DirectSendPayload): Promise<{ success: boolean; whatsappSent: boolean; error?: string; whatsappError?: string }> {
   const { phaseId, whatsappTemplate, customPaymentAmount, customDate, customTxt } = payload;
 
   const [[details]]: any = await pool.execute(`
@@ -742,51 +812,19 @@ export async function handleWhatsAppDirectSend(payload: DirectSendPayload): Prom
   if (!details.isCompleted) throw new Error('Phase is not yet completed');
   if (!details.customerPhone) throw new Error('Customer phone number not available');
 
-  const { isPaymentPhase, amount: phaseAmt } = getPaymentPhaseAmount(details.phaseName, details.jobType, {
-    copperPipingCost: Number(details.copperPipingCost),
-    outdoorFittingCost: Number(details.outdoorFittingCost),
-    commissioningCost: Number(details.commissioningCost)
-  });
+  const waPayload = resolveTemplatePayload(
+    details.phaseName, details.jobType,
+    { copperPipingCost: Number(details.copperPipingCost), outdoorFittingCost: Number(details.outdoorFittingCost), commissioningCost: Number(details.commissioningCost) },
+    details.customerName, details.customerAddress, details.customerPhone, details.technician,
+    whatsappTemplate, customPaymentAmount, customDate, customTxt
+  );
 
-  const paymentAmount = customPaymentAmount !== undefined && customPaymentAmount !== null && Number(customPaymentAmount) >= 0 
-    ? Number(customPaymentAmount) 
-    : (phaseAmt || 0);
-
-  let usePaymentTemplate = isPaymentPhase && paymentAmount > 0;
-  if (whatsappTemplate === 'Phase-Complete-Payment' || whatsappTemplate === 'Phases-Complete-Payment') {
-    usePaymentTemplate = true;
-  } else if (whatsappTemplate === 'Phase-Complete' || whatsappTemplate === 'Phases-Complete') {
-    usePaymentTemplate = false;
-  }
-
-  const formattedPhone = formatWhatsAppChatId(details.customerPhone);
-
-  const finalTemplateName = (whatsappTemplate && whatsappTemplate !== 'Phase-Complete' && whatsappTemplate !== 'Phase-Complete-Payment' && whatsappTemplate !== 'Phases-Complete' && whatsappTemplate !== 'Phases-Complete-Payment')
-    ? whatsappTemplate
-    : (usePaymentTemplate ? 'Phase-Complete-Payment' : 'Phase-Complete');
-
-  const waResult = await sendWhatsAppNotification({
-    chatId: formattedPhone,
-    templateName: finalTemplateName,
-    vars: {
-      customer: details.customerName,
-      Customer: details.customerName,
-      Adress: details.customerAddress || 'Customer Address',
-      Address: details.customerAddress || 'Customer Address',
-      phase: cleanPhaseName(details.phaseName),
-      technician: details.technician ? details.technician.split('@')[0] : 'Assigned Technician',
-      outstanding: String(paymentAmount),
-      date: customDate || '',
-      Date: customDate || '',
-      txt: customTxt || '',
-      Txt: customTxt || ''
-    }
-  });
+  const waResult = await sendWhatsAppNotification(waPayload);
 
   const waStatus = waResult.success ? 'sent' : 'failed';
   await pool.execute('UPDATE job_phases SET whatsapp_status = ?, whatsapp_message_id = ? WHERE id = ?', [waStatus, waResult.messageId || null, phaseId]);
   
-  return { success: true, whatsappSent: waResult.success, error: waResult.error };
+  return { success: true, whatsappSent: waResult.success, error: waResult.error, whatsappError: waResult.error };
 }
 
 /**

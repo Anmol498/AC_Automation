@@ -46,7 +46,7 @@ const Settings: React.FC = () => {
                 }
                 setWaIsHolding(false);
                 setWaHoldProgress(0);
-                handleDisconnect(true);
+                handleDisconnect(false);
             }
         }, 30);
     };
@@ -67,6 +67,8 @@ const Settings: React.FC = () => {
     }, []);
 
     // Fetch WhatsApp connection status and auto-poll when disconnected to detect QR scan
+    const [waServiceAvailable, setWaServiceAvailable] = useState(true);
+
     useEffect(() => {
         if (user?.role !== UserRole.SUPER_ADMIN) return;
 
@@ -75,6 +77,7 @@ const Settings: React.FC = () => {
                 setWaStatusLoading(true);
                 const data = await api.get('/whatsapp/status');
                 setWaStatus({ connected: data.connected, status: data.status, phone: data.phone });
+                setWaServiceAvailable(true);
                 
                 const settingsData = await api.get('/settings');
                 if (settingsData.whatsapp_session_name) {
@@ -82,8 +85,9 @@ const Settings: React.FC = () => {
                     setTempWhatsappSessionName(settingsData.whatsapp_session_name);
                 }
             } catch (err) {
-                console.error('Failed to fetch WhatsApp status:', err);
-                setWaStatus({ connected: false, status: 'error', phone: null });
+                // Silently handle - WhatsApp service (OpenWA) is not running
+                setWaStatus({ connected: false, status: 'unavailable', phone: null });
+                setWaServiceAvailable(false);
             } finally {
                 setWaStatusLoading(false);
             }
@@ -91,9 +95,9 @@ const Settings: React.FC = () => {
 
         fetchWaStatus();
 
-        // Start polling status every 5 seconds if not connected to detect QR scans automatically
+        // Only poll if not connected AND service is reachable (prevents console spam when OpenWA is down)
         let intervalId: any;
-        if (!waStatus.connected) {
+        if (!waStatus.connected && waServiceAvailable) {
             intervalId = setInterval(async () => {
                 try {
                     const data = await api.get('/whatsapp/status');
@@ -103,14 +107,18 @@ const Settings: React.FC = () => {
                         toast.success('WhatsApp connected successfully!');
                         clearInterval(intervalId);
                     }
-                } catch (err) { /* ignore */ }
+                } catch (err) {
+                    // Service went down, stop polling
+                    setWaServiceAvailable(false);
+                    clearInterval(intervalId);
+                }
             }, 5000);
         }
 
         return () => {
             if (intervalId) clearInterval(intervalId);
         };
-    }, [user?.role, waStatus.connected]);
+    }, [user?.role, waStatus.connected, waServiceAvailable]);
     const { 
         enableLowStockAlert, 
         lowStockThreshold, 
@@ -382,24 +390,27 @@ const Settings: React.FC = () => {
         }
     };
 
-    const handleDisconnect = async (bypassConfirm = false) => {
-        if (!bypassConfirm && !window.confirm("Are you sure you want to disconnect this WhatsApp number? This will reset the connection, and you will need to scan a new QR code to reconnect.")) {
+    const handleDisconnect = async (clearSessionName = false) => {
+        if (clearSessionName && !window.confirm("Are you sure you want to delete this WhatsApp session and cache? This will reset all connection files, and you will need to scan a new QR code to reconnect.")) {
             return;
         }
         setWaDisconnecting(true);
         try {
-            await api.post('/whatsapp/session/disconnect');
-            toast.success('WhatsApp number disconnected successfully.');
+            await api.post('/whatsapp/session/disconnect', { clearSessionName });
+            toast.success(clearSessionName ? 'WhatsApp session deleted successfully.' : 'WhatsApp number disconnected successfully.');
             setWaQrUrl(null); // Clear QR code cache
-            setWhatsappSessionName('');
-            setTempWhatsappSessionName('');
-            setShowCreateForm(false);
+            
+            if (clearSessionName) {
+                setWhatsappSessionName('');
+                setTempWhatsappSessionName('');
+                setShowCreateForm(false);
+            }
             
             // Get updated status containing last connected phone number for the reconnect button
             const statusData = await api.get('/whatsapp/status');
             setWaStatus({ connected: false, status: 'DISCONNECTED', phone: statusData.phone });
         } catch (err) {
-            toast.error('Failed to disconnect WhatsApp number.');
+            toast.error(clearSessionName ? 'Failed to delete WhatsApp session.' : 'Failed to disconnect WhatsApp number.');
             setWaStatus({ connected: false, status: 'DISCONNECTED', phone: null });
         } finally {
             setWaDisconnecting(false);
@@ -1055,7 +1066,7 @@ const Settings: React.FC = () => {
                                             Reconnect {waStatus.phone ? `${waStatus.phone}` : 'Session'}
                                         </button>
                                         <button
-                                            onClick={() => handleDisconnect(false)}
+                                            onClick={() => handleDisconnect(true)}
                                             disabled={waDisconnecting}
                                             className="px-5 py-2.5 bg-rose-600/10 hover:bg-rose-600/20 text-rose-500 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer border border-rose-500/20"
                                         >
