@@ -516,9 +516,7 @@ const Settings: React.FC = () => {
                 {user?.role !== UserRole.TECHNICIAN && (
                     <>
                         {/* General Stock Alerts */}
-                        <div className={`p-6 rounded-3xl border shadow-sm ${
-                            isDark ? 'bg-[var(--color-card-dark)] border-[var(--color-border-dark)]' : 'bg-white border-slate-200'
-                        }`}>
+                        <div className="py-2">
                             <div className="flex justify-between items-start mb-4">
                                 <div className="flex items-center gap-2.5">
                                     <i className="fa-solid fa-boxes-stacked text-blue-500 text-base"></i>
@@ -562,9 +560,7 @@ const Settings: React.FC = () => {
                         </div>
 
                         {/* Copper Pipe Alerts */}
-                        <div className={`p-6 rounded-3xl border shadow-sm ${
-                            isDark ? 'bg-[var(--color-card-dark)] border-[var(--color-border-dark)]' : 'bg-white border-slate-200'
-                        }`}>
+                        <div className="py-2">
                             <div className="flex justify-between items-start mb-4">
                                 <div className="flex items-center gap-2.5">
                                     <i className="fa-solid fa-toolbox text-orange-500 text-base"></i>
@@ -610,9 +606,7 @@ const Settings: React.FC = () => {
                 )}
 
                 {/* Theme Customization */}
-                <div className={`p-6 rounded-3xl border shadow-sm md:hidden ${
-                    isDark ? 'bg-[var(--color-card-dark)] border-[var(--color-border-dark)]' : 'bg-white border-slate-200'
-                }`}>
+                <div className="py-2 md:hidden">
                     <div className="flex justify-between items-start mb-4">
                         <div className="flex items-center gap-2.5">
                             <i className={`fa-solid ${isDark ? 'fa-moon text-amber-400' : 'fa-sun text-amber-500'} text-base`}></i>
@@ -638,9 +632,7 @@ const Settings: React.FC = () => {
 
             {/* Audit Log Cleanup */}
             {user?.role === UserRole.SUPER_ADMIN && (
-                <div className={`p-6 rounded-3xl border shadow-sm ${
-                    isDark ? 'bg-[var(--color-card-dark)] border-[var(--color-border-dark)]' : 'bg-white border-slate-200'
-                }`}>
+                <div className="py-2">
                     <div className="flex items-center gap-2.5 mb-2">
                         <i className="fa-solid fa-trash-can text-red-500 text-base"></i>
                         <h3 className={`font-bold text-sm ${isDark ? 'text-zinc-200' : 'text-slate-800'}`}>Audit Log Cleanup</h3>
@@ -695,9 +687,7 @@ const Settings: React.FC = () => {
 
             {/* Contact Us Settings */}
             {user?.role === UserRole.SUPER_ADMIN && (
-                <div className={`p-6 rounded-3xl border shadow-sm ${
-                    isDark ? 'bg-[var(--color-card-dark)] border-[var(--color-border-dark)]' : 'bg-white border-slate-200'
-                }`}>
+                <div className="py-2">
                     <div className="flex items-center gap-2.5 mb-6">
                         <i className="fa-solid fa-address-book text-blue-500 text-base"></i>
                         <h3 className={`font-bold text-sm ${isDark ? 'text-zinc-200' : 'text-slate-800'}`}>Contact Us Settings</h3>
@@ -814,9 +804,7 @@ const Settings: React.FC = () => {
 
             {/* WhatsApp Integration */}
             {user?.role === UserRole.SUPER_ADMIN && (
-                <div className={`p-6 rounded-3xl border shadow-sm ${
-                    isDark ? 'bg-[var(--color-card-dark)] border-[var(--color-border-dark)]' : 'bg-white border-slate-200'
-                }`}>
+                <div className="py-2">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-6 border-b border-dashed border-slate-100 dark:border-zinc-800">
                         <div className="flex items-center gap-2.5">
                             <i className="fa-brands fa-whatsapp text-emerald-500 text-lg"></i>
