@@ -1,5 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
+import { toast } from 'sonner';
 import { useParams, Link, useOutletContext } from 'react-router-dom';
 import { Job, Customer, JobPhase, Payment } from '../types';
 import { APP_NAME, SUPPORT_EMAIL, API_BASE_URL } from '../constants';
@@ -24,7 +26,14 @@ const JobDetail: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState<number | null>(null);
   const [isUpdatingPayment, setIsUpdatingPayment] = useState(false);
-  const [notification, setNotification] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
+  const setNotification = (notif: { message: string, type: 'success' | 'error' } | null) => {
+    if (!notif) return;
+    if (notif.type === 'success') {
+      toast.success(notif.message);
+    } else {
+      toast.error(notif.message);
+    }
+  };
   const [phaseEmailStatus, setPhaseEmailStatus] = useState<Record<number, 'sent' | 'failed' | 'skipped' | 'read' | 'delivered'>>({});
   const [phaseWhatsappStatus, setPhaseWhatsappStatus] = useState<Record<number, 'sent' | 'failed' | 'skipped' | 'read' | 'delivered'>>({});
   const [emailAnimStates, setEmailAnimStates] = useState<Record<number, 'idle' | 'filling' | 'rippling' | 'resolving' | 'completed'>>({});
@@ -1019,7 +1028,7 @@ const JobDetail: React.FC = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
+    <div className="max-w-7xl mx-auto space-y-8 pb-12 animate-in fade-in duration-500">
       
       {/* Top Section */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch w-full">
@@ -1148,13 +1157,6 @@ const JobDetail: React.FC = () => {
         </div>
       </div>
 
-      {notification && (
-        <div className={`p-4 rounded-xl flex items-center gap-3 animate-in slide-in-from-top-4 duration-300 ${notification.type === 'success' ? 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-800 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-950/50' : 'bg-red-50 dark:bg-red-950/20 text-red-800 dark:text-red-400 border border-red-100 dark:border-red-950/50'}`}>
-          <i className={`fa-solid ${notification.type === 'success' ? 'fa-circle-check' : 'fa-circle-exclamation'}`}></i>
-          <p className="text-sm font-medium">{notification.message}</p>
-          <button onClick={() => setNotification(null)} className="ml-auto opacity-50 hover:opacity-100 transition-opacity"><i className="fa-solid fa-xmark"></i></button>
-        </div>
-      )}
 
       {/* Two-column layout grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
@@ -1902,7 +1904,24 @@ const JobDetail: React.FC = () => {
               if (total === 0) {
                 status = 'Not started';
               } else if (completed === total) {
-                status = 'Complete';
+                const hasPendingNotification = g.phases.some(p => {
+                  if (!p.isCompleted) return false;
+                  const emailStatus = phaseEmailStatus[p.id];
+                  const waStatus = phaseWhatsappStatus[p.id];
+                  const isEmailActionTaken = ['sent', 'read', 'delivered', 'skipped'].includes(emailStatus || '');
+                  const isWaActionTaken = ['sent', 'read', 'delivered', 'skipped'].includes(waStatus || '');
+                  if (whatsappEnabled) {
+                    return !isEmailActionTaken && !isWaActionTaken;
+                  } else {
+                    return !isEmailActionTaken;
+                  }
+                });
+                if (hasPendingNotification) {
+                  status = 'In progress';
+                  foundActive = true;
+                } else {
+                  status = 'Complete';
+                }
               } else if (completed > 0) {
                 status = 'In progress';
                 foundActive = true;
@@ -2143,7 +2162,7 @@ const JobDetail: React.FC = () => {
       </div>
 
       {/* Email Preview Modal */}
-      {emailModal.isOpen && (
+      {emailModal.isOpen && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#151619]/60 backdrop-blur-sm p-4" onClick={() => setEmailModal(prev => ({ ...prev, isOpen: false }))}>
           <div
             className={`bg-white dark:bg-card-dark border border-slate-200 dark:border-border-dark rounded-2xl shadow-2xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 ${
@@ -2490,7 +2509,8 @@ const JobDetail: React.FC = () => {
           </>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   )}
 
       {activeFile && (
@@ -2501,7 +2521,7 @@ const JobDetail: React.FC = () => {
         />
       )}
 
-      {isSummaryOpen && (
+      {isSummaryOpen && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#151619]/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-border-dark rounded-2xl w-full max-w-5xl max-h-[85vh] flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
@@ -2655,7 +2675,8 @@ const JobDetail: React.FC = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

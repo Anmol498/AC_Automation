@@ -4,7 +4,7 @@
 -- Generated: 2026-06-23
 -- ============================================================
 
-USE `jqckozpd_coolbreeze_ac`;
+USE `coolbreeze_ac`;
 
 SET FOREIGN_KEY_CHECKS = 0;
 

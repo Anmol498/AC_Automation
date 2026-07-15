@@ -626,7 +626,7 @@ const InventoryManagement: React.FC = () => {
     if (error) return <div className="p-6 text-red-500">{error}</div>;
 
     return (
-        <div className="space-y-6 max-w-7xl mx-auto">
+        <div className="space-y-6 max-w-7xl mx-auto pb-8">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h1 className={`text-2xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>Inventory Management</h1>
@@ -755,7 +755,7 @@ const InventoryManagement: React.FC = () => {
                                     </td>
                                 </tr>
                             ) : (
-                                paginatedItems.map(item => (
+                                filteredItems.map(item => (
                                     <tr key={item.id} className={`block sm:table-row border sm:border-none rounded-xl sm:rounded-none mb-4 sm:mb-0 shadow-sm sm:shadow-none transition-colors text-xs sm:text-sm ${
                                         isDark 
                                             ? 'bg-[#242427] border-zinc-800 hover:bg-zinc-800/40' 
@@ -851,11 +851,6 @@ const InventoryManagement: React.FC = () => {
                              )}
                         </tbody>
                     </table>
-                    <Pagination isDark={isDark}
-                        currentPage={currentPage}
-                        totalPages={totalItemsPages}
-                        onPageChange={handlePageChange}
-                    />
                 </div>
                 )}
 

@@ -41,7 +41,13 @@ router.get('/technicians', authenticateToken, async (req, res) => {
 
 router.get('/stats', authenticateToken, async (req, res) => {
   try {
-    const [[{ count: customers }]]: any = await pool.execute('SELECT COUNT(*) as count FROM customers WHERE deleted_at IS NULL');
+    let customers = 0;
+    let activeJobs = 0;
+    let completedJobs = 0;
+    let userCounts = { admin: 0, superadmin: 0, technician: 0 };
+    let paymentsCollected: any[] = [];
+    let jobsRevenue: any[] = [];
+
     let activeQuery = 'SELECT COUNT(*) as count FROM jobs WHERE status = "Ongoing" AND deleted_at IS NULL';
     let completedQuery = 'SELECT COUNT(*) as count FROM jobs WHERE status = "Completed" AND deleted_at IS NULL';
     let params = [];
@@ -51,47 +57,90 @@ router.get('/stats', authenticateToken, async (req, res) => {
       completedQuery += ' AND technician_id = ?';
       params.push(req.user.id);
 
-      const [[{ count: activeJobs }]]: any = await pool.execute(activeQuery, params);
-      const [[{ count: completedJobs }]]: any = await pool.execute(completedQuery, params);
+      try {
+        const [[{ count }]]: any = await pool.execute(activeQuery, params);
+        activeJobs = count;
+      } catch (err) {
+        console.error("Graceful degradation: Error fetching active jobs for technician stats:", err);
+      }
+
+      try {
+        const [[{ count }]]: any = await pool.execute(completedQuery, params);
+        completedJobs = count;
+      } catch (err) {
+        console.error("Graceful degradation: Error fetching completed jobs for technician stats:", err);
+      }
+
       return res.json({ activeJobs, completedJobs, health: '100%' });
     }
 
-    const [[{ count: activeJobs }]]: any = await pool.execute(activeQuery);
-    const [[{ count: completedJobs }]]: any = await pool.execute(completedQuery);
+    try {
+      const [[{ count }]]: any = await pool.execute('SELECT COUNT(*) as count FROM customers WHERE deleted_at IS NULL');
+      customers = count;
+    } catch (err) {
+      console.error("Graceful degradation: Error fetching customers count for stats:", err);
+    }
+
+    try {
+      const [[{ count }]]: any = await pool.execute(activeQuery);
+      activeJobs = count;
+    } catch (err) {
+      console.error("Graceful degradation: Error fetching active jobs count for stats:", err);
+    }
+
+    try {
+      const [[{ count }]]: any = await pool.execute(completedQuery);
+      completedJobs = count;
+    } catch (err) {
+      console.error("Graceful degradation: Error fetching completed jobs count for stats:", err);
+    }
     
     // Fetch user counts grouped by role
-    const [userRows]: any = await pool.execute('SELECT role, COUNT(*) as count FROM users GROUP BY role');
-    const userCounts = { admin: 0, superadmin: 0, technician: 0 };
-    userRows.forEach((row: any) => {
-      if (row.role in userCounts) {
-        userCounts[row.role as keyof typeof userCounts] = Number(row.count);
-      }
-    });
+    try {
+      const [userRows]: any = await pool.execute('SELECT role, COUNT(*) as count FROM users GROUP BY role');
+      userRows.forEach((row: any) => {
+        if (row.role in userCounts) {
+          userCounts[row.role as keyof typeof userCounts] = Number(row.count);
+        }
+      });
+    } catch (err) {
+      console.error("Graceful degradation: Error fetching user counts for stats:", err);
+    }
 
     // Fetch monthly collected revenue (payments received per month over last 24 months)
-    const [paymentsCollected]: any = await pool.execute(`
-      SELECT 
-        DATE_FORMAT(created_at, '%Y-%m') as month, 
-        SUM(amount) as collected
-      FROM payments
-      WHERE created_at >= DATE_SUB(NOW(), INTERVAL 24 MONTH)
-      GROUP BY month
-      ORDER BY month ASC
-    `);
+    try {
+      const [rows]: any = await pool.execute(`
+        SELECT 
+          DATE_FORMAT(created_at, '%Y-%m') as month, 
+          SUM(amount) as collected
+        FROM payments
+        WHERE created_at >= DATE_SUB(NOW(), INTERVAL 24 MONTH)
+        GROUP BY month
+        ORDER BY month ASC
+      `);
+      paymentsCollected = rows;
+    } catch (err) {
+      console.error("Graceful degradation: Error fetching payments collected for stats:", err);
+    }
 
     // Fetch monthly estimated revenue split (jobs created/started per month over last 24 months)
-    const [jobsRevenue]: any = await pool.execute(`
-      SELECT 
-        DATE_FORMAT(j.start_date, '%Y-%m') as month,
-        SUM(j.total_cost) as estimated,
-        SUM(COALESCE(jcs.total_received, 0)) as received,
-        SUM(COALESCE(jcs.balance_due, 0)) as outstanding
-      FROM jobs j
-      LEFT JOIN job_cost_summary jcs ON jcs.job_id = j.id
-      WHERE j.start_date >= DATE_SUB(NOW(), INTERVAL 24 MONTH) AND j.deleted_at IS NULL
-      GROUP BY month
-      ORDER BY month ASC
-    `);
+    try {
+      const [rows]: any = await pool.execute(`
+        SELECT 
+          DATE_FORMAT(j.start_date, '%Y-%m') as month,
+          SUM(j.total_cost) as estimated,
+          SUM(COALESCE(jcs.total_received, 0)) as received,
+          SUM(COALESCE(jcs.balance_due, 0)) as outstanding
+        FROM jobs j
+        LEFT JOIN job_cost_summary jcs ON jcs.job_id = j.id
+        WHERE j.start_date >= DATE_SUB(NOW(), INTERVAL 24 MONTH) AND j.deleted_at IS NULL
+        GROUP BY month
+        ORDER BY month ASC
+      `);
+      jobsRevenue = rows;
+    } catch (err) {
+      console.error("Graceful degradation: Error fetching jobs revenue for stats:", err);
+    }
 
     // Generate last 24 months list (from 23 months ago to current month)
     const revenueStats = [];

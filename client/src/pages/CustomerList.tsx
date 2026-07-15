@@ -12,7 +12,7 @@ import { api } from '../lib/api';
 import { useDebounce } from '../hooks/useDebounce';
 import { API_BASE_URL } from '../constants';
 import { Skeleton } from '../components/ui/Skeleton';
-import { FolderUpload } from '../components/ui/FolderUpload';
+import { ImagesBadge } from '../components/ui/images-badge';
 
 
 const CustomerList: React.FC = () => {
@@ -30,8 +30,37 @@ const CustomerList: React.FC = () => {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [activeFile, setActiveFile] = useState<{ url: string, name: string } | null>(null);
+  const [fileModalCustomer, setFileModalCustomer] = useState<Customer | null>(null);
 
   const itemsPerPage = 10;
+
+  const handleFileReupload = async (type: 'drawing' | 'quotation', file: File) => {
+    if (!fileModalCustomer) return;
+    
+    const loadingToastId = toast.loading(`Uploading new ${type}...`);
+    try {
+      const payload = new FormData();
+      payload.append('name', fileModalCustomer.name);
+      payload.append('email', fileModalCustomer.email || '');
+      payload.append('phone', fileModalCustomer.phone || '');
+      payload.append('address', fileModalCustomer.address || '');
+      
+      if (type === 'drawing') {
+        payload.append('drawing', file);
+      } else {
+        payload.append('quotation', file);
+      }
+
+      const updatedCustomer = await api.put(`/customers/${fileModalCustomer.id}`, payload);
+      
+      // Update local state
+      setCustomers(prev => prev.map(c => c.id === fileModalCustomer.id ? updatedCustomer : c));
+      setFileModalCustomer(updatedCustomer);
+      toast.success(`${type === 'drawing' ? 'Drawing' : 'Quotation'} uploaded successfully!`, { id: loadingToastId });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to upload file", { id: loadingToastId });
+    }
+  };
 
   // Clickable Row / Jobs State
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
@@ -219,7 +248,7 @@ const CustomerList: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className={`text-2xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-800'}`}>Customers</h2>
@@ -322,15 +351,16 @@ const CustomerList: React.FC = () => {
             <div className={`rounded-2xl border overflow-hidden shadow-sm ${
               isDark ? 'bg-[#242427] border-zinc-800' : 'bg-white border-slate-200'
             }`}>
-              <div className="overflow-x-auto">
+              <div className="overflow-x-hidden">
                 <table className="w-full text-left table-fixed">
-                  <thead className={`text-[10px] font-bold uppercase tracking-wider ${
+                   <thead className={`text-[10px] font-bold uppercase tracking-wider ${
                     isDark ? 'bg-[#1e1e21] text-zinc-400' : 'bg-slate-50 text-slate-500'
                   }`}>
                     <tr>
-                      <th className="w-[25%] px-6 py-4">Name</th>
-                      <th className="w-[25%] px-6 py-4">Contact</th>
-                      <th className="w-[32%] px-6 py-4">Address</th>
+                      <th className="w-[6%] px-6 py-4">S.No.</th>
+                      <th className="w-[22%] px-6 py-4">Name</th>
+                      <th className="w-[24%] px-6 py-4">Contact</th>
+                      <th className="w-[30%] px-6 py-4">Address</th>
                       <th className="w-[12%] px-6 py-4">Files</th>
                       <th className="w-[6%] px-6 py-4 text-right">Actions</th>
                     </tr>
@@ -338,6 +368,9 @@ const CustomerList: React.FC = () => {
                   <tbody className={`divide-y ${isDark ? 'divide-zinc-800' : 'divide-slate-100'}`}>
                     {Array.from({ length: 5 }).map((_, i) => (
                       <tr key={i} className="text-sm">
+                        <td className="px-6 py-4">
+                          <Skeleton className="h-4 w-6" />
+                        </td>
                         <td className="px-6 py-4">
                           <Skeleton className="h-4 w-28 mb-1.5" />
                           <Skeleton className="h-3 w-20" />
@@ -358,7 +391,6 @@ const CustomerList: React.FC = () => {
                         </td>
                         <td className="px-6 py-4 text-right">
                           <div className="flex justify-end gap-2">
-                            <Skeleton className="h-8 w-8 rounded-full" />
                             <Skeleton className="h-8 w-8 rounded-full" />
                           </div>
                         </td>
@@ -484,75 +516,78 @@ const CustomerList: React.FC = () => {
             <div className={`rounded-2xl border overflow-hidden shadow-sm ${
               isDark ? 'bg-[#242427] border-zinc-800' : 'bg-white border-slate-200'
             }`}>
-              <div className="overflow-x-auto">
+              <div className="overflow-x-hidden">
                 <table className="w-full text-left table-fixed">
                   <thead className={`text-[10px] font-bold uppercase tracking-wider ${
                     isDark ? 'bg-[#1e1e21] text-zinc-400' : 'bg-slate-50 text-slate-500'
                   }`}>
                     <tr>
-                      <th className="w-[25%] px-6 py-4">Name</th>
-                      <th className="w-[25%] px-6 py-4">Contact</th>
-                      <th className="w-[32%] px-6 py-4">Address</th>
+                      <th className="w-[6%] px-6 py-4">S.No.</th>
+                      <th className="w-[22%] px-6 py-4">Name</th>
+                      <th className="w-[24%] px-6 py-4">Contact</th>
+                      <th className="w-[30%] px-6 py-4">Address</th>
                       <th className="w-[12%] px-6 py-4">Files</th>
                       <th className="w-[6%] px-6 py-4 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className={`divide-y ${isDark ? 'divide-zinc-800' : 'divide-slate-100'}`}>
-                    {paginatedCustomers.map(c => (
-                      <tr 
-                        key={c.id} 
-                        onClick={() => { setSelectedCustomer(c); fetchCustomerJobs(c.id); }}
-                        className={`text-sm transition-colors cursor-pointer ${
-                          isDark ? 'hover:bg-zinc-800/40' : 'hover:bg-slate-100/70'
-                        }`}
-                      >
-                        <td className="px-6 py-4 overflow-hidden">
-                          <p className={`font-semibold truncate ${isDark ? 'text-white' : 'text-slate-800'}`} title={c.name}>{c.name}</p>
-                          <p className={`text-[10px] truncate ${isDark ? 'text-zinc-500' : 'text-slate-400'}`}>Created: {new Date(c.createdAt).toLocaleDateString()}</p>
-                        </td>
-                        <td className="px-6 py-4 overflow-hidden">
-                          <p className={`truncate ${isDark ? 'text-zinc-300' : 'text-slate-600'}`} title={c.email}>{c.email}</p>
-                          <p className={`text-[10px] truncate ${isDark ? 'text-zinc-500' : 'text-slate-400'}`} title={c.phone}>{c.phone}</p>
-                        </td>
-                        <td className={`text-xs truncate ${isDark ? 'text-zinc-350' : 'text-slate-600'}`} title={c.address}>{c.address || <span className="text-slate-400 italic">No Address</span>}</td>
-                        <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex flex-col gap-1 overflow-hidden">
-                            {c.drawingUrl ? (
-                              <button 
-                                onClick={(e) => { e.stopPropagation(); setActiveFile({ url: `${API_BASE_URL}${c.drawingUrl}`, name: `${c.name}_Drawing.${c.drawingUrl?.split('.').pop()}` }); }}
-                                className={`text-[10px] font-bold hover:underline inline-flex items-center gap-1 cursor-pointer align-left text-left justify-start truncate w-full ${
-                                  isDark ? 'text-emerald-400' : 'text-emerald-600'
-                                }`}
+                    {paginatedCustomers.map((c, idx) => {
+                      const serialNo = customers.length - ((currentPage - 1) * itemsPerPage + idx);
+                      return (
+                        <tr 
+                          key={c.id} 
+                          onClick={() => { setSelectedCustomer(c); fetchCustomerJobs(c.id); }}
+                          className={`text-sm transition-colors cursor-pointer ${
+                            isDark ? 'hover:bg-zinc-800/40' : 'hover:bg-slate-100/70'
+                          }`}
+                        >
+                          <td className={`px-6 py-4 font-mono text-xs font-bold ${isDark ? 'text-zinc-500' : 'text-slate-400'}`}>
+                            {serialNo}
+                          </td>
+                          <td className="px-6 py-4 overflow-hidden">
+                            <p className={`font-semibold truncate ${isDark ? 'text-white' : 'text-slate-800'}`} title={c.name}>{c.name}</p>
+                            <p className={`text-[10px] truncate ${isDark ? 'text-zinc-500' : 'text-slate-400'}`}>Created: {new Date(c.createdAt).toLocaleDateString()}</p>
+                          </td>
+                          <td className="px-6 py-4 overflow-hidden">
+                            <p className={`truncate ${isDark ? 'text-zinc-300' : 'text-slate-600'}`} title={c.email}>{c.email}</p>
+                            <p className={`text-[10px] truncate ${isDark ? 'text-zinc-500' : 'text-slate-400'}`} title={c.phone}>{c.phone}</p>
+                          </td>
+                          <td className={`text-xs truncate ${isDark ? 'text-zinc-350' : 'text-slate-600'}`} title={c.address}>{c.address || <span className="text-slate-400 italic">No Address</span>}</td>
+                          <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex justify-center w-full">
+                              <ImagesBadge
+                                onClick={() => setFileModalCustomer(c)}
+                                hasDrawing={!!c.drawingUrl}
+                                hasQuotation={!!c.quotationUrl}
+                                drawingUrl={c.drawingUrl ? `${API_BASE_URL}${c.drawingUrl}` : undefined}
+                                quotationUrl={c.quotationUrl ? `${API_BASE_URL}${c.quotationUrl}` : undefined}
+                              />
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <div className="flex justify-end items-center gap-3">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDelete(c.id);
+                                }}
+                                className="uiverse-delete-btn"
+                                title="Delete Customer"
                               >
-                                <i className="fa-solid fa-file-image shrink-0"></i> <span className="truncate">Drawing</span>
+                                <div className="sign">
+                                  <svg viewBox="0 0 448 512">
+                                    <path d="M135.2 17.7L128 32H32C14.3 32 0 46.3 0 64S14.3 96 32 96H416c17.7 0 32-14.3 32-32s-14.3-32-32-32H320l-7.2-14.3C307.4 6.8 296.3 0 284.2 0H163.8c-12.1 0-23.2 6.8-28.6 17.7zM416 128H32L53.2 467c1.6 25.3 22.6 45 47.9 45H346.9c25.3 0 46.3-19.7 47.9-45L416 128z" />
+                                  </svg>
+                                </div>
+                                <div className="text">Delete</div>
                               </button>
-                            ) : <span className={`text-[10px] italic ${isDark ? 'text-zinc-600' : 'text-slate-350'}`}>No drawing</span>}
-                            {c.quotationUrl ? (
-                              <button 
-                                onClick={(e) => { e.stopPropagation(); setActiveFile({ url: `${API_BASE_URL}${c.quotationUrl}`, name: `${c.name}_Quotation.${c.quotationUrl?.split('.').pop()}` }); }}
-                                className={`text-[10px] font-bold hover:underline inline-flex items-center gap-1 cursor-pointer align-left text-left justify-start truncate w-full ${
-                                  isDark ? 'text-blue-400' : 'text-blue-600'
-                                }`}
-                              >
-                                <i className="fa-solid fa-file-pdf shrink-0"></i> <span className="truncate">Quotation</span>
-                              </button>
-                            ) : <span className={`text-[10px] italic ${isDark ? 'text-zinc-600' : 'text-slate-350'}`}>No quotation</span>}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <div className="flex justify-end gap-3">
-                            <button onClick={(e) => { e.stopPropagation(); openEditModal(c); }} className="text-blue-400 hover:text-blue-500" title="Edit Customer">
-                              <i className="fa-solid fa-pen"></i>
-                            </button>
-                            <button onClick={(e) => { e.stopPropagation(); handleDelete(c.id); }} className={`hover:text-red-500 ${isDark ? 'text-zinc-500' : 'text-red-400'}`} title="Delete Customer">
-                              <i className="fa-solid fa-trash-can"></i>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                     {customers.length === 0 && (
-                      <tr><td colSpan={5} className={`p-10 text-center italic ${isDark ? 'text-zinc-500' : 'text-slate-400'}`}>No customers found.</td></tr>
+                      <tr><td colSpan={6} className={`p-10 text-center italic ${isDark ? 'text-zinc-500' : 'text-slate-400'}`}>No customers found.</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -574,21 +609,72 @@ const CustomerList: React.FC = () => {
               <input type="email" placeholder="Email" className={`w-full p-2.5 border rounded-lg ${isDark ? 'bg-[#18181b] border-zinc-800 text-white placeholder-zinc-500' : 'border-slate-200'}`} value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
               <input placeholder="Phone" className={`w-full p-2.5 border rounded-lg ${isDark ? 'bg-[#18181b] border-zinc-800 text-white placeholder-zinc-500' : 'border-slate-200'}`} value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} />
               <textarea placeholder="Address" className={`w-full p-2.5 border rounded-lg ${isDark ? 'bg-[#18181b] border-zinc-800 text-white placeholder-zinc-500' : 'border-slate-200'}`} rows={3} value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} required />
-              <div className="flex gap-4 items-center justify-between py-2">
-                <FolderUpload
-                  label="Drawing"
-                  fileType="dwg"
-                  selectedFile={drawingFile}
-                  onChange={setDrawingFile}
-                  isDark={isDark}
-                />
-                <FolderUpload
-                  label="Quotation"
-                  fileType="quot"
-                  selectedFile={quotationFile}
-                  onChange={setQuotationFile}
-                  isDark={isDark}
-                />
+              <div className="grid grid-cols-2 gap-4 pb-2">
+                {/* Drawing Upload */}
+                <div className="flex flex-col items-center relative">
+                  <span className={`text-xs font-bold mb-1.5 ${isDark ? 'text-zinc-400' : 'text-slate-600'}`}>Drawing</span>
+                  <div className="uiverse-upload-container">
+                    <label className="uiverse-custom-file-upload">
+                      <input 
+                        type="file" 
+                        onChange={e => setDrawingFile(e.target.files ? e.target.files[0] : null)} 
+                      />
+                    </label>
+                    <div className="uiverse-upload-folder pointer-events-none">
+                      <div className="uiverse-folder-front">
+                        <div className="uiverse-folder-cover"></div>
+                      </div>
+                      <div className="uiverse-folder-back">
+                        <div className="uiverse-folder-tip"></div>
+                        <div className="uiverse-folder-cover"></div>
+                      </div>
+                    </div>
+                  </div>
+                  {drawingFile ? (
+                    <span className="text-[10px] text-emerald-500 font-semibold mt-1 truncate max-w-[120px] text-center animate-fadeIn" title={drawingFile.name}>
+                      {drawingFile.name}
+                    </span>
+                  ) : (
+                    editingId ? (
+                      <span className="text-[8px] text-slate-400 mt-1 italic text-center leading-tight">Keep existing</span>
+                    ) : (
+                      <span className="text-[8px] text-slate-400 mt-1 italic text-center leading-tight">Empty</span>
+                    )
+                  )}
+                </div>
+
+                {/* Quotation Upload */}
+                <div className="flex flex-col items-center relative">
+                  <span className={`text-xs font-bold mb-1.5 ${isDark ? 'text-zinc-400' : 'text-slate-600'}`}>Quotation</span>
+                  <div className="uiverse-upload-container">
+                    <label className="uiverse-custom-file-upload">
+                      <input 
+                        type="file" 
+                        onChange={e => setQuotationFile(e.target.files ? e.target.files[0] : null)} 
+                      />
+                    </label>
+                    <div className="uiverse-upload-folder pointer-events-none">
+                      <div className="uiverse-folder-front">
+                        <div className="uiverse-folder-cover"></div>
+                      </div>
+                      <div className="uiverse-folder-back">
+                        <div className="uiverse-folder-tip"></div>
+                        <div className="uiverse-folder-cover"></div>
+                      </div>
+                    </div>
+                  </div>
+                  {quotationFile ? (
+                    <span className="text-[10px] text-emerald-500 font-semibold mt-1 truncate max-w-[120px] text-center animate-fadeIn" title={quotationFile.name}>
+                      {quotationFile.name}
+                    </span>
+                  ) : (
+                    editingId ? (
+                      <span className="text-[8px] text-slate-400 mt-1 italic text-center leading-tight">Keep existing</span>
+                    ) : (
+                      <span className="text-[8px] text-slate-400 mt-1 italic text-center leading-tight">Empty</span>
+                    )
+                  )}
+                </div>
               </div>
               {editingId && (
                 <p className="text-[10px] text-slate-400 dark:text-zinc-500 text-center italic leading-tight">
@@ -621,21 +707,40 @@ const CustomerList: React.FC = () => {
           <div className={`rounded-3xl w-full max-w-2xl p-6 md:p-8 shadow-2xl flex flex-col max-h-[90vh] overflow-hidden ${
             isDark ? 'bg-[#242427] text-zinc-100' : 'bg-white text-slate-800'
           }`}>
-            {/* Header */}
+             {/* Header */}
             <div className={`flex justify-between items-start mb-6 pb-4 border-b ${isDark ? 'border-zinc-800' : 'border-slate-100'}`}>
               <div>
                 <h3 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-800'}`}>{selectedCustomer.name}</h3>
                 <p className={`text-xs mt-1 ${isDark ? 'text-zinc-500' : 'text-slate-500'}`}>Customer ID: #{selectedCustomer.id}</p>
               </div>
-              <button 
-                onClick={() => {
-                  setSelectedCustomer(null);
-                  setIsAddingJob(false);
-                }} 
-                className={`transition-colors p-2 rounded-lg ${isDark ? 'text-zinc-500 hover:text-zinc-350 hover:bg-zinc-800' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
-              >
-                <i className="fa-solid fa-xmark text-lg"></i>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    const custToEdit = selectedCustomer;
+                    setSelectedCustomer(null);
+                    setIsAddingJob(false);
+                    openEditModal(custToEdit);
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold shadow-sm transition-all ${
+                    isDark 
+                      ? 'border-zinc-800 bg-zinc-850 hover:bg-zinc-800 text-blue-400' 
+                      : 'border-slate-200 bg-white text-blue-600 hover:bg-slate-50'
+                  }`}
+                  title="Edit Customer"
+                >
+                  <i className="fa-solid fa-pen text-[10px]"></i>
+                  Edit
+                </button>
+                <button 
+                  onClick={() => {
+                    setSelectedCustomer(null);
+                    setIsAddingJob(false);
+                  }} 
+                  className={`transition-colors p-2 rounded-lg ${isDark ? 'text-zinc-500 hover:text-zinc-350 hover:bg-zinc-800' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
+                >
+                  <i className="fa-solid fa-xmark text-lg"></i>
+                </button>
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto space-y-6 pr-2">
@@ -877,6 +982,151 @@ const CustomerList: React.FC = () => {
               >
                 Close Details
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* File Action Modal */}
+      {fileModalCustomer && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className={`rounded-2xl w-full max-w-md p-6 shadow-2xl ${
+            isDark ? 'bg-[#242427] text-zinc-100' : 'bg-white text-slate-800'
+          }`}>
+            <div className="flex justify-between items-center mb-6">
+              <h3 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-800'}`}>Customer Documents</h3>
+              <button 
+                onClick={() => setFileModalCustomer(null)}
+                className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                  isDark ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-400' : 'bg-slate-100 hover:bg-slate-200 text-slate-500'
+                }`}
+              >
+                <i className="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Drawing Section */}
+              <div className={`p-4 rounded-xl border ${
+                isDark ? 'bg-zinc-800/20 border-zinc-800' : 'bg-slate-50 border-slate-200'
+              }`}>
+                <div className="flex justify-between items-center mb-3">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">Technical Drawing</span>
+                  {fileModalCustomer.drawingUrl ? (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                      Uploaded
+                    </span>
+                  ) : (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-slate-500/10 text-slate-400 border border-slate-500/20">
+                      Not Available
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap gap-2 items-center">
+                  {fileModalCustomer.drawingUrl ? (
+                    <>
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          setActiveFile({ 
+                            url: `${API_BASE_URL}${fileModalCustomer.drawingUrl}`, 
+                            name: `${fileModalCustomer.name}_Drawing.${fileModalCustomer.drawingUrl?.split('.').pop()}` 
+                          });
+                          setFileModalCustomer(null);
+                        }}
+                        className="text-xs py-1.5 px-3 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 font-semibold rounded-lg flex items-center gap-1 transition-all"
+                      >
+                        <i className="fa-solid fa-eye text-[10px]"></i> View File
+                      </button>
+                      <a 
+                        href={`${API_BASE_URL}${fileModalCustomer.drawingUrl}`}
+                        download={`${fileModalCustomer.name}_Drawing.${fileModalCustomer.drawingUrl?.split('.').pop()}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs py-1.5 px-3 bg-[#2554E8]/10 hover:bg-[#2554E8]/20 text-[#2554E8] dark:text-blue-400 font-semibold rounded-lg flex items-center gap-1 transition-all"
+                      >
+                        <i className="fa-solid fa-download text-[10px]"></i> Download File
+                      </a>
+                    </>
+                  ) : null}
+
+                  <label className="text-xs py-1.5 px-3 bg-slate-500/10 hover:bg-slate-500/20 text-slate-500 dark:text-zinc-400 font-semibold rounded-lg flex items-center gap-1 cursor-pointer transition-all">
+                    <i className="fa-solid fa-upload text-[10px]"></i> 
+                    {fileModalCustomer.drawingUrl ? 'Reupload File' : 'Upload File'}
+                    <input 
+                      type="file" 
+                      className="hidden" 
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          handleFileReupload('drawing', e.target.files[0]);
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {/* Quotation Section */}
+              <div className={`p-4 rounded-xl border ${
+                isDark ? 'bg-zinc-800/20 border-zinc-800' : 'bg-slate-50 border-slate-200'
+              }`}>
+                <div className="flex justify-between items-center mb-3">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">Quotation</span>
+                  {fileModalCustomer.quotationUrl ? (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                      Uploaded
+                    </span>
+                  ) : (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-slate-500/10 text-slate-400 border border-slate-500/20">
+                      Not Available
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap gap-2 items-center">
+                  {fileModalCustomer.quotationUrl ? (
+                    <>
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          setActiveFile({ 
+                            url: `${API_BASE_URL}${fileModalCustomer.quotationUrl}`, 
+                            name: `${fileModalCustomer.name}_Quotation.${fileModalCustomer.quotationUrl?.split('.').pop()}` 
+                          });
+                          setFileModalCustomer(null);
+                        }}
+                        className="text-xs py-1.5 px-3 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 font-semibold rounded-lg flex items-center gap-1 transition-all"
+                      >
+                        <i className="fa-solid fa-eye text-[10px]"></i> View File
+                      </button>
+                      <a 
+                        href={`${API_BASE_URL}${fileModalCustomer.quotationUrl}`}
+                        download={`${fileModalCustomer.name}_Quotation.${fileModalCustomer.quotationUrl?.split('.').pop()}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs py-1.5 px-3 bg-[#2554E8]/10 hover:bg-[#2554E8]/20 text-[#2554E8] dark:text-blue-400 font-semibold rounded-lg flex items-center gap-1 transition-all"
+                      >
+                        <i className="fa-solid fa-download text-[10px]"></i> Download File
+                      </a>
+                    </>
+                  ) : null}
+
+                  <label className="text-xs py-1.5 px-3 bg-slate-500/10 hover:bg-slate-500/20 text-slate-500 dark:text-zinc-400 font-semibold rounded-lg flex items-center gap-1 cursor-pointer transition-all">
+                    <i className="fa-solid fa-upload text-[10px]"></i> 
+                    {fileModalCustomer.quotationUrl ? 'Reupload File' : 'Upload File'}
+                    <input 
+                      type="file" 
+                      className="hidden" 
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          handleFileReupload('quotation', e.target.files[0]);
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>
             </div>
           </div>
         </div>

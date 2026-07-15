@@ -118,11 +118,9 @@ export const AnimatedNotificationButton: React.FC<AnimatedNotificationButtonProp
       style={btnStyle}
       title={`Send ${label}`}
     >
-      {showRing && (
-        <svg className="send-progress-ring" viewBox="0 0 34 34">
-          <circle cx="17" cy="17" r="16" stroke={colors.border} />
-        </svg>
-      )}
+      <svg className="send-progress-ring" viewBox="0 0 34 34">
+        <circle cx="17" cy="17" r="16" stroke={colors.border} />
+      </svg>
 
       {showRipple && (
         <span className="animated-send-ripple" style={{ color: colors.border }} />

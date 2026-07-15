@@ -207,7 +207,7 @@ const JobList: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className={`text-2xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-800'}`}>{isTech ? 'My Assigned Jobs' : 'Jobs & Phases'}</h2>
@@ -327,61 +327,63 @@ const JobList: React.FC = () => {
           </div>
 
           {/* Skeleton Desktop Table View */}
-          <div className={`hidden md:block rounded-2xl border shadow-sm overflow-hidden ${
-            isDark ? 'bg-[var(--color-card-dark)] border-[var(--color-border-dark)]' : 'bg-[var(--color-card-light)] border-[var(--color-border-light)]'
-          }`}>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse table-fixed">
-                <thead className={`text-[10px] font-bold uppercase tracking-widest ${
-                  isDark ? 'bg-[#1e1e21] text-zinc-400' : 'bg-slate-50 text-slate-500'
-                }`}>
-                  <tr>
-                    <th className={`${user?.role === 'superadmin' ? 'w-[8%]' : 'w-[10%]'} px-6 py-4 border-b ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>ID</th>
-                    <th className={`${user?.role === 'superadmin' ? 'w-[22%]' : 'w-[36%]'} px-6 py-4 border-b ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>Customer</th>
-                    <th className={`${user?.role === 'superadmin' ? 'w-[12%]' : 'w-[16%]'} px-6 py-4 border-b ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>Job Type</th>
-                    {user?.role === 'superadmin' && <th className={`w-[12%] px-6 py-4 border-b ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>Total Cost</th>}
-                    {user?.role === 'superadmin' && <th className={`w-[18%] px-6 py-4 border-b text-center ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>Remaining</th>}
-                    <th className={`${user?.role === 'superadmin' ? 'w-[22%]' : 'w-[30%]'} px-6 py-4 border-b ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>Current Phase / Status</th>
-                    <th className={`${user?.role === 'superadmin' ? 'w-[6%]' : 'w-[8%]'} px-6 py-4 border-b text-right ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody className={`divide-y ${isDark ? 'divide-zinc-800' : 'divide-slate-100'}`}>
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <tr key={i}>
-                      <td className="px-6 py-4">
-                        <Skeleton className="h-3.5 w-8" />
-                      </td>
-                      <td className="px-6 py-4">
-                        <Skeleton className="h-4 w-32 mb-1.5" />
-                        <Skeleton className="h-3 w-24" />
-                      </td>
-                      <td className="px-6 py-4">
-                        <Skeleton className="h-5 w-16 rounded" />
-                      </td>
-                      {user?.role === 'superadmin' && (
+          <div className="hidden md:flex flex-col gap-4">
+            <div className={`rounded-2xl border shadow-sm overflow-hidden w-full ${
+              isDark ? 'bg-[var(--color-card-dark)] border-[var(--color-border-dark)]' : 'bg-[var(--color-card-light)] border-[var(--color-border-light)]'
+            }`}>
+              <div className="overflow-x-hidden">
+                <table className="w-full text-left border-collapse table-fixed">
+                  <thead className={`text-[10px] font-bold uppercase tracking-widest ${
+                    isDark ? 'bg-[#1e1e21] text-zinc-400' : 'bg-slate-50 text-slate-500'
+                  }`}>
+                    <tr>
+                      <th className={`${user?.role === 'superadmin' ? 'w-[8%]' : 'w-[10%]'} px-6 py-4 border-b ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>ID</th>
+                      <th className={`${user?.role === 'superadmin' ? 'w-[22%]' : 'w-[36%]'} px-6 py-4 border-b ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>Customer</th>
+                      <th className={`${user?.role === 'superadmin' ? 'w-[12%]' : 'w-[16%]'} px-6 py-4 border-b ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>Job Type</th>
+                      {user?.role === 'superadmin' && <th className={`w-[12%] px-6 py-4 border-b ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>Total Cost</th>}
+                      {user?.role === 'superadmin' && <th className={`w-[18%] px-6 py-4 border-b text-center ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>Remaining</th>}
+                      <th className={`${user?.role === 'superadmin' ? 'w-[22%]' : 'w-[30%]'} px-6 py-4 border-b ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>Current Phase / Status</th>
+                      <th className={`${user?.role === 'superadmin' ? 'w-[6%]' : 'w-[8%]'} px-6 py-4 border-b text-right ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className={`divide-y ${isDark ? 'divide-zinc-800' : 'divide-slate-100'}`}>
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <tr key={i}>
                         <td className="px-6 py-4">
-                          <Skeleton className="h-4 w-16" />
+                          <Skeleton className="h-3.5 w-8" />
                         </td>
-                      )}
-                      {user?.role === 'superadmin' && (
-                        <td className="px-6 py-4 text-center">
-                          <div className="flex justify-center">
-                            <Skeleton className="h-6 w-24 rounded-full" />
+                        <td className="px-6 py-4">
+                          <Skeleton className="h-4 w-32 mb-1.5" />
+                          <Skeleton className="h-3.5 w-24" />
+                        </td>
+                        <td className="px-6 py-4">
+                          <Skeleton className="h-5 w-16 rounded" />
+                        </td>
+                        {user?.role === 'superadmin' && (
+                          <td className="px-6 py-4">
+                            <Skeleton className="h-4 w-16" />
+                          </td>
+                        )}
+                        {user?.role === 'superadmin' && (
+                          <td className="px-6 py-4 text-center">
+                            <div className="flex justify-center">
+                              <Skeleton className="h-6 w-24 rounded-full" />
+                            </div>
+                          </td>
+                        )}
+                        <td className="px-6 py-4">
+                          <Skeleton className="h-6 w-28 rounded-full" />
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex justify-end">
+                            <Skeleton className="h-7 w-16 rounded-lg" />
                           </div>
                         </td>
-                      )}
-                      <td className="px-6 py-4">
-                        <Skeleton className="h-6 w-28 rounded-full" />
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex justify-end">
-                          <Skeleton className="h-7 w-16 rounded-lg" />
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
@@ -518,114 +520,121 @@ const JobList: React.FC = () => {
           </div>
 
           {/* Desktop Table View (>= md) */}
-          <div className={`hidden md:block rounded-2xl border shadow-sm overflow-hidden ${
-            isDark ? 'bg-[var(--color-card-dark)] border-[var(--color-border-dark)]' : 'bg-[var(--color-card-light)] border-[var(--color-border-light)]'
-          }`}>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse table-fixed">
-                <thead className={`text-[10px] font-bold uppercase tracking-widest ${
-                  isDark ? 'bg-[#1e1e21] text-zinc-400' : 'bg-slate-50 text-slate-500'
-                }`}>
-                  <tr>
-                    <th className={`${user?.role === 'superadmin' ? 'w-[8%]' : 'w-[10%]'} px-6 py-4 border-b ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>ID</th>
-                    <th className={`${user?.role === 'superadmin' ? 'w-[22%]' : 'w-[36%]'} px-6 py-4 border-b ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>Customer</th>
-                    <th className={`${user?.role === 'superadmin' ? 'w-[12%]' : 'w-[16%]'} px-6 py-4 border-b ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>Job Type</th>
-                    {user?.role === 'superadmin' && <th className={`w-[12%] px-6 py-4 border-b ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>Total Cost</th>}
-                    {user?.role === 'superadmin' && <th className={`w-[18%] px-6 py-4 border-b text-center ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>Remaining</th>}
-                    <th className={`${user?.role === 'superadmin' ? 'w-[22%]' : 'w-[30%]'} px-6 py-4 border-b ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>Current Phase / Status</th>
-                    <th className={`${user?.role === 'superadmin' ? 'w-[6%]' : 'w-[8%]'} px-6 py-4 border-b text-right ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody className={`divide-y ${isDark ? 'divide-zinc-800' : 'divide-slate-100'}`}>
-                  {paginatedJobs.map((job) => (
-                    <tr
-                      key={job.id}
-                      className={`transition-colors cursor-pointer ${isDark ? 'hover:bg-zinc-800/40' : 'hover:bg-slate-50'}`}
-                      onClick={(e) => handleRowClick(e, job.id)}
-                    >
-                      <td className={`px-6 py-4 font-mono text-xs font-bold ${isDark ? 'text-zinc-500' : 'text-slate-400'}`}>#{job.id}</td>
-                      <td className="px-6 py-4 overflow-hidden">
-                        <p className={`font-semibold truncate ${isDark ? 'text-white' : 'text-slate-800'}`} title={job.customerName}>{job.customerName}</p>
-                        <p className={`text-[10px] truncate ${isDark ? 'text-zinc-500' : 'text-slate-400'}`}>Scheduled: {new Date(job.startDate).toLocaleDateString()}</p>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${
-                          job.jobType === 'Service' 
-                            ? isDark ? 'bg-purple-900/30 text-purple-300' : 'bg-purple-100 text-purple-700' 
-                            : isDark ? 'bg-blue-900/30 text-blue-300' : 'bg-blue-100 text-blue-700'
-                        }`}>
-                          {job.jobType}
-                        </span>
-                      </td>
-                      {user?.role === 'superadmin' && (
-                        <td className="px-6 py-4">
-                          <p className={`font-bold ${isDark ? 'text-zinc-350' : 'text-slate-700'}`}>₹{Number(job.totalCost).toLocaleString()}</p>
-                        </td>
-                      )}
-                      {user?.role === 'superadmin' && (
-                        <td className="px-6 py-4 text-center">
-                          <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider shadow-sm border ${(Number(job.totalCost) - Number(job.totalPaid || 0)) <= 0 ? (isDark ? 'bg-emerald-950/40 text-emerald-400 border-emerald-900/50' : 'bg-emerald-100 text-emerald-700 border-emerald-500/20') : (isDark ? 'bg-red-950/40 text-red-400 border-red-900/50' : 'bg-red-100 text-red-700 border-red-500/20')}`}>
-                            {(Number(job.totalCost) - Number(job.totalPaid || 0)) <= 0 ? (
-                              <>
-                                <i className="fa-solid fa-circle-check"></i>
-                                Fully Paid
-                              </>
-                            ) : (
-                              <>
-                                <i className="fa-solid fa-triangle-exclamation text-[10px]"></i>
-                                ₹{Math.max(0, Number(job.totalCost) - Number(job.totalPaid || 0)).toLocaleString()}
-                              </>
-                            )}
-                          </span>
-                        </td>
-                      )}
-                      <td className="px-6 py-4">
-                        {job.status === 'Completed' ? (
-                          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm border ${isDark ? 'bg-emerald-950/40 text-emerald-400 border-emerald-900/50' : 'bg-emerald-100 text-emerald-700 border-emerald-500/20'}`}>
-                            <i className="fa-solid fa-circle-check"></i>
-                            Completed
-                          </span>
-                        ) : (
-                          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm border bg-[var(--color-primary-light)] text-[var(--color-primary)] border-[var(--color-primary)]/20`}>
-                            <i className="fa-solid fa-spinner fa-spin text-[8px] text-[var(--color-primary)]"></i>
-                            {job.currentPhase || 'Ongoing'}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-3">
-                          {!isTech && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDelete(job.id);
-                              }}
-                              className={`p-2 transition-colors ${isDark ? 'text-zinc-500 hover:text-red-400' : 'text-slate-300 hover:text-red-500'}`}
-                              title="Delete Job"
-                            >
-                              <i className="fa-solid fa-trash-can"></i>
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                  {jobs.length === 0 && (
+          <div className="hidden md:flex flex-col gap-4">
+            <div className={`rounded-2xl border shadow-sm overflow-hidden w-full ${
+              isDark ? 'bg-[var(--color-card-dark)] border-[var(--color-border-dark)]' : 'bg-[var(--color-card-light)] border-[var(--color-border-light)]'
+            }`}>
+              <div className="overflow-x-hidden">
+                <table className="w-full text-left border-collapse table-fixed">
+                  <thead className={`text-[10px] font-bold uppercase tracking-widest ${
+                    isDark ? 'bg-[#1e1e21] text-zinc-400' : 'bg-slate-50 text-slate-500'
+                  }`}>
                     <tr>
-                      <td colSpan={user?.role === 'superadmin' ? 7 : 5} className="p-12 text-center">
-                        <div className="max-w-xs mx-auto space-y-3">
-                          <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto text-2xl ${
-                            isDark ? 'bg-zinc-800 text-zinc-600' : 'bg-slate-50 text-slate-300'
-                          }`}>
-                            <i className="fa-solid fa-clipboard-list"></i>
-                          </div>
-                          <p className={`text-sm font-medium ${isDark ? 'text-zinc-500' : 'text-slate-400'}`}>No active jobs found. Start by scheduling a new one.</p>
-                        </div>
-                      </td>
+                      <th className={`${user?.role === 'superadmin' ? 'w-[8%]' : 'w-[10%]'} px-6 py-4 border-b ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>ID</th>
+                      <th className={`${user?.role === 'superadmin' ? 'w-[22%]' : 'w-[36%]'} px-6 py-4 border-b ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>Customer</th>
+                      <th className={`${user?.role === 'superadmin' ? 'w-[12%]' : 'w-[16%]'} px-6 py-4 border-b ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>Job Type</th>
+                      {user?.role === 'superadmin' && <th className={`w-[12%] px-6 py-4 border-b ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>Total Cost</th>}
+                      {user?.role === 'superadmin' && <th className={`w-[18%] px-6 py-4 border-b text-center ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>Remaining</th>}
+                      <th className={`${user?.role === 'superadmin' ? 'w-[22%]' : 'w-[30%]'} px-6 py-4 border-b ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>Current Phase / Status</th>
+                      <th className={`${user?.role === 'superadmin' ? 'w-[6%]' : 'w-[8%]'} px-6 py-4 border-b text-right ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>Actions</th>
                     </tr>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className={`divide-y ${isDark ? 'divide-zinc-800' : 'divide-slate-100'}`}>
+                    {paginatedJobs.map((job) => (
+                      <tr
+                        key={job.id}
+                        className={`transition-colors cursor-pointer ${isDark ? 'hover:bg-zinc-800/40' : 'hover:bg-slate-50'}`}
+                        onClick={(e) => handleRowClick(e, job.id)}
+                      >
+                        <td className={`px-6 py-4 font-mono text-xs font-bold ${isDark ? 'text-zinc-500' : 'text-slate-400'}`}>#{job.id}</td>
+                        <td className="px-6 py-4 overflow-hidden">
+                          <p className={`font-semibold truncate ${isDark ? 'text-white' : 'text-slate-800'}`} title={job.customerName}>{job.customerName}</p>
+                          <p className={`text-[10px] truncate ${isDark ? 'text-zinc-500' : 'text-slate-400'}`}>Scheduled: {new Date(job.startDate).toLocaleDateString()}</p>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${
+                            job.jobType === 'Service' 
+                              ? isDark ? 'bg-purple-900/30 text-purple-300' : 'bg-purple-100 text-purple-700' 
+                              : isDark ? 'bg-blue-900/30 text-blue-300' : 'bg-blue-100 text-blue-700'
+                          }`}>
+                            {job.jobType}
+                          </span>
+                        </td>
+                        {user?.role === 'superadmin' && (
+                          <td className="px-6 py-4">
+                            <p className={`font-bold ${isDark ? 'text-zinc-350' : 'text-slate-700'}`}>₹{Number(job.totalCost).toLocaleString()}</p>
+                          </td>
+                        )}
+                        {user?.role === 'superadmin' && (
+                          <td className="px-6 py-4 text-center">
+                            <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider shadow-sm border ${(Number(job.totalCost) - Number(job.totalPaid || 0)) <= 0 ? (isDark ? 'bg-emerald-950/40 text-emerald-400 border-emerald-900/50' : 'bg-emerald-100 text-emerald-700 border-emerald-500/20') : (isDark ? 'bg-red-950/40 text-red-400 border-red-900/50' : 'bg-red-100 text-red-700 border-red-500/20')}`}>
+                              {(Number(job.totalCost) - Number(job.totalPaid || 0)) <= 0 ? (
+                                <>
+                                  <i className="fa-solid fa-circle-check"></i>
+                                  Fully Paid
+                                </>
+                              ) : (
+                                <>
+                                  <i className="fa-solid fa-triangle-exclamation text-[10px]"></i>
+                                  ₹{Math.max(0, Number(job.totalCost) - Number(job.totalPaid || 0)).toLocaleString()}
+                                </>
+                              )}
+                            </span>
+                          </td>
+                        )}
+                        <td className="px-6 py-4">
+                          {job.status === 'Completed' ? (
+                            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm border ${isDark ? 'bg-emerald-950/40 text-emerald-400 border-emerald-900/50' : 'bg-emerald-100 text-emerald-700 border-emerald-500/20'}`}>
+                              <i className="fa-solid fa-circle-check"></i>
+                              Completed
+                            </span>
+                          ) : (
+                            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm border bg-[var(--color-primary-light)] text-[var(--color-primary)] border-[var(--color-primary)]/20`}>
+                              <i className="fa-solid fa-spinner fa-spin text-[8px] text-[var(--color-primary)]"></i>
+                              {job.currentPhase || 'Ongoing'}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex items-center justify-end gap-3">
+                            {!isTech && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDelete(job.id);
+                                }}
+                                className="uiverse-delete-btn"
+                                title="Delete Job"
+                              >
+                                <div className="sign">
+                                  <svg viewBox="0 0 448 512">
+                                    <path d="M135.2 17.7L128 32H32C14.3 32 0 46.3 0 64S14.3 96 32 96H416c17.7 0 32-14.3 32-32s-14.3-32-32-32H320l-7.2-14.3C307.4 6.8 296.3 0 284.2 0H163.8c-12.1 0-23.2 6.8-28.6 17.7zM416 128H32L53.2 467c1.6 25.3 22.6 45 47.9 45H346.9c25.3 0 46.3-19.7 47.9-45L416 128z" />
+                                  </svg>
+                                </div>
+                                <div className="text">Delete</div>
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {jobs.length === 0 && (
+                      <tr>
+                        <td colSpan={user?.role === 'superadmin' ? 7 : 5} className="p-12 text-center">
+                          <div className="max-w-xs mx-auto space-y-3">
+                            <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto text-2xl ${
+                              isDark ? 'bg-zinc-800 text-zinc-600' : 'bg-slate-50 text-slate-300'
+                            }`}>
+                              <i className="fa-solid fa-clipboard-list"></i>
+                            </div>
+                            <p className={`text-sm font-medium ${isDark ? 'text-zinc-500' : 'text-slate-400'}`}>No active jobs found. Start by scheduling a new one.</p>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
             <Pagination isDark={isDark}
               currentPage={currentPage}

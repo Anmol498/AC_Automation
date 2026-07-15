@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, Component, ErrorInfo, ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import * as XLSX from 'xlsx';
 import CadViewerBridge from './CadViewerBridge';
 
@@ -303,7 +304,7 @@ const FileViewerModal: React.FC<FileViewerModalProps> = ({ url, filename, onClos
     );
   };
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 bg-[#151619]/60 backdrop-blur-md z-[1000] flex items-center justify-center p-2 sm:p-4 md:p-6 animate-in fade-in duration-300">
       <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-border-dark rounded-[32px] w-full max-w-7xl h-[95vh] max-h-[95vh] overflow-hidden shadow-2xl flex flex-col animate-in zoom-in-95 duration-300 origin-center relative z-10">
         <div className="px-8 py-5 border-b border-slate-100 dark:border-border-dark flex items-center justify-between shrink-0 bg-white dark:bg-card-dark relative z-20">
@@ -358,7 +359,8 @@ const FileViewerModal: React.FC<FileViewerModalProps> = ({ url, filename, onClos
           </a>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

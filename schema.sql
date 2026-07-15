@@ -337,14 +337,6 @@ GROUP BY j.id, j.total_cost, copper.net_feet;
 -- Seed Initial Data
 -- ---------------------------------------------------------------
 
--- Default copper sizes
-INSERT IGNORE INTO `inventory_copper` (`size`, `total_in_stock`) VALUES
-('1/4', 0.00),
-('3/8', 0.00),
-('1/2', 0.00),
-('5/8', 0.00),
-('3/4', 0.00);
-
 -- Default settings
 INSERT IGNORE INTO `settings` (`setting_key`, `value_type`, `setting_value`) VALUES
 ('mail_transport', 'string', 'smtp'),

@@ -184,9 +184,9 @@ const LayoutContent: React.FC = () => {
   ];
 
   return (
-    <div className={`h-screen flex flex-col md:flex-row ${isDark ? 'bg-background-dark text-zinc-100 dark' : 'bg-background-light text-slate-900'} overflow-hidden`}>
+    <div className={`h-screen flex flex-col md:flex-row ${isDark ? 'bg-background-dark text-zinc-100 dark' : 'bg-slate-50 text-slate-900'} overflow-hidden`}>
       {/* Sidebar (Desktop) */}
-      <aside className={`flex max-md:!hidden ${isCollapsed ? 'w-20 bg-transparent border-none' : 'w-64 bg-slate-900 border-r border-slate-800'} text-white flex-shrink-0 flex-col relative z-20 shadow-xl transition-all duration-300`}>
+      <aside className={`flex max-md:!hidden ${isCollapsed ? 'w-20 bg-transparent border-none shadow-none' : 'w-64 bg-slate-900 border-r border-slate-800 shadow-xl'} text-white flex-shrink-0 flex-col relative z-20 transition-all duration-300`}>
         {isCollapsed ? (
           <div className="flex items-center justify-center h-full w-full relative">
             <div className="relative">
@@ -258,13 +258,13 @@ const LayoutContent: React.FC = () => {
                 </label>
 
                 {/* Logout Button */}
-                <button
-                  onClick={handleLogout}
-                  title="Logout"
-                  className="flex-1 h-10 bg-slate-800/40 hover:bg-slate-800 justify-center gap-2 text-xs font-semibold flex items-center rounded-xl text-red-400 hover:bg-red-500/10 hover:text-red-350 transition-colors"
-                >
-                  <i className="fa-solid fa-right-from-bracket text-base text-center"></i>
-                  <span>Logout</span>
+                <button className="uiverse-logout-btn" onClick={handleLogout} title="Logout">
+                  <div className="sign">
+                    <svg viewBox="0 0 512 512">
+                      <path d="M377.9 105.9L500.7 228.7c7.2 7.2 11.3 17.1 11.3 27.3s-4.1 20.1-11.3 27.3L377.9 406.1c-6.4 6.4-15 9.9-24 9.9c-18.7 0-33.9-15.2-33.9-33.9l0-62.1-128 0c-17.7 0-32-14.3-32-32l0-64c0-17.7 14.3-32 32-32l128 0 0-62.1c0-18.7 15.2-33.9 33.9-33.9c9 0 17.6 3.6 24 9.9zM160 96L96 96c-17.7 0-32 14.3-32 32l0 256c0 17.7 14.3 32 32 32l64 0c17.7 0 32 14.3 32 32s-14.3 32-32 32l-64 0c-53 0-96-43-96-96L0 128C0 75 43 32 96 32l64 0c17.7 0 32 14.3 32 32s-14.3 32-32 32z" />
+                    </svg>
+                  </div>
+                  <div className="text">Logout</div>
                 </button>
               </div>
 

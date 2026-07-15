@@ -31,13 +31,13 @@ export const ImagesBadge: React.FC<ImagesBadgeProps> = ({
       // Only drawing is uploaded, center it
       return {
         initial: { y: 0, x: 0, rotate: 0, scale: 0.8, opacity: 0.9 },
-        hover: { y: -24, x: 0, rotate: 0, scale: 1.1, opacity: 1, transition: { type: 'spring', stiffness: 220, damping: 14 } }
+        hover: { y: -24, x: 0, rotate: 0, scale: 1.1, opacity: 1, transition: { type: 'spring' as const, stiffness: 220, damping: 14 } }
       };
     }
     // Both uploaded, fan left
     return {
       initial: { y: 0, x: 0, rotate: 0, scale: 0.8, opacity: 0.9 },
-      hover: { y: -24, x: -22, rotate: -15, scale: 1.1, opacity: 1, transition: { type: 'spring', stiffness: 220, damping: 14 } }
+      hover: { y: -24, x: -22, rotate: -15, scale: 1.1, opacity: 1, transition: { type: 'spring' as const, stiffness: 220, damping: 14 } }
     };
   };
 
@@ -47,13 +47,13 @@ export const ImagesBadge: React.FC<ImagesBadgeProps> = ({
       // Only quotation is uploaded, center it
       return {
         initial: { y: 0, x: 0, rotate: 0, scale: 0.8, opacity: 0.9 },
-        hover: { y: -24, x: 0, rotate: 0, scale: 1.1, opacity: 1, transition: { type: 'spring', stiffness: 220, damping: 14 } }
+        hover: { y: -24, x: 0, rotate: 0, scale: 1.1, opacity: 1, transition: { type: 'spring' as const, stiffness: 220, damping: 14 } }
       };
     }
     // Both uploaded, fan right
     return {
       initial: { y: 0, x: 0, rotate: 0, scale: 0.8, opacity: 0.9 },
-      hover: { y: -24, x: 22, rotate: 15, scale: 1.1, opacity: 1, transition: { type: 'spring', stiffness: 220, damping: 14 } }
+      hover: { y: -24, x: 22, rotate: 15, scale: 1.1, opacity: 1, transition: { type: 'spring' as const, stiffness: 220, damping: 14 } }
     };
   };
 

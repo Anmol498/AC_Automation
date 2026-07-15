@@ -24,10 +24,10 @@ const Pagination: React.FC<PaginationProps> = ({ currentPage, totalPages, onPage
     };
 
     return (
-        <div className={`flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t gap-4 transition-colors ${
+        <div className={`flex flex-col sm:flex-row items-center justify-between px-6 py-4 border rounded-2xl gap-4 shadow-sm transition-colors ${
             isDark 
-                ? 'bg-[var(--color-card-dark)] border-[var(--color-border-dark)]' 
-                : 'bg-slate-50 border-slate-100'
+                ? 'bg-[#242427] border-zinc-800' 
+                : 'bg-slate-50 border-slate-200'
         }`}>
             <p className={`text-xs font-bold uppercase tracking-widest leading-none ${isDark ? 'text-zinc-500' : 'text-slate-400'}`}>
                 Page <span className={isDark ? 'text-zinc-200' : 'text-slate-800'}>{currentPage}</span> of <span className={isDark ? 'text-zinc-200' : 'text-slate-800'}>{totalPages}</span>
